@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: sans-serif; margin: 2em; }
+      h1, h2 { color: #333; }
+      #main-nav, #recipe-details-view { display: none; }
+      .form-group { margin-bottom: 1em; }
+      label { display: block; margin-bottom: 0.5em; }
+      input, select { width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px; }
+      button { background-color: #007bff; color: white; padding: 0.75em 1.5em; border: none; border-radius: 4px; cursor: pointer; }
+      button:hover { background-color: #0056b3; }
+      .ingredient-group { margin-bottom: 1em; padding: 1em; border: 1px solid #eee; border-radius: 4px; }
+      #recipes-list ul { list-style-type: none; padding: 0; }
+      #recipes-list li { margin-bottom: 0.5em; }
+      #recipes-list a { cursor: pointer; color: #007bff; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <h1>Recipe Book</h1>
+
+    <div id="main-nav">
+      <button onclick="showView('add-ingredient-view')">Add Ingredient</button>
+      <button onclick="showView('add-recipe-view')">Add Recipe</button>
+      <button onclick="showView('recipes-list-view')">View Recipes</button>
+    </div>
+
+    <!-- Add Ingredient View -->
+    <div id="add-ingredient-view" class="view">
+      <h2>Add Ingredient</h2>
+      <div class="form-group">
+        <label for="ingredient-name">Name:</label>
+        <input type="text" id="ingredient-name">
+      </div>
+      <div class="form-group">
+        <label for="ingredient-cost">Cost:</label>
+        <input type="number" id="ingredient-cost" step="0.01">
+      </div>
+      <div class="form-group">
+        <label for="purchase-date">Purchase Date:</label>
+        <input type="date" id="purchase-date">
+      </div>
+      <div class="form-group">
+        <label for="store">Store:</label>
+        <input type="text" id="store">
+      </div>
+      <button onclick="addIngredient()">Submit</button>
+    </div>
+
+    <!-- Add Recipe View -->
+    <div id="add-recipe-view" class="view" style="display:none;">
+      <h2>Add Recipe</h2>
+      <div class="form-group">
+        <label for="recipe-name">Recipe Name:</label>
+        <input type="text" id="recipe-name">
+      </div>
+      <div id="ingredients-container">
+        <!-- Dynamic ingredients will be added here -->
+      </div>
+      <button type="button" onclick="addIngredientField()">Add Ingredient</button>
+      <button onclick="addRecipe()">Create Recipe</button>
+    </div>
+
+    <!-- Recipes List View -->
+    <div id="recipes-list-view" class="view" style="display:none;">
+      <h2>All Recipes</h2>
+      <div id="recipes-list"></div>
+    </div>
+
+    <!-- Recipe Details View -->
+    <div id="recipe-details-view" class="view" style="display:none;">
+      <h2 id="details-recipe-name"></h2>
+      <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
+      <h3>Ingredients:</h3>
+      <ul id="details-ingredients-list"></ul>
+      <button onclick="showView('recipes-list-view')">Back to Recipes</button>
+    </div>
+
+    <script>
+      var availableIngredients = [];
+
+      function showView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+        document.getElementById(viewId).style.display = 'block';
+        if (viewId === 'recipes-list-view') loadRecipes();
+        if (viewId === 'add-recipe-view') loadIngredientsForRecipeForm();
+      }
+
+      function addIngredient() {
+        var name = document.getElementById('ingredient-name').value;
+        var cost = document.getElementById('ingredient-cost').value;
+        var date = document.getElementById('purchase-date').value;
+        var store = document.getElementById('store').value;
+
+        if (!name || !cost || !date) {
+          alert('Please fill in all required fields.');
+          return;
+        }
+
+        google.script.run.withSuccessHandler(() => {
+          alert('Ingredient added!');
+          document.getElementById('ingredient-name').value = '';
+          document.getElementById('ingredient-cost').value = '';
+          document.getElementById('purchase-date').value = '';
+          document.getElementById('store').value = '';
+          showView('recipes-list-view');
+        }).addIngredient(name, parseFloat(cost), date, store);
+      }
+
+      function loadIngredientsForRecipeForm() {
+        google.script.run.withSuccessHandler(ingredients => {
+          availableIngredients = ingredients.slice(1).map(row => row[0]); // Skip header
+          document.getElementById('ingredients-container').innerHTML = ''; // Clear existing
+          addIngredientField(); // Add the first ingredient field
+        }).getIngredients();
+      }
+
+      function addIngredientField() {
+        var container = document.getElementById('ingredients-container');
+        var div = document.createElement('div');
+        div.className = 'ingredient-group';
+        var select = '<select class="ingredient-name">';
+        var uniqueIngredients = [...new Set(availableIngredients)];
+        uniqueIngredients.forEach(ing => {
+          select += `<option value="${ing}">${ing}</option>`;
+        });
+        select += '</select>';
+        div.innerHTML = `
+          ${select}
+          <input type="number" class="ingredient-quantity" placeholder="Quantity" step="0.01">
+        `;
+        container.appendChild(div);
+      }
+
+      function addRecipe() {
+        var recipeName = document.getElementById('recipe-name').value;
+        if (!recipeName) {
+          alert('Please enter a recipe name.');
+          return;
+        }
+
+        var ingredients = [];
+        var ingredientGroups = document.querySelectorAll('.ingredient-group');
+        if (ingredientGroups.length === 0) {
+          alert('Please add at least one ingredient.');
+          return;
+        }
+
+        for (var i = 0; i < ingredientGroups.length; i++) {
+          var group = ingredientGroups[i];
+          var name = group.querySelector('.ingredient-name').value;
+          var quantity = group.querySelector('.ingredient-quantity').value;
+          if (!name || !quantity || isNaN(parseFloat(quantity))) {
+            alert('Please ensure all ingredients have a name and a valid quantity.');
+            return;
+          }
+          ingredients.push({ name: name, quantity: parseFloat(quantity) });
+        }
+
+        google.script.run.withSuccessHandler(() => {
+          alert('Recipe added!');
+          document.getElementById('recipe-name').value = '';
+          document.getElementById('ingredients-container').innerHTML = '';
+          showView('recipes-list-view');
+        }).addRecipe(recipeName, ingredients);
+      }
+
+      function loadRecipes() {
+        google.script.run.withSuccessHandler(recipes => {
+          var list = document.getElementById('recipes-list');
+          list.innerHTML = '<ul></ul>';
+          var ul = list.firstChild;
+          recipes.slice(1).forEach(recipe => { // Skip header
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.textContent = recipe[0];
+            a.onclick = function() { getRecipeDetails(recipe[0]); };
+            li.appendChild(a);
+            ul.appendChild(li);
+          });
+        }).getRecipes();
+      }
+
+      function getRecipeDetails(recipeName) {
+        google.script.run.withSuccessHandler(details => {
+          document.getElementById('details-recipe-name').textContent = details.recipeName;
+          document.getElementById('details-total-cost').textContent = '$' + details.totalCost.toFixed(2);
+          var list = document.getElementById('details-ingredients-list');
+          list.innerHTML = '';
+          details.ingredients.forEach(ing => {
+            var li = document.createElement('li');
+            li.textContent = `${ing.quantity} x ${ing.name} (@ $${ing.cost.toFixed(2)} each)`;
+            list.appendChild(li);
+          });
+          showView('recipe-details-view');
+        }).getRecipeDetails(recipeName);
+      }
+
+      // Initial Load
+      document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('main-nav').style.display = 'block';
+        showView('recipes-list-view');
+      });
+    </script>
+  </body>
+</html>
