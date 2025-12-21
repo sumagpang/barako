@@ -108,7 +108,8 @@
           return;
         }
 
-        google.script.run.withSuccessHandler(() => {
+        google.script.run.withSuccessHandler((updatedIngredients) => {
+          availableIngredients = updatedIngredients; // Update the global list
           alert('Ingredient added!');
           document.getElementById('ingredient-name').value = '';
           document.getElementById('ingredient-cost').value = '';
@@ -121,11 +122,11 @@
       }
 
       function loadIngredientsForRecipeForm() {
-        google.script.run.withSuccessHandler(ingredients => {
-          availableIngredients = ingredients.slice(1).map(row => row[0]); // Skip header
+        google.script.run.withSuccessHandler(uniqueNames => {
+          availableIngredients = uniqueNames;
           document.getElementById('ingredients-container').innerHTML = ''; // Clear existing
           addIngredientField(); // Add the first ingredient field
-        }).getIngredients();
+        }).getUniqueIngredientNames();
       }
 
       function addIngredientField() {
@@ -133,8 +134,7 @@
         var div = document.createElement('div');
         div.className = 'ingredient-group';
         var select = '<select class="ingredient-name">';
-        var uniqueIngredients = [...new Set(availableIngredients)];
-        uniqueIngredients.forEach(ing => {
+        availableIngredients.forEach(ing => {
           select += `<option value="${ing}">${ing}</option>`;
         });
         select += '</select>';

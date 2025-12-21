@@ -9,12 +9,18 @@ function doGet() {
 function addIngredient(name, cost, purchaseDate, store, quantity, uom) {
   var sheet = getSpreadsheet().getSheetByName("Ingredients");
   sheet.appendRow([name, cost, purchaseDate, store, quantity, uom]);
-  return "Ingredient added successfully!";
+  SpreadsheetApp.flush(); // Ensure the sheet is updated immediately
+  return getUniqueIngredientNames(); // Return the fresh list of unique names
 }
 
-function getIngredients() {
+function getUniqueIngredientNames() {
   var sheet = getSpreadsheet().getSheetByName("Ingredients");
-  return sheet.getDataRange().getValues();
+  var data = sheet.getDataRange().getValues();
+  var names = data.slice(1).map(function(row) { // slice(1) to skip header
+    return row[0];
+  });
+  var uniqueNames = [...new Set(names)]; // Get unique names
+  return uniqueNames.sort(); // Return sorted unique names
 }
 
 function addRecipe(recipeName, ingredients) {
