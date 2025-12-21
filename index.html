@@ -134,16 +134,18 @@
           document.getElementById('ingredient-uom').value = '';
           document.getElementById('purchase-date').value = '';
           document.getElementById('store').value = '';
-          showView('recipes-list-view');
+          showView('view-ingredients-view'); // Go to the ingredients view
         }).addIngredient(name, parseFloat(cost), date, store, parseFloat(quantity), uom);
       }
 
       function loadIngredientsForRecipeForm() {
-        google.script.run.withSuccessHandler(uniqueNames => {
-          availableIngredients = uniqueNames;
-          document.getElementById('ingredients-container').innerHTML = ''; // Clear existing
-          addIngredientField(); // Add the first ingredient field
-        }).getUniqueIngredientNames();
+        google.script.run
+          .withFailureHandler(err => alert('Error loading ingredients: ' + err.message))
+          .withSuccessHandler(uniqueNames => {
+            availableIngredients = uniqueNames;
+            document.getElementById('ingredients-container').innerHTML = ''; // Clear existing
+            addIngredientField(); // Add the first ingredient field
+          }).getUniqueIngredientNames();
       }
 
       function addIngredientField() {
@@ -189,86 +191,88 @@
           ingredients.push({ name: name, quantity: parseFloat(quantity), uom: uom });
         }
 
-        google.script.run.withSuccessHandler(() => {
-          alert('Recipe added!');
-          document.getElementById('recipe-name').value = '';
-          document.getElementById('ingredients-container').innerHTML = '';
-          showView('recipes-list-view');
-        }).addRecipe(recipeName, ingredients);
+        google.script.run
+          .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
+          .withSuccessHandler(() => {
+            alert('Recipe added!');
+            document.getElementById('recipe-name').value = '';
+            document.getElementById('ingredients-container').innerHTML = '';
+            showView('recipes-list-view');
+          }).addRecipe(recipeName, ingredients);
       }
 
       function loadRecipes() {
-        google.script.run.withSuccessHandler(recipes => {
-          var list = document.getElementById('recipes-list');
-          list.innerHTML = '<ul></ul>';
-          var ul = list.firstChild;
-          recipes.slice(1).forEach(recipe => { // Skip header
-            var li = document.createElement('li');
-            var a = document.createElement('a');
-            a.textContent = recipe[0];
-            a.onclick = function() { getRecipeDetails(recipe[0]); };
-            li.appendChild(a);
-            ul.appendChild(li);
-          });
-        }).getRecipes();
+        google.script.run
+          .withFailureHandler(err => alert('Error loading recipes: ' + err.message))
+          .withSuccessHandler(recipes => {
+            var list = document.getElementById('recipes-list');
+            list.innerHTML = '<ul></ul>';
+            var ul = list.firstChild;
+            recipes.slice(1).forEach(recipe => { // Skip header
+              var li = document.createElement('li');
+              var a = document.createElement('a');
+              a.textContent = recipe[0];
+              a.onclick = function() { getRecipeDetails(recipe[0]); };
+              li.appendChild(a);
+              ul.appendChild(li);
+            });
+          }).getRecipes();
       }
 
       function getRecipeDetails(recipeName) {
-        google.script.run.withSuccessHandler(details => {
-          document.getElementById('details-recipe-name').textContent = details.recipeName;
-          document.getElementById('details-total-cost').textContent = '$' + details.totalCost.toFixed(2);
-          var list = document.getElementById('details-ingredients-list');
-          list.innerHTML = '';
-          details.ingredients.forEach(ing => {
-            var li = document.createElement('li');
-            var content = `${ing.quantity} ${ing.uom} ${ing.name} - `;
-            if (ing.status === 'OK') {
-              content += `Total: $${ing.cost.toFixed(2)} (@ $${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
-            } else {
-              content += `<span class="error-message">${ing.status}</span>`;
-            }
-            li.innerHTML = content;
-            list.appendChild(li);
-          });
-          showView('recipe-details-view');
-        }).getRecipeDetails(recipeName);
+        google.script.run
+          .withFailureHandler(err => alert('Error getting recipe details: ' + err.message))
+          .withSuccessHandler(details => {
+            document.getElementById('details-recipe-name').textContent = details.recipeName;
+            document.getElementById('details-total-cost').textContent = '$' + details.totalCost.toFixed(2);
+            var list = document.getElementById('details-ingredients-list');
+            list.innerHTML = '';
+            details.ingredients.forEach(ing => {
+              var li = document.createElement('li');
+              var content = `${ing.quantity} ${ing.uom} ${ing.name} - `;
+              if (ing.status === 'OK') {
+                content += `Total: $${ing.cost.toFixed(2)} (@ $${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
+              } else {
+                content += `<span class="error-message">${ing.status}</span>`;
+              }
+              li.innerHTML = content;
+              list.appendChild(li);
+            });
+            showView('recipe-details-view');
+          }).getRecipeDetails(recipeName);
       }
 
-      // Initial Load
-      document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('main-nav').style.display = 'block';
-        showView('recipes-list-view');
-      });
-
       function loadAllIngredients() {
-        google.script.run.withSuccessHandler(data => {
-          var table = document.getElementById('ingredients-table');
-          var thead = table.querySelector('thead');
-          var tbody = table.querySelector('tbody');
+        google.script.run
+          .withFailureHandler(err => alert('Error loading ingredient purchases: ' + err.message))
+          .withSuccessHandler(data => {
+            var table = document.getElementById('ingredients-table');
+            var thead = table.querySelector('thead');
+            var tbody = table.querySelector('tbody');
 
-          thead.innerHTML = '';
-          tbody.innerHTML = '';
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
 
-          if (data.length > 0) {
-            var headerRow = document.createElement('tr');
-            data[0].forEach(headerText => {
-              var th = document.createElement('th');
-              th.textContent = headerText;
-              headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-
-            for (var i = 1; i < data.length; i++) {
-              var row = document.createElement('tr');
-              data[i].forEach(cellText => {
-                var td = document.createElement('td');
-                td.textContent = cellText;
-                row.appendChild(td);
+            if (data.length > 0) {
+              var headerRow = document.createElement('tr');
+              data[0].forEach(headerText => {
+                var th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
               });
-              tbody.appendChild(row);
+              thead.appendChild(headerRow);
+
+              for (var i = 1; i < data.length; i++) {
+                var row = document.createElement('tr');
+                data[i].forEach(cellText => {
+                  var td = document.createElement('td');
+                  td.textContent = cellText;
+                  row.appendChild(td);
+                });
+                tbody.appendChild(row);
+              }
             }
-          }
-        }).getAllIngredientPurchases();
+          }).getAllIngredientPurchases();
       }
 
       function filterIngredients() {
@@ -311,6 +315,12 @@
           }
         }
       }
+
+      // Initial Load
+      document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('main-nav').style.display = 'block';
+        showView('recipes-list-view');
+      });
     </script>
   </body>
 </html>
