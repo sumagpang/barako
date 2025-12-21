@@ -94,7 +94,22 @@
     <!-- View Ingredients View -->
     <div id="view-ingredients-view" class="view" style="display:none;">
       <h2>All Ingredient Purchases</h2>
-      <input type="text" id="ingredient-search" onkeyup="filterIngredients()" placeholder="Search for ingredients..">
+      <input type="text" id="ingredient-search" onkeyup="applyIngredientFilters()" placeholder="Search for ingredients..">
+      <select id="month-filter" onchange="applyIngredientFilters()">
+        <option value="">All Months</option>
+        <option value="0">January</option>
+        <option value="1">February</option>
+        <option value="2">March</option>
+        <option value="3">April</option>
+        <option value="4">May</option>
+        <option value="5">June</option>
+        <option value="6">July</option>
+        <option value="7">August</option>
+        <option value="8">September</option>
+        <option value="9">October</option>
+        <option value="10">November</option>
+        <option value="11">December</option>
+      </select>
       <table id="ingredients-table">
         <thead></thead>
         <tbody></tbody>
@@ -275,26 +290,42 @@
           }).getAllIngredientPurchases();
       }
 
-      function filterIngredients() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("ingredient-search");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("ingredients-table");
-        tr = table.getElementsByTagName("tr");
+      function applyIngredientFilters() {
+        var searchInput = document.getElementById("ingredient-search");
+        var monthInput = document.getElementById("month-filter");
+        var searchText = searchInput.value.toUpperCase();
+        var selectedMonth = monthInput.value;
 
-        for (i = 1; i < tr.length; i++) { // Start from 1 to skip header
-          var display = "none";
-          td = tr[i].getElementsByTagName("td");
-          for (var j = 0; j < td.length; j++) {
-            if (td[j]) {
-              txtValue = td[j].textContent || td[j].innerText;
-              if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                display = "";
-                break;
+        var table = document.getElementById("ingredients-table");
+        var tr = table.getElementsByTagName("tr");
+
+        // Loop through all table rows, and hide those who don't match the search query or month
+        for (var i = 1; i < tr.length; i++) { // Start i=1 to skip header row
+          var row = tr[i];
+          var displayRow = true;
+
+          // Month filter
+          if (selectedMonth !== "") {
+            var dateCell = row.getElementsByTagName("td")[2]; // Assuming Purchase Date is the 3rd column
+            if (dateCell) {
+              var cellDate = new Date(dateCell.textContent);
+              if (cellDate.getMonth().toString() !== selectedMonth) {
+                displayRow = false;
               }
+            } else {
+              displayRow = false;
             }
           }
-          tr[i].style.display = display;
+
+          // Search text filter (only if row is still visible)
+          if (displayRow && searchText !== "") {
+            var rowText = row.textContent || row.innerText;
+            if (rowText.toUpperCase().indexOf(searchText) === -1) {
+              displayRow = false;
+            }
+          }
+
+          row.style.display = displayRow ? "" : "none";
         }
       }
 
