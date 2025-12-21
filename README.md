@@ -5,7 +5,9 @@ This web application allows you to create a recipe book that tracks ingredient c
 ## Features
 
 *   **Ingredient Tracking:** Record all your ingredient purchases, including the cost, quantity, unit of measure (UoM), purchase date, and store.
+*   **View & Search Ingredients:** View a complete list of all your ingredient purchases in a sortable table. A live search bar allows you to instantly filter and find the ingredient you are looking for.
 *   **Recipe Management:** Create and manage your recipes, specifying the required quantity and UoM for each ingredient.
+*   **View & Search Recipes:** View all your saved recipes. A live search bar allows you to quickly find the recipe you want to see.
 *   **Automatic Cost Calculation:** The application automatically calculates the total cost of any recipe. It intelligently finds the most recent purchase price for each ingredient and calculates a price per base unit (e.g., price per gram or per milliliter).
 *   **Automatic UoM Conversion:** The application can automatically convert between compatible units of measurement. This means you can buy an ingredient in kilograms but use it in your recipes in grams, and the cost will be calculated correctly.
 

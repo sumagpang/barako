@@ -23,6 +23,13 @@ function getUniqueIngredientNames() {
   return uniqueNames.sort(); // Return sorted unique names
 }
 
+function getAllIngredientPurchases() {
+  var sheet = getSpreadsheet().getSheetByName("Ingredients");
+  var data = sheet.getDataRange().getValues();
+  // We send all data, including the header, and let the client handle it.
+  return data;
+}
+
 function addRecipe(recipeName, ingredients) {
   var recipeSheet = getSpreadsheet().getSheetByName("Recipes");
   var recipeIngredientsSheet = getSpreadsheet().getSheetByName("RecipeIngredients");

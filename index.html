@@ -16,6 +16,9 @@
       #recipes-list li { margin-bottom: 0.5em; }
       #recipes-list a { cursor: pointer; color: #007bff; text-decoration: underline; }
       .error-message { color: red; font-style: italic; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+      th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #ddd; }
+      thead { background-color: #f2f2f2; }
     </style>
   </head>
   <body>
@@ -25,6 +28,7 @@
       <button onclick="showView('add-ingredient-view')">Add Ingredient</button>
       <button onclick="showView('add-recipe-view')">Add Recipe</button>
       <button onclick="showView('recipes-list-view')">View Recipes</button>
+      <button onclick="showView('view-ingredients-view')">View Ingredients</button>
     </div>
 
     <!-- Add Ingredient View -->
@@ -74,6 +78,7 @@
     <!-- Recipes List View -->
     <div id="recipes-list-view" class="view" style="display:none;">
       <h2>All Recipes</h2>
+      <input type="text" id="recipe-search" onkeyup="filterRecipes()" placeholder="Search for recipes..">
       <div id="recipes-list"></div>
     </div>
 
@@ -86,6 +91,16 @@
       <button onclick="showView('recipes-list-view')">Back to Recipes</button>
     </div>
 
+    <!-- View Ingredients View -->
+    <div id="view-ingredients-view" class="view" style="display:none;">
+      <h2>All Ingredient Purchases</h2>
+      <input type="text" id="ingredient-search" onkeyup="filterIngredients()" placeholder="Search for ingredients..">
+      <table id="ingredients-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
     <script>
       var availableIngredients = [];
 
@@ -94,6 +109,7 @@
         document.getElementById(viewId).style.display = 'block';
         if (viewId === 'recipes-list-view') loadRecipes();
         if (viewId === 'add-recipe-view') loadIngredientsForRecipeForm();
+        if (viewId === 'view-ingredients-view') loadAllIngredients();
       }
 
       function addIngredient() {
@@ -223,6 +239,78 @@
         document.getElementById('main-nav').style.display = 'block';
         showView('recipes-list-view');
       });
+
+      function loadAllIngredients() {
+        google.script.run.withSuccessHandler(data => {
+          var table = document.getElementById('ingredients-table');
+          var thead = table.querySelector('thead');
+          var tbody = table.querySelector('tbody');
+
+          thead.innerHTML = '';
+          tbody.innerHTML = '';
+
+          if (data.length > 0) {
+            var headerRow = document.createElement('tr');
+            data[0].forEach(headerText => {
+              var th = document.createElement('th');
+              th.textContent = headerText;
+              headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            for (var i = 1; i < data.length; i++) {
+              var row = document.createElement('tr');
+              data[i].forEach(cellText => {
+                var td = document.createElement('td');
+                td.textContent = cellText;
+                row.appendChild(td);
+              });
+              tbody.appendChild(row);
+            }
+          }
+        }).getAllIngredientPurchases();
+      }
+
+      function filterIngredients() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("ingredient-search");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("ingredients-table");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 1; i < tr.length; i++) { // Start from 1 to skip header
+          var display = "none";
+          td = tr[i].getElementsByTagName("td");
+          for (var j = 0; j < td.length; j++) {
+            if (td[j]) {
+              txtValue = td[j].textContent || td[j].innerText;
+              if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                display = "";
+                break;
+              }
+            }
+          }
+          tr[i].style.display = display;
+        }
+      }
+
+      function filterRecipes() {
+        var input, filter, ul, li, a, i, txtValue;
+        input = document.getElementById("recipe-search");
+        filter = input.value.toUpperCase();
+        ul = document.getElementById("recipes-list").getElementsByTagName("ul")[0];
+        li = ul.getElementsByTagName("li");
+
+        for (i = 0; i < li.length; i++) {
+          a = li[i].getElementsByTagName("a")[0];
+          txtValue = a.textContent || a.innerText;
+          if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+          } else {
+            li[i].style.display = "none";
+          }
+        }
+      }
     </script>
   </body>
 </html>
