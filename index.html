@@ -28,14 +28,22 @@
 
     <!-- Add Ingredient View -->
     <div id="add-ingredient-view" class="view">
-      <h2>Add Ingredient</h2>
+      <h2>Add Ingredient Purchase</h2>
       <div class="form-group">
         <label for="ingredient-name">Name:</label>
         <input type="text" id="ingredient-name">
       </div>
       <div class="form-group">
-        <label for="ingredient-cost">Cost:</label>
+        <label for="ingredient-cost">Total Cost:</label>
         <input type="number" id="ingredient-cost" step="0.01">
+      </div>
+       <div class="form-group">
+        <label for="ingredient-quantity">Quantity:</label>
+        <input type="number" id="ingredient-quantity" step="0.01">
+      </div>
+      <div class="form-group">
+        <label for="ingredient-uom">Unit of Measure (e.g., kg, L, item):</label>
+        <input type="text" id="ingredient-uom">
       </div>
       <div class="form-group">
         <label for="purchase-date">Purchase Date:</label>
@@ -90,10 +98,12 @@
       function addIngredient() {
         var name = document.getElementById('ingredient-name').value;
         var cost = document.getElementById('ingredient-cost').value;
+        var quantity = document.getElementById('ingredient-quantity').value;
+        var uom = document.getElementById('ingredient-uom').value;
         var date = document.getElementById('purchase-date').value;
         var store = document.getElementById('store').value;
 
-        if (!name || !cost || !date) {
+        if (!name || !cost || !quantity || !uom || !date) {
           alert('Please fill in all required fields.');
           return;
         }
@@ -102,10 +112,12 @@
           alert('Ingredient added!');
           document.getElementById('ingredient-name').value = '';
           document.getElementById('ingredient-cost').value = '';
+          document.getElementById('ingredient-quantity').value = '';
+          document.getElementById('ingredient-uom').value = '';
           document.getElementById('purchase-date').value = '';
           document.getElementById('store').value = '';
           showView('recipes-list-view');
-        }).addIngredient(name, parseFloat(cost), date, store);
+        }).addIngredient(name, parseFloat(cost), date, store, parseFloat(quantity), uom);
       }
 
       function loadIngredientsForRecipeForm() {
@@ -129,6 +141,7 @@
         div.innerHTML = `
           ${select}
           <input type="number" class="ingredient-quantity" placeholder="Quantity" step="0.01">
+          <input type="text" class="ingredient-uom" placeholder="UoM">
         `;
         container.appendChild(div);
       }
@@ -151,11 +164,12 @@
           var group = ingredientGroups[i];
           var name = group.querySelector('.ingredient-name').value;
           var quantity = group.querySelector('.ingredient-quantity').value;
-          if (!name || !quantity || isNaN(parseFloat(quantity))) {
-            alert('Please ensure all ingredients have a name and a valid quantity.');
+          var uom = group.querySelector('.ingredient-uom').value;
+          if (!name || !quantity || isNaN(parseFloat(quantity)) || !uom) {
+            alert('Please ensure all ingredients have a name, a valid quantity, and a UoM.');
             return;
           }
-          ingredients.push({ name: name, quantity: parseFloat(quantity) });
+          ingredients.push({ name: name, quantity: parseFloat(quantity), uom: uom });
         }
 
         google.script.run.withSuccessHandler(() => {
@@ -190,7 +204,7 @@
           list.innerHTML = '';
           details.ingredients.forEach(ing => {
             var li = document.createElement('li');
-            li.textContent = `${ing.quantity} x ${ing.name} (@ $${ing.cost.toFixed(2)} each)`;
+            li.textContent = `${ing.quantity} ${ing.uom} ${ing.name} - Total: $${ing.cost.toFixed(2)} (@ $${ing.unitPrice.toFixed(2)}/${ing.purchaseUom})`;
             list.appendChild(li);
           });
           showView('recipe-details-view');

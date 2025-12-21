@@ -10,9 +10,9 @@ This web application allows you to create a recipe book that tracks ingredient c
 2.  Rename the sheet to "Recipe Book" or a name of your choice.
 3.  Create three tabs within the sheet named `Ingredients`, `Recipes`, and `RecipeIngredients`.
 4.  Set up the headers for each tab as follows:
-    *   **Ingredients:** `Name`, `Cost`, `Purchase Date`, `Store`
+    *   **Ingredients:** `Name`, `Cost`, `Purchase Date`, `Store`, `Quantity`, `UoM`
     *   **Recipes:** `Recipe Name`
-    *   **RecipeIngredients:** `Recipe Name`, `Ingredient Name`, `Quantity`
+    *   **RecipeIngredients:** `Recipe Name`, `Ingredient Name`, `Quantity`, `UoM`
 
 ### 2. Create a Google Apps Script Project
 
