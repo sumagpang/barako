@@ -15,6 +15,7 @@
       #recipes-list ul { list-style-type: none; padding: 0; }
       #recipes-list li { margin-bottom: 0.5em; }
       #recipes-list a { cursor: pointer; color: #007bff; text-decoration: underline; }
+      .error-message { color: red; font-style: italic; }
     </style>
   </head>
   <body>
@@ -204,7 +205,13 @@
           list.innerHTML = '';
           details.ingredients.forEach(ing => {
             var li = document.createElement('li');
-            li.textContent = `${ing.quantity} ${ing.uom} ${ing.name} - Total: $${ing.cost.toFixed(2)} (@ $${ing.unitPrice.toFixed(2)}/${ing.purchaseUom})`;
+            var content = `${ing.quantity} ${ing.uom} ${ing.name} - `;
+            if (ing.status === 'OK') {
+              content += `Total: $${ing.cost.toFixed(2)} (@ $${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
+            } else {
+              content += `<span class="error-message">${ing.status}</span>`;
+            }
+            li.innerHTML = content;
             list.appendChild(li);
           });
           showView('recipe-details-view');

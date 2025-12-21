@@ -2,6 +2,22 @@
 
 This web application allows you to create a recipe book that tracks ingredient costs and automatically calculates the total cost of a recipe based on the latest ingredient prices.
 
+## Features
+
+*   **Ingredient Tracking:** Record all your ingredient purchases, including the cost, quantity, unit of measure (UoM), purchase date, and store.
+*   **Recipe Management:** Create and manage your recipes, specifying the required quantity and UoM for each ingredient.
+*   **Automatic Cost Calculation:** The application automatically calculates the total cost of any recipe. It intelligently finds the most recent purchase price for each ingredient and calculates a price per base unit (e.g., price per gram or per milliliter).
+*   **Automatic UoM Conversion:** The application can automatically convert between compatible units of measurement. This means you can buy an ingredient in kilograms but use it in your recipes in grams, and the cost will be calculated correctly.
+
+### Supported Units of Measurement
+
+The application supports the following units for automatic conversion:
+
+*   **Mass:** `kg` (kilogram), `g` (gram), `mg` (milligram)
+*   **Volume:** `l` (liter), `ml` (milliliter)
+
+The system will report an error if you try to use incompatible units in a recipe (e.g., buying flour in `kg` but using it in a recipe in `l`).
+
 ## Setup Instructions
 
 ### 1. Create a Google Sheet
