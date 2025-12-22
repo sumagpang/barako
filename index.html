@@ -19,6 +19,7 @@
       table { width: 100%; border-collapse: collapse; margin-top: 1em; }
       th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #ddd; }
       thead { background-color: #f2f2f2; }
+      .no-data-message { text-align: center; font-style: italic; color: #888; }
     </style>
   </head>
   <body>
@@ -260,7 +261,13 @@
       function loadAllIngredients() {
         google.script.run
           .withFailureHandler(err => alert('Error loading ingredient purchases: ' + err.message))
-          .withSuccessHandler(data => {
+          .withSuccessHandler(response => {
+            if (response.error) {
+              alert('Error from server: ' + response.error);
+              return;
+            }
+
+            var data = response.data;
             var table = document.getElementById('ingredients-table');
             var thead = table.querySelector('thead');
             var tbody = table.querySelector('tbody');
@@ -268,7 +275,7 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            if (data.length > 0) {
+            if (data && data.length > 1) { // More than just a header
               var headerRow = document.createElement('tr');
               data[0].forEach(headerText => {
                 var th = document.createElement('th');
@@ -279,14 +286,25 @@
 
               for (var i = 1; i < data.length; i++) {
                 var row = document.createElement('tr');
-                data[i].forEach(cellText => {
+                data[i].forEach((cellText, index) => {
                   var td = document.createElement('td');
-                  td.textContent = cellText;
+                  if (index === 2 && cellText) { // Format the date column
+                    td.textContent = new Date(cellText).toLocaleDateString();
+                  } else {
+                    td.textContent = cellText;
+                  }
                   row.appendChild(td);
                 });
                 tbody.appendChild(row);
               }
+            } else {
+              var row = tbody.insertRow();
+              var cell = row.insertCell();
+              cell.colSpan = data[0] ? data[0].length : 5;
+              cell.textContent = 'No ingredient purchases found.';
+              cell.className = 'no-data-message';
             }
+            applyIngredientFilters(); // Apply filters after rendering
           }).getAllIngredientPurchases();
       }
 
@@ -299,7 +317,6 @@
         var table = document.getElementById("ingredients-table");
         var tr = table.getElementsByTagName("tr");
 
-        // Loop through all table rows, and hide those who don't match the search query or month
         for (var i = 1; i < tr.length; i++) { // Start i=1 to skip header row
           var row = tr[i];
           var displayRow = true;

@@ -49,3 +49,8 @@ The system will report an error if you try to use incompatible units in a recipe
 5.  Click `Deploy`.
 6.  Authorize the script to access your Google Sheet.
 7.  Copy the `Web app URL` provided. This is the URL to your recipe book.
+
+## Troubleshooting
+
+*   **Error: "Sheet 'Ingredients' not found..."**: This is the most common error and is almost always caused by a typo in the tab names in your Google Sheet. Double-check that you have three tabs named `Ingredients`, `Recipes`, and `RecipeIngredients` exactly as written (case-sensitive, no extra spaces).
+*   **"No ingredient purchases found" is displayed, but I have data**: Make sure you have entered at least one row of data *below the header row* in the `Ingredients` tab.

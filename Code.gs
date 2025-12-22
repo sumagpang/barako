@@ -24,13 +24,16 @@ function getUniqueIngredientNames() {
 }
 
 function getAllIngredientPurchases() {
-  var sheet = getSpreadsheet().getSheetByName("Ingredients");
-  if (!sheet) {
-    throw new Error("Sheet 'Ingredients' not found. Please ensure the tab is named correctly as specified in the README.");
+  try {
+    var sheet = getSpreadsheet().getSheetByName("Ingredients");
+    if (!sheet) {
+      throw new Error("Sheet 'Ingredients' not found. Please ensure the tab is named correctly as specified in the README.");
+    }
+    var data = sheet.getDataRange().getValues();
+    return { data: data };
+  } catch (e) {
+    return { error: e.message };
   }
-  var data = sheet.getDataRange().getValues();
-  // We send all data, including the header, and let the client handle it.
-  return data;
 }
 
 function addRecipe(recipeName, ingredients) {
