@@ -290,24 +290,29 @@
             // If there is data beyond the header, render it.
             if (data && data.length > 1) {
               for (var i = 1; i < data.length; i++) {
-                var row = document.createElement('tr');
-                row.setAttribute('data-date', data[i][2]); // Store raw date
-                data[i].forEach((cellText, index) => {
-                  var td = document.createElement('td');
-                  // Format the date column (index 2), but check for valid date first.
-                  if (index === 2 && cellText) {
-                    var d = new Date(cellText);
-                    if (d instanceof Date && !isNaN(d)) {
-                      td.textContent = d.toLocaleDateString();
+                try {
+                  var row = document.createElement('tr');
+                  row.setAttribute('data-date', data[i][2]); // Store raw date
+                  data[i].forEach((cellText, index) => {
+                    var td = document.createElement('td');
+                    // Format the date column (index 2), but check for valid date first.
+                    if (index === 2 && cellText) {
+                      var d = new Date(cellText);
+                      if (d instanceof Date && !isNaN(d)) {
+                        td.textContent = d.toLocaleDateString();
+                      } else {
+                        td.textContent = cellText; // Show original text if date is invalid
+                      }
                     } else {
-                      td.textContent = cellText; // Show original text if date is invalid
+                      td.textContent = cellText;
                     }
-                  } else {
-                    td.textContent = cellText;
-                  }
-                  row.appendChild(td);
-                });
-                tbody.appendChild(row);
+                    row.appendChild(td);
+                  });
+                  tbody.appendChild(row);
+                } catch (e) {
+                  console.error("Skipping problematic row:", data[i], e);
+                  // Optionally, you could render a placeholder row indicating an error
+                }
               }
             } else {
               // If there is no data, display a user-friendly message.
