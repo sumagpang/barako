@@ -40,7 +40,7 @@
         <input type="text" id="ingredient-name">
       </div>
       <div class="form-group">
-        <label for="ingredient-cost">Total Cost:</label>
+        <label for="ingredient-cost">Cost:</label>
         <input type="number" id="ingredient-cost" step="0.01">
       </div>
        <div class="form-group">
@@ -240,14 +240,14 @@
           .withFailureHandler(err => alert('Error getting recipe details: ' + err.message))
           .withSuccessHandler(details => {
             document.getElementById('details-recipe-name').textContent = details.recipeName;
-            document.getElementById('details-total-cost').textContent = '$' + details.totalCost.toFixed(2);
+            document.getElementById('details-total-cost').textContent = details.totalCost.toFixed(2);
             var list = document.getElementById('details-ingredients-list');
             list.innerHTML = '';
             details.ingredients.forEach(ing => {
               var li = document.createElement('li');
               var content = `${ing.quantity} ${ing.uom} ${ing.name} - `;
               if (ing.status === 'OK') {
-                content += `Total: $${ing.cost.toFixed(2)} (@ $${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
+                content += `Total: ${ing.cost.toFixed(2)} (@ ${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
               } else {
                 content += `<span class="error-message">${ing.status}</span>`;
               }
