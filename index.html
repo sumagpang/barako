@@ -275,21 +275,33 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            if (data && data.length > 1) { // More than just a header
-              var headerRow = document.createElement('tr');
-              data[0].forEach(headerText => {
+            // Define headers, using data from sheet if available, otherwise use a default.
+            var headers = (data && data.length > 0) ? data[0] : ['Name', 'Cost', 'Purchase Date', 'Store', 'Quantity', 'UoM'];
+
+            // Always render the header row.
+            var headerRow = document.createElement('tr');
+            headers.forEach(headerText => {
                 var th = document.createElement('th');
                 th.textContent = headerText;
                 headerRow.appendChild(th);
-              });
-              thead.appendChild(headerRow);
+            });
+            thead.appendChild(headerRow);
 
+            // If there is data beyond the header, render it.
+            if (data && data.length > 1) {
               for (var i = 1; i < data.length; i++) {
                 var row = document.createElement('tr');
+                row.setAttribute('data-date', data[i][2]); // Store raw date
                 data[i].forEach((cellText, index) => {
                   var td = document.createElement('td');
-                  if (index === 2 && cellText) { // Format the date column
-                    td.textContent = new Date(cellText).toLocaleDateString();
+                  // Format the date column (index 2), but check for valid date first.
+                  if (index === 2 && cellText) {
+                    var d = new Date(cellText);
+                    if (d instanceof Date && !isNaN(d)) {
+                      td.textContent = d.toLocaleDateString();
+                    } else {
+                      td.textContent = cellText; // Show original text if date is invalid
+                    }
                   } else {
                     td.textContent = cellText;
                   }
@@ -298,13 +310,15 @@
                 tbody.appendChild(row);
               }
             } else {
+              // If there is no data, display a user-friendly message.
               var row = tbody.insertRow();
               var cell = row.insertCell();
-              cell.colSpan = data[0] ? data[0].length : 5;
+              cell.colSpan = headers.length;
               cell.textContent = 'No ingredient purchases found.';
               cell.className = 'no-data-message';
             }
-            applyIngredientFilters(); // Apply filters after rendering
+
+            applyIngredientFilters(); // Apply any active filters
           }).getAllIngredientPurchases();
       }
 
@@ -323,9 +337,9 @@
 
           // Month filter
           if (selectedMonth !== "") {
-            var dateCell = row.getElementsByTagName("td")[2]; // Assuming Purchase Date is the 3rd column
-            if (dateCell) {
-              var cellDate = new Date(dateCell.textContent);
+            var rawDate = row.getAttribute('data-date');
+            if (rawDate) {
+              var cellDate = new Date(rawDate);
               if (cellDate.getMonth().toString() !== selectedMonth) {
                 displayRow = false;
               }
