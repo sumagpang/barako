@@ -315,17 +315,14 @@
 
                   rowData.forEach((cellText, index) => {
                     var td = document.createElement('td');
-                    // Format the date column (index 2) robustly.
-                    if (index === 2 && cellText) {
-                      var d = new Date(cellText);
-                      // Use valueOf() for a more reliable check of date validity.
-                      if (d instanceof Date && !isNaN(d.valueOf())) {
-                        td.textContent = d.toLocaleDateString();
-                      } else {
-                        td.textContent = cellText; // Show original text if date is invalid
-                      }
+                    // Format the date column (index 2), now expecting YYYY-MM-DD
+                    if (index === 2 && cellText && /^\d{4}-\d{2}-\d{2}$/.test(cellText)) {
+                      // The backend sends UTC, so create a UTC date to avoid timezone shifts
+                      var parts = cellText.split('-');
+                      var d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+                      td.textContent = d.toLocaleDateString(); // Display in user's locale
                     } else {
-                      td.textContent = cellText;
+                      td.textContent = cellText; // Show original text if not a valid date string
                     }
                     row.appendChild(td);
                   });
@@ -355,13 +352,16 @@
 
           // Month filter
           if (selectedMonth !== "") {
-            var rawDate = row.getAttribute('data-date');
-            if (rawDate) {
-              var cellDate = new Date(rawDate);
-              if (cellDate.getMonth().toString() !== selectedMonth) {
-                displayRow = false;
-              }
+            var rawDateStr = row.getAttribute('data-date');
+            if (rawDateStr && /^\d{4}-\d{2}-\d{2}$/.test(rawDateStr)) {
+               var parts = rawDateStr.split('-');
+               // JavaScript's getMonth() is 0-indexed, which matches our filter's value.
+               var month = parseInt(parts[1], 10) - 1;
+               if (month.toString() !== selectedMonth) {
+                 displayRow = false;
+               }
             } else {
+              // If the date is invalid or empty, it cannot match the month filter.
               displayRow = false;
             }
           }

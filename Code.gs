@@ -38,8 +38,26 @@ function getAllIngredientPurchases() {
       return { data: [] };
     }
 
-    // The sheet has content, so return it.
-    return { data: data };
+    // Process dates before sending to the client
+    var processedData = data.map(function(row, index) {
+      if (index === 0) return row; // Keep header row as is
+
+      var dateCell = row[2];
+      if (dateCell instanceof Date && !isNaN(dateCell.valueOf())) {
+        // It's a valid Date object, format it reliably
+        row[2] = dateCell.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      } else if (typeof dateCell === 'string' && dateCell.length > 0) {
+        // Attempt to parse a string date
+        var d = new Date(dateCell);
+        if (!isNaN(d.valueOf())) {
+          row[2] = d.toISOString().slice(0, 10);
+        }
+      }
+      // If it's not a valid date or it's empty, leave it as is for the frontend to handle.
+      return row;
+    });
+
+    return { data: processedData };
 
   } catch (e) {
     // Catch any other unexpected errors during sheet access.
