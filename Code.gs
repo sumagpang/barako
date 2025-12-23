@@ -6,9 +6,9 @@ function doGet() {
   return HtmlService.createHtmlOutputFromFile('index');
 }
 
-function addIngredient(name, cost, purchaseDate, store, quantity, uom) {
+function addIngredient(name, cost, purchaseDate, store, quantity, uom, brand) {
   var sheet = getSpreadsheet().getSheetByName("Ingredients");
-  sheet.appendRow([name, cost, purchaseDate, store, quantity, uom]);
+  sheet.appendRow([name, cost, purchaseDate, store, quantity, uom, brand]);
   SpreadsheetApp.flush(); // Ensure the sheet is updated immediately
   return getUniqueIngredientNames(); // Return the fresh list of unique names
 }

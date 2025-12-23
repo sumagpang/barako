@@ -59,6 +59,10 @@
         <label for="store">Store:</label>
         <input type="text" id="store">
       </div>
+      <div class="form-group">
+        <label for="brand">Brand:</label>
+        <input type="text" id="brand">
+      </div>
       <button onclick="addIngredient()">Submit</button>
     </div>
 
@@ -135,6 +139,7 @@
         var uom = document.getElementById('ingredient-uom').value;
         var date = document.getElementById('purchase-date').value;
         var store = document.getElementById('store').value;
+        var brand = document.getElementById('brand').value;
 
         if (!name || !cost || !quantity || !uom || !date) {
           alert('Please fill in all required fields.');
@@ -150,8 +155,9 @@
           document.getElementById('ingredient-uom').value = '';
           document.getElementById('purchase-date').value = '';
           document.getElementById('store').value = '';
+          document.getElementById('brand').value = '';
           showView('view-ingredients-view'); // Go to the ingredients view
-        }).addIngredient(name, parseFloat(cost), date, store, parseFloat(quantity), uom);
+        }).addIngredient(name, parseFloat(cost), date, store, parseFloat(quantity), uom, brand);
       }
 
       function loadIngredientsForRecipeForm() {
