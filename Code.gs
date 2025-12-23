@@ -27,12 +27,23 @@ function getAllIngredientPurchases() {
   try {
     var sheet = getSpreadsheet().getSheetByName("Ingredients");
     if (!sheet) {
-      throw new Error("Sheet 'Ingredients' not found. Please ensure the tab is named correctly as specified in the README.");
+      // If the sheet doesn't exist, return an error.
+      return { error: "Sheet 'Ingredients' not found. Please create it or check the name." };
     }
+
     var data = sheet.getDataRange().getValues();
+
+    // If the sheet exists but is completely empty, return an empty data array.
+    if (!data || data.length === 0) {
+      return { data: [] };
+    }
+
+    // The sheet has content, so return it.
     return { data: data };
+
   } catch (e) {
-    return { error: e.message };
+    // Catch any other unexpected errors during sheet access.
+    return { error: "An unexpected error occurred: " + e.message };
   }
 }
 

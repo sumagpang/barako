@@ -260,14 +260,13 @@
 
       function loadAllIngredients() {
         google.script.run
-          .withFailureHandler(err => alert('Error loading ingredient purchases: ' + err.message))
+          .withFailureHandler(err => {
+            // This catches script execution errors or network problems.
+            alert('A script error occurred: ' + err.message);
+            var tbody = document.getElementById('ingredients-table').querySelector('tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="error-message">Could not load ingredient data. Please try again.</td></tr>';
+          })
           .withSuccessHandler(response => {
-            if (response.error) {
-              alert('Error from server: ' + response.error);
-              return;
-            }
-
-            var data = response.data;
             var table = document.getElementById('ingredients-table');
             var thead = table.querySelector('thead');
             var tbody = table.querySelector('tbody');
@@ -275,10 +274,22 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // Define headers, using data from sheet if available, otherwise use a default.
+            // Case 1: The backend function returned a specific, controlled error.
+            if (response.error) {
+              alert('Error from server: ' + response.error);
+              var row = tbody.insertRow();
+              var cell = row.insertCell();
+              cell.colSpan = 6; // Default colspan for the error message
+              cell.textContent = 'Error: ' + response.error;
+              cell.className = 'error-message';
+              return;
+            }
+
+            var data = response.data;
+            // Define headers. Use headers from the sheet if available, otherwise use a sensible default.
             var headers = (data && data.length > 0) ? data[0] : ['Name', 'Cost', 'Purchase Date', 'Store', 'Quantity', 'UoM'];
 
-            // Always render the header row.
+            // Always render the header row so the table structure is present.
             var headerRow = document.createElement('tr');
             headers.forEach(headerText => {
                 var th = document.createElement('th');
@@ -287,18 +298,28 @@
             });
             thead.appendChild(headerRow);
 
-            // If there is data beyond the header, render it.
-            if (data && data.length > 1) {
+            // Case 2: The sheet is empty or contains only the header row.
+            if (!data || data.length <= 1) {
+              var row = tbody.insertRow();
+              var cell = row.insertCell();
+              cell.colSpan = headers.length;
+              cell.textContent = 'No ingredient purchases found.';
+              cell.className = 'no-data-message';
+            } else {
+              // Case 3: The sheet has data rows to display.
               for (var i = 1; i < data.length; i++) {
                 try {
+                  var rowData = data[i];
                   var row = document.createElement('tr');
-                  row.setAttribute('data-date', data[i][2]); // Store raw date
-                  data[i].forEach((cellText, index) => {
+                  row.setAttribute('data-date', rowData[2]); // Store raw date for filtering
+
+                  rowData.forEach((cellText, index) => {
                     var td = document.createElement('td');
-                    // Format the date column (index 2), but check for valid date first.
+                    // Format the date column (index 2) robustly.
                     if (index === 2 && cellText) {
                       var d = new Date(cellText);
-                      if (d instanceof Date && !isNaN(d)) {
+                      // Use valueOf() for a more reliable check of date validity.
+                      if (d instanceof Date && !isNaN(d.valueOf())) {
                         td.textContent = d.toLocaleDateString();
                       } else {
                         td.textContent = cellText; // Show original text if date is invalid
@@ -310,20 +331,12 @@
                   });
                   tbody.appendChild(row);
                 } catch (e) {
-                  console.error("Skipping problematic row:", data[i], e);
-                  // Optionally, you could render a placeholder row indicating an error
+                  console.error("Skipping problematic row due to error:", { row: data[i], error: e });
                 }
               }
-            } else {
-              // If there is no data, display a user-friendly message.
-              var row = tbody.insertRow();
-              var cell = row.insertCell();
-              cell.colSpan = headers.length;
-              cell.textContent = 'No ingredient purchases found.';
-              cell.className = 'no-data-message';
             }
 
-            applyIngredientFilters(); // Apply any active filters
+            applyIngredientFilters(); // Apply filters regardless of data presence
           }).getAllIngredientPurchases();
       }
 
