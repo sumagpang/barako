@@ -3,26 +3,191 @@
   <head>
     <base target="_top">
     <style>
-      body { font-family: sans-serif; margin: 2em; }
-      h1, h2 { color: #333; }
-      #main-nav, #recipe-details-view { display: none; }
-      .form-group { margin-bottom: 1em; }
-      label { display: block; margin-bottom: 0.5em; }
-      input, select { width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px; }
-      button { background-color: #007bff; color: white; padding: 0.75em 1.5em; border: none; border-radius: 4px; cursor: pointer; }
-      button:hover { background-color: #0056b3; }
-      .ingredient-group { margin-bottom: 1em; padding: 1em; border: 1px solid #eee; border-radius: 4px; }
-      #recipes-list ul { list-style-type: none; padding: 0; }
-      #recipes-list li { margin-bottom: 0.5em; }
-      #recipes-list a { cursor: pointer; color: #007bff; text-decoration: underline; }
-      .error-message { color: red; font-style: italic; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1em; }
-      th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #ddd; }
-      thead { background-color: #f2f2f2; }
-      .no-data-message { text-align: center; font-style: italic; color: #888; }
+      @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+      :root {
+        --primary-color: #4CAF50; /* Green */
+        --secondary-color: #FFC107; /* Amber */
+        --background-color: #f5f5f5;
+        --card-background: #ffffff;
+        --text-color: #333333;
+        --header-color: #2E7D32; /* Darker Green */
+        --border-color: #e0e0e0;
+        --shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      body {
+        font-family: 'Roboto', sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 2em;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2em;
+        background-color: var(--card-background);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      h1, h2, h3 {
+        color: var(--header-color);
+        margin-top: 0;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 1.5em;
+        font-size: 2.5em;
+      }
+
+      #main-nav {
+        display: flex;
+        justify-content: center;
+        gap: 1em;
+        margin-bottom: 2em;
+      }
+
+      .view {
+        background: var(--card-background);
+        padding: 2em;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+      }
+
+      .form-group {
+        margin-bottom: 1.5em;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5em;
+        font-weight: bold;
+        color: #555;
+      }
+
+      input, select {
+        width: 100%;
+        padding: 0.8em;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        box-sizing: border-box; /* Important for consistent sizing */
+        transition: border-color 0.3s;
+      }
+
+      input:focus, select:focus {
+        border-color: var(--primary-color);
+        outline: none;
+      }
+
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.8em 1.5em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: bold;
+        transition: background-color 0.3s, transform 0.2s;
+        margin-right: 0.5em;
+      }
+
+      button:hover {
+        background-color: var(--header-color);
+        transform: translateY(-2px);
+      }
+
+      button[type="button"] {
+        background-color: var(--secondary-color);
+      }
+
+       button[type="button"]:hover {
+        background-color: #FFB300; /* Darker Amber */
+      }
+
+
+      .ingredient-group {
+        margin-bottom: 1em;
+        padding: 1em;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background-color: #fafafa;
+      }
+
+      #recipes-list ul {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      #recipes-list li {
+        padding: 0.8em;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.3s;
+      }
+
+      #recipes-list li:hover {
+        background-color: #f0f0f0;
+      }
+
+      #recipes-list a {
+        cursor: pointer;
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .error-message {
+        color: #D32F2F; /* Red */
+        font-style: italic;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1em;
+        box-shadow: var(--shadow);
+      }
+
+      th, td {
+        padding: 0.8em 1em;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      thead {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      tbody tr:hover {
+        background-color: #f1f8e9; /* Light Green */
+      }
+
+      .no-data-message {
+        text-align: center;
+        font-style: italic;
+        color: #888;
+        padding: 2em;
+      }
+
+      #recipe-details-view ul {
+        list-style-position: inside;
+        padding-left: 0;
+      }
     </style>
   </head>
   <body>
+   <div class="container">
     <h1>Recipe Book</h1>
 
     <div id="main-nav">
@@ -408,5 +573,6 @@
         showView('recipes-list-view');
       });
     </script>
+    </div>
   </body>
 </html>
