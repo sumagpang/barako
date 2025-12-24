@@ -23,6 +23,8 @@
         margin: 0;
         padding: 2em;
         line-height: 1.6;
+        height: 100vh;
+        overflow: hidden; /* Prevent body scroll */
       }
 
       .container {
@@ -32,6 +34,8 @@
         background-color: var(--card-background);
         border-radius: 8px;
         box-shadow: var(--shadow);
+        height: 90vh;
+        overflow-y: auto; /* Enable vertical scroll on container */
       }
 
       h1, h2, h3 {
@@ -80,9 +84,18 @@
         transition: border-color 0.3s;
       }
 
-      input:focus, select:focus {
+      input:focus, select:focus, textarea:focus {
         border-color: var(--primary-color);
         outline: none;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 0.8em;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        box-sizing: border-box;
+        resize: vertical;
       }
 
       button {
@@ -238,6 +251,15 @@
         <label for="recipe-name">Recipe Name:</label>
         <input type="text" id="recipe-name">
       </div>
+      <div class="form-group">
+        <label for="recipe-servings">Servings:</label>
+        <input type="number" id="recipe-servings" step="1" min="1">
+      </div>
+      <div class="form-group">
+        <label for="recipe-instructions">Instructions:</label>
+        <textarea id="recipe-instructions" rows="8"></textarea>
+      </div>
+      <h3>Ingredients</h3>
       <div id="ingredients-container">
         <!-- Dynamic ingredients will be added here -->
       </div>
@@ -247,17 +269,31 @@
 
     <!-- Recipes List View -->
     <div id="recipes-list-view" class="view" style="display:none;">
-      <h2>All Recipes</h2>
-      <input type="text" id="recipe-search" onkeyup="filterRecipes()" placeholder="Search for recipes..">
-      <div id="recipes-list"></div>
+        <h2>All Recipes</h2>
+        <input type="text" id="recipe-search" onkeyup="filterRecipes()" placeholder="Search for recipes..">
+        <table id="recipes-table">
+            <thead>
+                <tr>
+                    <th>Recipe Name</th>
+                    <th>Total Cost</th>
+                    <th>Servings</th>
+                    <th>Cost Per Serving</th>
+                    <th>Suggested Selling Price</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 
     <!-- Recipe Details View -->
     <div id="recipe-details-view" class="view" style="display:none;">
       <h2 id="details-recipe-name"></h2>
       <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
+      <p><strong>Servings:</strong> <span id="details-servings"></span></p>
       <h3>Ingredients:</h3>
       <ul id="details-ingredients-list"></ul>
+      <h3>Instructions:</h3>
+      <p id="details-instructions"></p>
       <button onclick="showView('recipes-list-view')">Back to Recipes</button>
     </div>
 
@@ -354,8 +390,11 @@
 
       function addRecipe() {
         var recipeName = document.getElementById('recipe-name').value;
-        if (!recipeName) {
-          alert('Please enter a recipe name.');
+        var servings = document.getElementById('recipe-servings').value;
+        var instructions = document.getElementById('recipe-instructions').value;
+
+        if (!recipeName || !servings) {
+          alert('Please enter a recipe name and the number of servings.');
           return;
         }
 
@@ -383,27 +422,35 @@
           .withSuccessHandler(() => {
             alert('Recipe added!');
             document.getElementById('recipe-name').value = '';
+            document.getElementById('recipe-servings').value = '';
+            document.getElementById('recipe-instructions').value = '';
             document.getElementById('ingredients-container').innerHTML = '';
             showView('recipes-list-view');
-          }).addRecipe(recipeName, ingredients);
+          }).addRecipe(recipeName, ingredients, parseInt(servings), instructions);
       }
 
       function loadRecipes() {
         google.script.run
           .withFailureHandler(err => alert('Error loading recipes: ' + err.message))
           .withSuccessHandler(recipes => {
-            var list = document.getElementById('recipes-list');
-            list.innerHTML = '<ul></ul>';
-            var ul = list.firstChild;
-            recipes.slice(1).forEach(recipe => { // Skip header
-              var li = document.createElement('li');
+            var tbody = document.getElementById('recipes-table').querySelector('tbody');
+            tbody.innerHTML = '';
+            recipes.forEach(recipe => {
+              var row = tbody.insertRow();
+
+              var nameCell = row.insertCell();
               var a = document.createElement('a');
-              a.textContent = recipe[0];
-              a.onclick = function() { getRecipeDetails(recipe[0]); };
-              li.appendChild(a);
-              ul.appendChild(li);
+              a.textContent = recipe[0]; // Recipe Name
+              a.href = "#";
+              a.onclick = function() { getRecipeDetails(recipe[0]); return false; };
+              nameCell.appendChild(a);
+
+              row.insertCell().textContent = recipe[1].toFixed(2); // Total Cost
+              row.insertCell().textContent = recipe[2]; // Servings
+              row.insertCell().textContent = recipe[3].toFixed(2); // Cost Per Serving
+              row.insertCell().textContent = recipe[4].toFixed(2); // Suggested Selling Price
             });
-          }).getRecipes();
+          }).getRecipesWithCost();
       }
 
       function getRecipeDetails(recipeName) {
@@ -412,6 +459,9 @@
           .withSuccessHandler(details => {
             document.getElementById('details-recipe-name').textContent = details.recipeName;
             document.getElementById('details-total-cost').textContent = details.totalCost.toFixed(2);
+            document.getElementById('details-servings').textContent = details.servings;
+            document.getElementById('details-instructions').textContent = details.instructions;
+
             var list = document.getElementById('details-ingredients-list');
             list.innerHTML = '';
             details.ingredients.forEach(ing => {
@@ -550,19 +600,21 @@
       }
 
       function filterRecipes() {
-        var input, filter, ul, li, a, i, txtValue;
+        var input, filter, table, tr, td, i, txtValue;
         input = document.getElementById("recipe-search");
         filter = input.value.toUpperCase();
-        ul = document.getElementById("recipes-list").getElementsByTagName("ul")[0];
-        li = ul.getElementsByTagName("li");
+        table = document.getElementById("recipes-table");
+        tr = table.getElementsByTagName("tr");
 
-        for (i = 0; i < li.length; i++) {
-          a = li[i].getElementsByTagName("a")[0];
-          txtValue = a.textContent || a.innerText;
-          if (txtValue.toUpperCase().indexOf(filter) > -1) {
-            li[i].style.display = "";
-          } else {
-            li[i].style.display = "none";
+        for (i = 1; i < tr.length; i++) { // Start at 1 to skip header
+          td = tr[i].getElementsByTagName("td")[0]; // First column is the name
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
           }
         }
       }
