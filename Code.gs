@@ -65,12 +65,12 @@ function getAllIngredientPurchases() {
   }
 }
 
-function addRecipe(recipeName, ingredients, servings, instructions) {
+function addRecipe(recipeName, ingredients, servings, instructions, photo) {
   var recipeSheet = getSpreadsheet().getSheetByName("Recipes");
   var recipeIngredientsSheet = getSpreadsheet().getSheetByName("RecipeIngredients");
 
   // Append the main recipe details
-  recipeSheet.appendRow([recipeName, servings, instructions]);
+  recipeSheet.appendRow([recipeName, servings, instructions, photo]);
 
   // Append the ingredients for that recipe
   ingredients.forEach(function(ingredient) {
@@ -151,8 +151,9 @@ function getRecipesWithCost() {
 
     var costPerServing = totalCost / servings;
     var suggestedSellingPrice = totalCost * 3;
+    var photo = recipeRow[3] || null; // Get photo, or null if empty
 
-    return [recipeName, totalCost, servings, costPerServing, suggestedSellingPrice];
+    return [recipeName, totalCost, servings, costPerServing, suggestedSellingPrice, photo];
   });
 
   return results;
@@ -196,6 +197,7 @@ function getRecipeDetails(recipeName) {
       recipeInfo.name = recipesData[i][0];
       recipeInfo.servings = recipesData[i][1];
       recipeInfo.instructions = recipesData[i][2];
+      recipeInfo.photo = recipesData[i][3];
       break;
     }
   }
@@ -281,6 +283,46 @@ function getRecipeDetails(recipeName) {
     ingredients: ingredientDetails,
     totalCost: totalCost,
     servings: recipeInfo.servings,
-    instructions: recipeInfo.instructions
+    instructions: recipeInfo.instructions,
+    photo: recipeInfo.photo
   };
+}
+
+function updateRecipe(originalRecipeName, recipeData) {
+  var ss = getSpreadsheet();
+  var recipesSheet = ss.getSheetByName("Recipes");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+
+  // Update the main recipe sheet
+  var recipesData = recipesSheet.getDataRange().getValues();
+  for (var i = 1; i < recipesData.length; i++) {
+    if (recipesData[i][0] === originalRecipeName) {
+      recipesSheet.getRange(i + 1, 1).setValue(recipeData.name);
+      recipesSheet.getRange(i + 1, 2).setValue(recipeData.servings);
+      recipesSheet.getRange(i + 1, 3).setValue(recipeData.instructions);
+      recipesSheet.getRange(i + 1, 4).setValue(recipeData.photo);
+      break;
+    }
+  }
+
+  // Update the recipe ingredients sheet
+  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
+  var rowsToDelete = [];
+  for (var i = recipeIngredientsData.length - 1; i >= 1; i--) {
+    if (recipeIngredientsData[i][0] === originalRecipeName) {
+      rowsToDelete.push(i + 1);
+    }
+  }
+
+  // Delete old ingredients in reverse order to avoid shifting row indices
+  for (var i = 0; i < rowsToDelete.length; i++) {
+    recipeIngredientsSheet.deleteRow(rowsToDelete[i]);
+  }
+
+  // Add the new ingredients
+  recipeData.ingredients.forEach(function(ingredient) {
+    recipeIngredientsSheet.appendRow([recipeData.name, ingredient.name, ingredient.quantity, ingredient.uom]);
+  });
+
+  return "Recipe updated successfully!";
 }

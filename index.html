@@ -126,11 +126,36 @@
 
 
       .ingredient-group {
+        display: flex;
+        gap: 0.5em;
+        align-items: center;
         margin-bottom: 1em;
         padding: 1em;
         border: 1px solid var(--border-color);
         border-radius: 4px;
         background-color: #fafafa;
+      }
+
+      .ingredient-group select, .ingredient-group input {
+        margin-bottom: 0; /* Override default form-group margin */
+      }
+
+      .remove-ingredient-btn {
+        background-color: #f44336; /* Red */
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 24px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .remove-ingredient-btn:hover {
+        background-color: #d32f2f;
       }
 
       #recipes-list ul {
@@ -259,12 +284,47 @@
         <label for="recipe-instructions">Instructions:</label>
         <textarea id="recipe-instructions" rows="8"></textarea>
       </div>
+      <div class="form-group">
+        <label for="recipe-photo">Recipe Photo:</label>
+        <input type="file" id="recipe-photo" accept="image/*" onchange="previewPhoto(event)">
+        <img id="photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
+      </div>
       <h3>Ingredients</h3>
       <div id="ingredients-container">
         <!-- Dynamic ingredients will be added here -->
       </div>
       <button type="button" onclick="addIngredientField()">Add Ingredient</button>
       <button onclick="addRecipe()">Create Recipe</button>
+    </div>
+
+    <!-- Edit Recipe View (hidden by default) -->
+    <div id="edit-recipe-view" class="view" style="display:none;">
+      <h2>Edit Recipe</h2>
+      <input type="hidden" id="original-recipe-name">
+      <div class="form-group">
+        <label for="edit-recipe-name">Recipe Name:</label>
+        <input type="text" id="edit-recipe-name">
+      </div>
+      <div class="form-group">
+        <label for="edit-recipe-servings">Servings:</label>
+        <input type="number" id="edit-recipe-servings" step="1" min="1">
+      </div>
+      <div class="form-group">
+        <label for="edit-recipe-instructions">Instructions:</label>
+        <textarea id="edit-recipe-instructions" rows="8"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-recipe-photo">Recipe Photo:</label>
+        <input type="file" id="edit-recipe-photo" accept="image/*" onchange="previewEditPhoto(event)">
+        <img id="edit-photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
+      </div>
+      <h3>Ingredients</h3>
+      <div id="edit-ingredients-container">
+        <!-- Dynamic ingredients will be added here -->
+      </div>
+      <button type="button" onclick="addEditIngredientField()">Add Ingredient</button>
+      <button onclick="updateRecipe()">Update Recipe</button>
+      <button type="button" onclick="showView('recipes-list-view')">Cancel</button>
     </div>
 
     <!-- Recipes List View -->
@@ -274,11 +334,13 @@
         <table id="recipes-table">
             <thead>
                 <tr>
+                    <th>Photo</th>
                     <th>Recipe Name</th>
                     <th>Total Cost</th>
                     <th>Servings</th>
                     <th>Cost Per Serving</th>
                     <th>Suggested Selling Price</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -288,6 +350,7 @@
     <!-- Recipe Details View -->
     <div id="recipe-details-view" class="view" style="display:none;">
       <h2 id="details-recipe-name"></h2>
+      <img id="details-photo" src="#" alt="Recipe Photo" style="display:none; max-width: 400px; margin-bottom: 1em;">
       <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
       <p><strong>Servings:</strong> <span id="details-servings"></span></p>
       <h3>Ingredients:</h3>
@@ -384,14 +447,31 @@
           ${select}
           <input type="number" class="ingredient-quantity" placeholder="Quantity" step="0.01">
           <input type="text" class="ingredient-uom" placeholder="UoM">
+          <button type="button" class="remove-ingredient-btn" onclick="removeIngredientField(this)">-</button>
         `;
         container.appendChild(div);
+      }
+
+      function removeIngredientField(button) {
+        var group = button.parentElement;
+        group.parentElement.removeChild(group);
+      }
+
+      function previewPhoto(event) {
+        var reader = new FileReader();
+        reader.onload = function(){
+          var output = document.getElementById('photo-preview');
+          output.src = reader.result;
+          output.style.display = 'block';
+        };
+        reader.readAsDataURL(event.target.files[0]);
       }
 
       function addRecipe() {
         var recipeName = document.getElementById('recipe-name').value;
         var servings = document.getElementById('recipe-servings').value;
         var instructions = document.getElementById('recipe-instructions').value;
+        var photoFile = document.getElementById('recipe-photo').files[0];
 
         if (!recipeName || !servings) {
           alert('Please enter a recipe name and the number of servings.');
@@ -417,16 +497,139 @@
           ingredients.push({ name: name, quantity: parseFloat(quantity), uom: uom });
         }
 
-        google.script.run
-          .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
-          .withSuccessHandler(() => {
-            alert('Recipe added!');
-            document.getElementById('recipe-name').value = '';
-            document.getElementById('recipe-servings').value = '';
-            document.getElementById('recipe-instructions').value = '';
-            document.getElementById('ingredients-container').innerHTML = '';
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var photoBase64 = e.target.result;
+          google.script.run
+            .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
+            .withSuccessHandler(() => {
+              alert('Recipe added!');
+              document.getElementById('recipe-name').value = '';
+              document.getElementById('recipe-servings').value = '';
+              document.getElementById('recipe-instructions').value = '';
+              document.getElementById('recipe-photo').value = '';
+              document.getElementById('photo-preview').style.display = 'none';
+              document.getElementById('ingredients-container').innerHTML = '';
+              showView('recipes-list-view');
+            }).addRecipe(recipeName, ingredients, parseInt(servings), instructions, photoBase64);
+        };
+
+        if (photoFile) {
+          reader.readAsDataURL(photoFile);
+        } else {
+          // No photo provided
+          google.script.run
+            .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
+            .withSuccessHandler(() => {
+              alert('Recipe added!');
+              document.getElementById('recipe-name').value = '';
+              document.getElementById('recipe-servings').value = '';
+              document.getElementById('recipe-instructions').value = '';
+              document.getElementById('ingredients-container').innerHTML = '';
+              showView('recipes-list-view');
+            }).addRecipe(recipeName, ingredients, parseInt(servings), instructions, null);
+        }
+      }
+
+      function showEditRecipeView(recipeName) {
+        google.script.run.withSuccessHandler(details => {
+          document.getElementById('original-recipe-name').value = recipeName;
+          document.getElementById('edit-recipe-name').value = details.recipeName;
+          document.getElementById('edit-recipe-servings').value = details.servings;
+          document.getElementById('edit-recipe-instructions').value = details.instructions;
+
+          var photoPreview = document.getElementById('edit-photo-preview');
+          if (details.photo) {
+            photoPreview.src = details.photo;
+            photoPreview.style.display = 'block';
+          } else {
+            photoPreview.style.display = 'none';
+          }
+
+          var container = document.getElementById('edit-ingredients-container');
+          container.innerHTML = '';
+          details.ingredients.forEach(ing => {
+            addEditIngredientField(ing);
+          });
+
+          showView('edit-recipe-view');
+        }).getRecipeDetails(recipeName);
+      }
+
+      function addEditIngredientField(ingredient) {
+        var container = document.getElementById('edit-ingredients-container');
+        var div = document.createElement('div');
+        div.className = 'ingredient-group';
+        var select = '<select class="ingredient-name">';
+        availableIngredients.forEach(ingName => {
+          var selected = (ingredient && ingredient.name === ingName) ? 'selected' : '';
+          select += `<option value="${ingName}" ${selected}>${ingName}</option>`;
+        });
+        select += '</select>';
+
+        var quantity = ingredient ? ingredient.quantity : '';
+        var uom = ingredient ? ingredient.uom : '';
+
+        div.innerHTML = `
+          ${select}
+          <input type="number" class="ingredient-quantity" placeholder="Quantity" step="0.01" value="${quantity}">
+          <input type="text" class="ingredient-uom" placeholder="UoM" value="${uom}">
+          <button type="button" class="remove-ingredient-btn" onclick="removeIngredientField(this)">-</button>
+        `;
+        container.appendChild(div);
+      }
+
+      function previewEditPhoto(event) {
+        var reader = new FileReader();
+        reader.onload = function(){
+          var output = document.getElementById('edit-photo-preview');
+          output.src = reader.result;
+          output.style.display = 'block';
+        };
+        reader.readAsDataURL(event.target.files[0]);
+      }
+
+      function updateRecipe() {
+        var originalRecipeName = document.getElementById('original-recipe-name').value;
+        var recipeName = document.getElementById('edit-recipe-name').value;
+        var servings = document.getElementById('edit-recipe-servings').value;
+        var instructions = document.getElementById('edit-recipe-instructions').value;
+        var photoFile = document.getElementById('edit-recipe-photo').files[0];
+
+        var ingredients = [];
+        var ingredientGroups = document.querySelectorAll('#edit-ingredients-container .ingredient-group');
+        for (var i = 0; i < ingredientGroups.length; i++) {
+          var group = ingredientGroups[i];
+          var name = group.querySelector('.ingredient-name').value;
+          var quantity = group.querySelector('.ingredient-quantity').value;
+          var uom = group.querySelector('.ingredient-uom').value;
+          ingredients.push({ name: name, quantity: parseFloat(quantity), uom: uom });
+        }
+
+        var recipeData = {
+          name: recipeName,
+          servings: parseInt(servings),
+          instructions: instructions,
+          ingredients: ingredients
+        };
+
+        if (photoFile) {
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            recipeData.photo = e.target.result;
+            google.script.run.withSuccessHandler(() => {
+              alert('Recipe updated!');
+              showView('recipes-list-view');
+            }).updateRecipe(originalRecipeName, recipeData);
+          };
+          reader.readAsDataURL(photoFile);
+        } else {
+          recipeData.photo = document.getElementById('edit-photo-preview').src;
+          google.script.run.withSuccessHandler(() => {
+            alert('Recipe updated!');
             showView('recipes-list-view');
-          }).addRecipe(recipeName, ingredients, parseInt(servings), instructions);
+          }).updateRecipe(originalRecipeName, recipeData);
+        }
       }
 
       function loadRecipes() {
@@ -437,6 +640,15 @@
             tbody.innerHTML = '';
             recipes.forEach(recipe => {
               var row = tbody.insertRow();
+
+              var photoCell = row.insertCell();
+              if (recipe[5]) { // Photo data
+                var img = document.createElement('img');
+                img.src = recipe[5];
+                img.style.width = '100px';
+                img.style.height = 'auto';
+                photoCell.appendChild(img);
+              }
 
               var nameCell = row.insertCell();
               var a = document.createElement('a');
@@ -449,6 +661,12 @@
               row.insertCell().textContent = recipe[2]; // Servings
               row.insertCell().textContent = recipe[3].toFixed(2); // Cost Per Serving
               row.insertCell().textContent = recipe[4].toFixed(2); // Suggested Selling Price
+
+              var actionsCell = row.insertCell();
+              var editButton = document.createElement('button');
+              editButton.textContent = 'Edit';
+              editButton.onclick = function() { showEditRecipeView(recipe[0]); };
+              actionsCell.appendChild(editButton);
             });
           }).getRecipesWithCost();
       }
@@ -461,6 +679,14 @@
             document.getElementById('details-total-cost').textContent = details.totalCost.toFixed(2);
             document.getElementById('details-servings').textContent = details.servings;
             document.getElementById('details-instructions').textContent = details.instructions;
+
+            var photoEl = document.getElementById('details-photo');
+            if (details.photo) {
+              photoEl.src = details.photo;
+              photoEl.style.display = 'block';
+            } else {
+              photoEl.style.display = 'none';
+            }
 
             var list = document.getElementById('details-ingredients-list');
             list.innerHTML = '';
@@ -607,7 +833,7 @@
         tr = table.getElementsByTagName("tr");
 
         for (i = 1; i < tr.length; i++) { // Start at 1 to skip header
-          td = tr[i].getElementsByTagName("td")[0]; // First column is the name
+          td = tr[i].getElementsByTagName("td")[1]; // Second column is the name
           if (td) {
             txtValue = td.textContent || td.innerText;
             if (txtValue.toUpperCase().indexOf(filter) > -1) {
