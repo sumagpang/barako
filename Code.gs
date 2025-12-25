@@ -307,16 +307,11 @@ function updateRecipe(originalRecipeName, recipeData) {
 
   // Update the recipe ingredients sheet
   var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
-  var rowsToDelete = [];
+  // Iterate backwards to avoid issues with shifting row indices on deletion
   for (var i = recipeIngredientsData.length - 1; i >= 1; i--) {
     if (recipeIngredientsData[i][0] === originalRecipeName) {
-      rowsToDelete.push(i + 1);
+      recipeIngredientsSheet.deleteRow(i + 1);
     }
-  }
-
-  // Delete old ingredients in reverse order to avoid shifting row indices
-  for (var i = 0; i < rowsToDelete.length; i++) {
-    recipeIngredientsSheet.deleteRow(rowsToDelete[i]);
   }
 
   // Add the new ingredients

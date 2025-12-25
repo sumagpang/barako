@@ -152,6 +152,7 @@
         line-height: 24px;
         text-align: center;
         flex-shrink: 0;
+        padding: 0;
       }
 
       .remove-ingredient-btn:hover {
@@ -389,8 +390,17 @@
       var availableIngredients = [];
 
       function showView(viewId) {
+        // Clear the add recipe form whenever the view is changed to prevent stale data
+        document.getElementById('recipe-name').value = '';
+        document.getElementById('recipe-servings').value = '';
+        document.getElementById('recipe-instructions').value = '';
+        document.getElementById('recipe-photo').value = '';
+        document.getElementById('photo-preview').style.display = 'none';
+        document.getElementById('ingredients-container').innerHTML = '';
+
         document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
         document.getElementById(viewId).style.display = 'block';
+
         if (viewId === 'recipes-list-view') loadRecipes();
         if (viewId === 'add-recipe-view') loadIngredientsForRecipeForm();
         if (viewId === 'view-ingredients-view') loadAllIngredients();
