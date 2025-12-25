@@ -234,6 +234,22 @@
       <button onclick="showView('add-recipe-view')">Add Recipe</button>
       <button onclick="showView('recipes-list-view')">View Recipes</button>
       <button onclick="showView('view-ingredients-view')">View Ingredients</button>
+      <button onclick="showView('inventory-view')">View Inventory</button>
+    </div>
+
+    <!-- Inventory View -->
+    <div id="inventory-view" class="view" style="display:none;">
+      <h2>Inventory</h2>
+      <table id="inventory-table">
+        <thead>
+          <tr>
+            <th>Ingredient Name</th>
+            <th>Quantity on Hand</th>
+            <th>Base Unit</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <!-- Add Ingredient View -->
@@ -358,6 +374,7 @@
       <ul id="details-ingredients-list"></ul>
       <h3>Instructions:</h3>
       <p id="details-instructions"></p>
+      <button onclick="makeRecipe(document.getElementById('details-recipe-name').textContent)">Make This Recipe</button>
       <button onclick="showView('recipes-list-view')">Back to Recipes</button>
     </div>
 
@@ -404,6 +421,7 @@
         if (viewId === 'recipes-list-view') loadRecipes();
         if (viewId === 'add-recipe-view') loadIngredientsForRecipeForm();
         if (viewId === 'view-ingredients-view') loadAllIngredients();
+        if (viewId === 'inventory-view') loadInventory();
       }
 
       function addIngredient() {
@@ -853,6 +871,43 @@
             }
           }
         }
+      }
+
+      function makeRecipe(recipeName) {
+        if (!confirm("Are you sure you want to make this recipe? This will deduct ingredients from your inventory.")) {
+          return;
+        }
+
+        google.script.run
+          .withFailureHandler(err => alert('Error making recipe: ' + err.message))
+          .withSuccessHandler(response => {
+            if (response.success) {
+              alert('Recipe made successfully! Inventory has been updated.');
+              loadInventory(); // Refresh inventory view if needed
+            } else {
+              var message = "Could not make recipe. Missing ingredients:\n\n";
+              response.missing.forEach(ing => {
+                message += `- ${ing.name}: need ${ing.needed.toFixed(2)} ${ing.uom}\n`;
+              });
+              alert(message);
+            }
+          }).makeRecipe(recipeName);
+      }
+
+      function loadInventory() {
+        google.script.run
+          .withFailureHandler(err => alert('Error loading inventory: ' + err.message))
+          .withSuccessHandler(data => {
+            var tbody = document.getElementById('inventory-table').querySelector('tbody');
+            tbody.innerHTML = '';
+            // Skip header row by starting at 1
+            for (var i = 1; i < data.length; i++) {
+              var row = tbody.insertRow();
+              row.insertCell().textContent = data[i][0]; // Name
+              row.insertCell().textContent = parseFloat(data[i][1]).toFixed(2); // Quantity
+              row.insertCell().textContent = data[i][2]; // Base Unit
+            }
+          }).getInventory();
       }
 
       // Initial Load

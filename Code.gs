@@ -7,10 +7,33 @@ function doGet() {
 }
 
 function addIngredient(name, cost, purchaseDate, store, quantity, uom, brand) {
-  var sheet = getSpreadsheet().getSheetByName("Ingredients");
-  sheet.appendRow([name, cost, purchaseDate, store, quantity, uom, brand]);
-  SpreadsheetApp.flush(); // Ensure the sheet is updated immediately
-  return getUniqueIngredientNames(); // Return the fresh list of unique names
+  var ingredientsSheet = getSpreadsheet().getSheetByName("Ingredients");
+  ingredientsSheet.appendRow([name, cost, purchaseDate, store, quantity, uom, brand]);
+
+  // --- Inventory Update Logic ---
+  var inventorySheet = getSpreadsheet().getSheetByName("Inventory");
+  var uomConverter = getUomConverter();
+  var conversionInfo = uomConverter.getConversionInfo(uom);
+
+  if (conversionInfo) {
+    var quantityInBaseUnit = quantity * conversionInfo.factor;
+    var inventoryData = inventorySheet.getDataRange().getValues();
+    var found = false;
+    for (var i = 1; i < inventoryData.length; i++) {
+      if (inventoryData[i][0] === name && inventoryData[i][2] === conversionInfo.base) {
+        var currentQty = parseFloat(inventoryData[i][1]);
+        inventorySheet.getRange(i + 1, 2).setValue(currentQty + quantityInBaseUnit);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      inventorySheet.appendRow([name, quantityInBaseUnit, conversionInfo.base]);
+    }
+  }
+
+  SpreadsheetApp.flush(); // Ensure all sheets are updated
+  return getUniqueIngredientNames(); // Return the fresh list
 }
 
 function getUniqueIngredientNames() {
@@ -320,4 +343,77 @@ function updateRecipe(originalRecipeName, recipeData) {
   });
 
   return "Recipe updated successfully!";
+}
+
+function getInventory() {
+  var inventorySheet = getSpreadsheet().getSheetByName("Inventory");
+  return inventorySheet.getDataRange().getValues();
+}
+
+function makeRecipe(recipeName) {
+  var ss = getSpreadsheet();
+  var inventorySheet = ss.getSheetByName("Inventory");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+
+  var inventoryData = inventorySheet.getDataRange().getValues();
+  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
+
+  var uomConverter = getUomConverter();
+
+  // Create a map of current inventory
+  var inventoryMap = {};
+  for (var i = 1; i < inventoryData.length; i++) {
+    inventoryMap[inventoryData[i][0]] = {
+      quantity: parseFloat(inventoryData[i][1]),
+      baseUnit: inventoryData[i][2],
+      row: i + 1
+    };
+  }
+
+  // Get ingredients for the recipe
+  var recipeIngredients = [];
+  for (var i = 1; i < recipeIngredientsData.length; i++) {
+    if (recipeIngredientsData[i][0] === recipeName) {
+      recipeIngredients.push({
+        name: recipeIngredientsData[i][1],
+        quantity: parseFloat(recipeIngredientsData[i][2]),
+        uom: recipeIngredientsData[i][3]
+      });
+    }
+  }
+
+  // Check if there's enough inventory
+  var missingIngredients = [];
+  for (var i = 0; i < recipeIngredients.length; i++) {
+    var ing = recipeIngredients[i];
+    var inv = inventoryMap[ing.name];
+    var conversionInfo = uomConverter.getConversionInfo(ing.uom);
+
+    if (!inv || !conversionInfo || inv.baseUnit !== conversionInfo.base) {
+      missingIngredients.push({ name: ing.name, needed: ing.quantity, uom: ing.uom, reason: "Not in inventory or incompatible units" });
+      continue;
+    }
+
+    var neededQty = ing.quantity * conversionInfo.factor;
+    if (inv.quantity < neededQty) {
+      missingIngredients.push({ name: ing.name, needed: neededQty - inv.quantity, uom: inv.baseUnit, reason: "Insufficient quantity" });
+    }
+  }
+
+  if (missingIngredients.length > 0) {
+    return { success: false, missing: missingIngredients };
+  }
+
+  // Deduct from inventory
+  for (var i = 0; i < recipeIngredients.length; i++) {
+    var ing = recipeIngredients[i];
+    var inv = inventoryMap[ing.name];
+    var conversionInfo = uomConverter.getConversionInfo(ing.uom);
+    var neededQty = ing.quantity * conversionInfo.factor;
+
+    inventorySheet.getRange(inv.row, 2).setValue(inv.quantity - neededQty);
+  }
+
+  SpreadsheetApp.flush();
+  return { success: true };
 }

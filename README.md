@@ -26,11 +26,12 @@ The system will report an error if you try to use incompatible units in a recipe
 
 1.  Create a new Google Sheet.
 2.  Rename the sheet to "Recipe Book" or a name of your choice.
-3.  Create three tabs within the sheet named `Ingredients`, `Recipes`, and `RecipeIngredients`. **Note:** It is critical that these tabs are named *exactly* as written, as the script will not be able to find them otherwise.
+3.  Create four tabs within the sheet named `Ingredients`, `Recipes`, `RecipeIngredients`, and `Inventory`. **Note:** It is critical that these tabs are named *exactly* as written, as the script will not be able to find them otherwise.
 4.  Set up the headers for each tab as follows:
     *   **Ingredients:** `Name`, `Cost`, `Purchase Date`, `Store`, `Quantity`, `UoM`, `Brand`
     *   **Recipes:** `Recipe Name`, `Servings`, `Instructions`, `Photo`
     *   **RecipeIngredients:** `Recipe Name`, `Ingredient Name`, `Quantity`, `UoM`
+    *   **Inventory:** `Ingredient Name`, `Quantity`, `Base Unit`
 
 ### 2. Create a Google Apps Script Project
 
