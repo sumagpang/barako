@@ -88,14 +88,30 @@ function getAllIngredientPurchases() {
   }
 }
 
+function uploadFileToDrive(base64Data, fileName) {
+  var folderId = "1Q4zsUfqDwjrj9i5PWYEiKTgPKxuLCxM3";
+  var folder = DriveApp.getFolderById(folderId);
+
+  var contentType = base64Data.substring(5, base64Data.indexOf(';'));
+  var bytes = Utilities.base64Decode(base64Data.substr(base64Data.indexOf('base64,') + 7));
+  var blob = Utilities.newBlob(bytes, contentType, fileName);
+
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return file.getId();
+}
+
 function addRecipe(recipeName, ingredients, servings, instructions, photo) {
+  var photoId = null;
+  if (photo) {
+    photoId = uploadFileToDrive(photo, recipeName + "_photo");
+  }
+
   var recipeSheet = getSpreadsheet().getSheetByName("Recipes");
+  recipeSheet.appendRow([recipeName, servings, instructions, photoId]);
+
   var recipeIngredientsSheet = getSpreadsheet().getSheetByName("RecipeIngredients");
-
-  // Append the main recipe details
-  recipeSheet.appendRow([recipeName, servings, instructions, photo]);
-
-  // Append the ingredients for that recipe
   ingredients.forEach(function(ingredient) {
     recipeIngredientsSheet.appendRow([recipeName, ingredient.name, ingredient.quantity, ingredient.uom]);
   });
@@ -174,9 +190,10 @@ function getRecipesWithCost() {
 
     var costPerServing = totalCost / servings;
     var suggestedSellingPrice = totalCost * 3;
-    var photo = recipeRow[3] || null; // Get photo, or null if empty
+    var photoId = recipeRow[3] || null;
+    var photoUrl = photoId ? "https://lh3.googleusercontent.com/d/" + photoId : null;
 
-    return [recipeName, totalCost, servings, costPerServing, suggestedSellingPrice, photo];
+    return [recipeName, totalCost, servings, costPerServing, suggestedSellingPrice, photoUrl];
   });
 
   return results;
@@ -301,46 +318,57 @@ function getRecipeDetails(recipeName) {
     ingredientDetails.push(lineItem);
   });
 
+  var photoUrl = recipeInfo.photo ? "https://lh3.googleusercontent.com/d/" + recipeInfo.photo : null;
+
   return {
     recipeName: recipeName,
     ingredients: ingredientDetails,
     totalCost: totalCost,
     servings: recipeInfo.servings,
     instructions: recipeInfo.instructions,
-    photo: recipeInfo.photo
+    photo: photoUrl
   };
 }
 
 function updateRecipe(originalRecipeName, recipeData) {
+  var photoId = recipeData.photo;
+  if (photoId && photoId.startsWith('data:image')) {
+    photoId = uploadFileToDrive(photoId, recipeData.name + "_photo");
+  }
+
   var ss = getSpreadsheet();
   var recipesSheet = ss.getSheetByName("Recipes");
   var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
 
-  // Update the main recipe sheet
+  // --- Fast Update for Recipes Sheet ---
   var recipesData = recipesSheet.getDataRange().getValues();
+  var recipeFound = false;
   for (var i = 1; i < recipesData.length; i++) {
     if (recipesData[i][0] === originalRecipeName) {
-      recipesSheet.getRange(i + 1, 1).setValue(recipeData.name);
-      recipesSheet.getRange(i + 1, 2).setValue(recipeData.servings);
-      recipesSheet.getRange(i + 1, 3).setValue(recipeData.instructions);
-      recipesSheet.getRange(i + 1, 4).setValue(recipeData.photo);
+      recipesData[i][0] = recipeData.name;
+      recipesData[i][1] = recipeData.servings;
+      recipesData[i][2] = recipeData.instructions;
+      recipesData[i][3] = photoId;
+      recipeFound = true;
       break;
     }
   }
-
-  // Update the recipe ingredients sheet
-  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
-  // Iterate backwards to avoid issues with shifting row indices on deletion
-  for (var i = recipeIngredientsData.length - 1; i >= 1; i--) {
-    if (recipeIngredientsData[i][0] === originalRecipeName) {
-      recipeIngredientsSheet.deleteRow(i + 1);
-    }
+  if (recipeFound) {
+    recipesSheet.getDataRange().setValues(recipesData);
   }
 
-  // Add the new ingredients
-  recipeData.ingredients.forEach(function(ingredient) {
-    recipeIngredientsSheet.appendRow([recipeData.name, ingredient.name, ingredient.quantity, ingredient.uom]);
+  // --- Fast Update for RecipeIngredients Sheet ---
+  var allIngredients = recipeIngredientsSheet.getDataRange().getValues();
+  var updatedIngredients = allIngredients.filter(function(row) {
+    return row[0] !== originalRecipeName;
   });
+
+  recipeData.ingredients.forEach(function(ingredient) {
+    updatedIngredients.push([recipeData.name, ingredient.name, ingredient.quantity, ingredient.uom]);
+  });
+
+  recipeIngredientsSheet.clearContents();
+  recipeIngredientsSheet.getRange(1, 1, updatedIngredients.length, updatedIngredients[0].length).setValues(updatedIngredients);
 
   return "Recipe updated successfully!";
 }

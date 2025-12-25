@@ -223,9 +223,39 @@
         list-style-position: inside;
         padding-left: 0;
       }
+
+      #spinner {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .loader {
+        border: 16px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 16px solid var(--primary-color);
+        width: 120px;
+        height: 120px;
+        animation: spin 2s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
     </style>
   </head>
   <body>
+    <div id="spinner">
+      <div class="loader"></div>
+    </div>
    <div class="container">
     <h1>Recipe Book</h1>
 
@@ -406,6 +436,14 @@
     <script>
       var availableIngredients = [];
 
+      function showSpinner() {
+        document.getElementById('spinner').style.display = 'flex';
+      }
+
+      function hideSpinner() {
+        document.getElementById('spinner').style.display = 'none';
+      }
+
       function showView(viewId) {
         // Clear the add recipe form whenever the view is changed to prevent stale data
         document.getElementById('recipe-name').value = '';
@@ -425,6 +463,7 @@
       }
 
       function addIngredient() {
+        showSpinner();
         var name = document.getElementById('ingredient-name').value;
         var cost = document.getElementById('ingredient-cost').value;
         var quantity = document.getElementById('ingredient-quantity').value;
@@ -435,10 +474,16 @@
 
         if (!name || !cost || !quantity || !uom || !date) {
           alert('Please fill in all required fields.');
+          hideSpinner();
           return;
         }
 
-        google.script.run.withSuccessHandler((updatedIngredients) => {
+        google.script.run
+        .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error adding ingredient: ' + err.message);
+        })
+        .withSuccessHandler((updatedIngredients) => {
           availableIngredients = updatedIngredients; // Update the global list
           alert('Ingredient added!');
           document.getElementById('ingredient-name').value = '';
@@ -448,17 +493,23 @@
           document.getElementById('purchase-date').value = '';
           document.getElementById('store').value = '';
           document.getElementById('brand').value = '';
+          hideSpinner();
           showView('view-ingredients-view'); // Go to the ingredients view
         }).addIngredient(name, parseFloat(cost), date, store, parseFloat(quantity), uom, brand);
       }
 
       function loadIngredientsForRecipeForm() {
+        showSpinner();
         google.script.run
-          .withFailureHandler(err => alert('Error loading ingredients: ' + err.message))
+          .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error loading ingredients: ' + err.message);
+          })
           .withSuccessHandler(uniqueNames => {
             availableIngredients = uniqueNames;
             document.getElementById('ingredients-container').innerHTML = ''; // Clear existing
             addIngredientField(); // Add the first ingredient field
+            hideSpinner();
           }).getUniqueIngredientNames();
       }
 
@@ -496,6 +547,7 @@
       }
 
       function addRecipe() {
+        showSpinner();
         var recipeName = document.getElementById('recipe-name').value;
         var servings = document.getElementById('recipe-servings').value;
         var instructions = document.getElementById('recipe-instructions').value;
@@ -503,6 +555,7 @@
 
         if (!recipeName || !servings) {
           alert('Please enter a recipe name and the number of servings.');
+          hideSpinner();
           return;
         }
 
@@ -510,6 +563,7 @@
         var ingredientGroups = document.querySelectorAll('.ingredient-group');
         if (ingredientGroups.length === 0) {
           alert('Please add at least one ingredient.');
+          hideSpinner();
           return;
         }
 
@@ -520,47 +574,38 @@
           var uom = group.querySelector('.ingredient-uom').value;
           if (!name || !quantity || isNaN(parseFloat(quantity)) || !uom) {
             alert('Please ensure all ingredients have a name, a valid quantity, and a UoM.');
+            hideSpinner();
             return;
           }
           ingredients.push({ name: name, quantity: parseFloat(quantity), uom: uom });
         }
 
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          var photoBase64 = e.target.result;
-          google.script.run
-            .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
-            .withSuccessHandler(() => {
-              alert('Recipe added!');
-              document.getElementById('recipe-name').value = '';
-              document.getElementById('recipe-servings').value = '';
-              document.getElementById('recipe-instructions').value = '';
-              document.getElementById('recipe-photo').value = '';
-              document.getElementById('photo-preview').style.display = 'none';
-              document.getElementById('ingredients-container').innerHTML = '';
-              showView('recipes-list-view');
-            }).addRecipe(recipeName, ingredients, parseInt(servings), instructions, photoBase64);
-        };
-
-        if (photoFile) {
-          reader.readAsDataURL(photoFile);
-        } else {
-          // No photo provided
-          google.script.run
-            .withFailureHandler(err => alert('Error adding recipe: ' + err.message))
-            .withSuccessHandler(() => {
-              alert('Recipe added!');
-              document.getElementById('recipe-name').value = '';
-              document.getElementById('recipe-servings').value = '';
-              document.getElementById('recipe-instructions').value = '';
-              document.getElementById('ingredients-container').innerHTML = '';
-              showView('recipes-list-view');
-            }).addRecipe(recipeName, ingredients, parseInt(servings), instructions, null);
-        }
+        google.script.run
+          .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error adding recipe: ' + err.message)
+          })
+          .withSuccessHandler(() => {
+            alert('Recipe added!');
+            document.getElementById('recipe-name').value = '';
+            document.getElementById('recipe-servings').value = '';
+            document.getElementById('recipe-instructions').value = '';
+            document.getElementById('recipe-photo').value = '';
+            document.getElementById('photo-preview').style.display = 'none';
+            document.getElementById('ingredients-container').innerHTML = '';
+            hideSpinner();
+            showView('recipes-list-view');
+          }).addRecipe(recipeName, ingredients, parseInt(servings), instructions, photoFile);
       }
 
       function showEditRecipeView(recipeName) {
-        google.script.run.withSuccessHandler(details => {
+        showSpinner();
+        google.script.run
+        .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error loading recipe details: ' + err.message);
+        })
+        .withSuccessHandler(details => {
           document.getElementById('original-recipe-name').value = recipeName;
           document.getElementById('edit-recipe-name').value = details.recipeName;
           document.getElementById('edit-recipe-servings').value = details.servings;
@@ -579,7 +624,7 @@
           details.ingredients.forEach(ing => {
             addEditIngredientField(ing);
           });
-
+          hideSpinner();
           showView('edit-recipe-view');
         }).getRecipeDetails(recipeName);
       }
@@ -618,6 +663,7 @@
       }
 
       function updateRecipe() {
+        showSpinner();
         var originalRecipeName = document.getElementById('original-recipe-name').value;
         var recipeName = document.getElementById('edit-recipe-name').value;
         var servings = document.getElementById('edit-recipe-servings').value;
@@ -641,28 +687,26 @@
           ingredients: ingredients
         };
 
-        if (photoFile) {
-          var reader = new FileReader();
-          reader.onload = function(e) {
-            recipeData.photo = e.target.result;
-            google.script.run.withSuccessHandler(() => {
-              alert('Recipe updated!');
-              showView('recipes-list-view');
-            }).updateRecipe(originalRecipeName, recipeData);
-          };
-          reader.readAsDataURL(photoFile);
-        } else {
-          recipeData.photo = document.getElementById('edit-photo-preview').src;
-          google.script.run.withSuccessHandler(() => {
-            alert('Recipe updated!');
-            showView('recipes-list-view');
-          }).updateRecipe(originalRecipeName, recipeData);
-        }
+        recipeData.photo = photoFile;
+        google.script.run
+        .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error updating recipe: ' + err.message);
+        })
+        .withSuccessHandler(() => {
+          alert('Recipe updated!');
+          hideSpinner();
+          showView('recipes-list-view');
+        }).updateRecipe(originalRecipeName, recipeData);
       }
 
       function loadRecipes() {
+        showSpinner();
         google.script.run
-          .withFailureHandler(err => alert('Error loading recipes: ' + err.message))
+          .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error loading recipes: ' + err.message)
+          })
           .withSuccessHandler(recipes => {
             var tbody = document.getElementById('recipes-table').querySelector('tbody');
             tbody.innerHTML = '';
@@ -682,7 +726,7 @@
               var a = document.createElement('a');
               a.textContent = recipe[0]; // Recipe Name
               a.href = "#";
-              a.onclick = function() { getRecipeDetails(recipe[0]); return false; };
+              a.onclick = function() { showEditRecipeView(recipe[0]); return false; };
               nameCell.appendChild(a);
 
               row.insertCell().textContent = recipe[1].toFixed(2); // Total Cost
@@ -691,51 +735,20 @@
               row.insertCell().textContent = recipe[4].toFixed(2); // Suggested Selling Price
 
               var actionsCell = row.insertCell();
-              var editButton = document.createElement('button');
-              editButton.textContent = 'Edit';
-              editButton.onclick = function() { showEditRecipeView(recipe[0]); };
-              actionsCell.appendChild(editButton);
+              var makeButton = document.createElement('button');
+              makeButton.textContent = 'Make this Recipe';
+              makeButton.onclick = function() { makeRecipe(recipe[0]); };
+              actionsCell.appendChild(makeButton);
             });
+            hideSpinner();
           }).getRecipesWithCost();
       }
 
-      function getRecipeDetails(recipeName) {
-        google.script.run
-          .withFailureHandler(err => alert('Error getting recipe details: ' + err.message))
-          .withSuccessHandler(details => {
-            document.getElementById('details-recipe-name').textContent = details.recipeName;
-            document.getElementById('details-total-cost').textContent = details.totalCost.toFixed(2);
-            document.getElementById('details-servings').textContent = details.servings;
-            document.getElementById('details-instructions').textContent = details.instructions;
-
-            var photoEl = document.getElementById('details-photo');
-            if (details.photo) {
-              photoEl.src = details.photo;
-              photoEl.style.display = 'block';
-            } else {
-              photoEl.style.display = 'none';
-            }
-
-            var list = document.getElementById('details-ingredients-list');
-            list.innerHTML = '';
-            details.ingredients.forEach(ing => {
-              var li = document.createElement('li');
-              var content = `${ing.quantity} ${ing.uom} ${ing.name} - `;
-              if (ing.status === 'OK') {
-                content += `Total: ${ing.cost.toFixed(2)} (@ ${ing.baseUnitPrice.toFixed(4)}/${ing.baseUnit})`;
-              } else {
-                content += `<span class="error-message">${ing.status}</span>`;
-              }
-              li.innerHTML = content;
-              list.appendChild(li);
-            });
-            showView('recipe-details-view');
-          }).getRecipeDetails(recipeName);
-      }
-
       function loadAllIngredients() {
+        showSpinner();
         google.script.run
           .withFailureHandler(err => {
+            hideSpinner();
             // This catches script execution errors or network problems.
             alert('A script error occurred: ' + err.message);
             var tbody = document.getElementById('ingredients-table').querySelector('tbody');
@@ -757,6 +770,7 @@
               cell.colSpan = 6; // Default colspan for the error message
               cell.textContent = 'Error: ' + response.error;
               cell.className = 'error-message';
+              hideSpinner();
               return;
             }
 
@@ -809,6 +823,7 @@
             }
 
             applyIngredientFilters(); // Apply filters regardless of data presence
+            hideSpinner();
           }).getAllIngredientPurchases();
       }
 
@@ -877,9 +892,12 @@
         if (!confirm("Are you sure you want to make this recipe? This will deduct ingredients from your inventory.")) {
           return;
         }
-
+        showSpinner();
         google.script.run
-          .withFailureHandler(err => alert('Error making recipe: ' + err.message))
+          .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error making recipe: ' + err.message);
+           })
           .withSuccessHandler(response => {
             if (response.success) {
               alert('Recipe made successfully! Inventory has been updated.');
@@ -891,12 +909,17 @@
               });
               alert(message);
             }
+            hideSpinner();
           }).makeRecipe(recipeName);
       }
 
       function loadInventory() {
+        showSpinner();
         google.script.run
-          .withFailureHandler(err => alert('Error loading inventory: ' + err.message))
+          .withFailureHandler(err => {
+            hideSpinner();
+            alert('Error loading inventory: ' + err.message);
+          })
           .withSuccessHandler(data => {
             var tbody = document.getElementById('inventory-table').querySelector('tbody');
             tbody.innerHTML = '';
@@ -907,6 +930,7 @@
               row.insertCell().textContent = parseFloat(data[i][1]).toFixed(2); // Quantity
               row.insertCell().textContent = data[i][2]; // Base Unit
             }
+            hideSpinner();
           }).getInventory();
       }
 
