@@ -330,10 +330,21 @@ function getRecipeDetails(recipeName) {
   };
 }
 
-function updateRecipe(originalRecipeName, recipeData) {
-  var photoId = recipeData.photo;
-  if (photoId && photoId.startsWith('data:image')) {
-    photoId = uploadFileToDrive(photoId, recipeData.name + "_photo");
+function updateRecipe(originalRecipeName, recipeData, photo) {
+  var photoId = null;
+  if (photo) {
+    photoId = uploadFileToDrive(photo, recipeData.name + "_photo");
+  } else {
+    // If no new photo is uploaded, try to retain the old one.
+    // This requires fetching the old recipe data first.
+    var recipesSheet = getSpreadsheet().getSheetByName("Recipes");
+    var recipesData = recipesSheet.getDataRange().getValues();
+    for (var i = 1; i < recipesData.length; i++) {
+      if (recipesData[i][0] === originalRecipeName) {
+        photoId = recipesData[i][3]; // Get existing photo ID
+        break;
+      }
+    }
   }
 
   var ss = getSpreadsheet();
