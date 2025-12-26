@@ -281,9 +281,57 @@
         /* But make an exception for a "Print" button if you wanted one to show */
         /* For now, we hide all buttons in the details view */
       }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+      }
+
+      .modal-close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+      }
+
+      .modal-close-btn:hover,
+      .modal-close-btn:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
+    <!-- The Modal -->
+    <div id="notification-modal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close-btn" onclick="hideModal()">&times;</span>
+        <p id="modal-message"></p>
+        <button onclick="hideModal()">OK</button>
+      </div>
+    </div>
+
     <div id="spinner">
       <div class="loader"></div>
     </div>
@@ -477,6 +525,15 @@
         document.getElementById('spinner').style.display = 'none';
       }
 
+      function showModal(message) {
+        document.getElementById('modal-message').textContent = message;
+        document.getElementById('notification-modal').style.display = 'block';
+      }
+
+      function hideModal() {
+        document.getElementById('notification-modal').style.display = 'none';
+      }
+
       function showView(viewId) {
         // Clear the add recipe form whenever the view is changed to prevent stale data
         document.getElementById('recipe-name').value = '';
@@ -506,7 +563,7 @@
         var brand = document.getElementById('brand').value;
 
         if (!name || !cost || !quantity || !uom || !date) {
-          alert('Please fill in all required fields.');
+          showModal('Please fill in all required fields.');
           hideSpinner();
           return;
         }
@@ -514,11 +571,11 @@
         google.script.run
         .withFailureHandler(err => {
             hideSpinner();
-            alert('Error adding ingredient: ' + err.message);
+            showModal('Error adding ingredient: ' + err.message);
         })
         .withSuccessHandler((updatedIngredients) => {
           availableIngredients = updatedIngredients; // Update the global list
-          alert('Ingredient added!');
+          showModal('Ingredient added!');
           document.getElementById('ingredient-name').value = '';
           document.getElementById('ingredient-cost').value = '';
           document.getElementById('ingredient-quantity').value = '';
@@ -536,7 +593,7 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            alert('Error loading ingredients: ' + err.message);
+            showModal('Error loading ingredients: ' + err.message);
           })
           .withSuccessHandler(uniqueNames => {
             availableIngredients = uniqueNames;
@@ -587,7 +644,7 @@
         var photoFile = document.getElementById('recipe-photo').files[0];
 
         if (!recipeName || !servings) {
-          alert('Please enter a recipe name and the number of servings.');
+          showModal('Please enter a recipe name and the number of servings.');
           hideSpinner();
           return;
         }
@@ -595,7 +652,7 @@
         var ingredients = [];
         var ingredientGroups = document.querySelectorAll('.ingredient-group');
         if (ingredientGroups.length === 0) {
-          alert('Please add at least one ingredient.');
+          showModal('Please add at least one ingredient.');
           hideSpinner();
           return;
         }
@@ -606,7 +663,7 @@
           var quantity = group.querySelector('.ingredient-quantity').value;
           var uom = group.querySelector('.ingredient-uom').value;
           if (!name || !quantity || isNaN(parseFloat(quantity)) || !uom) {
-            alert('Please ensure all ingredients have a name, a valid quantity, and a UoM.');
+            showModal('Please ensure all ingredients have a name, a valid quantity, and a UoM.');
             hideSpinner();
             return;
           }
@@ -617,10 +674,10 @@
              google.script.run
               .withFailureHandler(err => {
                 hideSpinner();
-                alert('Error adding recipe: ' + err.message)
+                showModal('Error adding recipe: ' + err.message)
               })
               .withSuccessHandler(() => {
-                alert('Recipe added!');
+                showModal('Recipe added!');
                 document.getElementById('recipe-name').value = '';
                 document.getElementById('recipe-servings').value = '';
                 document.getElementById('recipe-instructions').value = '';
@@ -648,7 +705,7 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            alert('Error loading recipe details: ' + err.message);
+            showModal('Error loading recipe details: ' + err.message);
           })
           .withSuccessHandler(details => {
             document.getElementById('details-recipe-name').textContent = details.recipeName;
@@ -685,7 +742,7 @@
         google.script.run
         .withFailureHandler(err => {
             hideSpinner();
-            alert('Error loading recipe details: ' + err.message);
+            showModal('Error loading recipe details: ' + err.message);
         })
         .withSuccessHandler(details => {
           document.getElementById('original-recipe-name').value = recipeName;
@@ -773,10 +830,10 @@
             google.script.run
             .withFailureHandler(err => {
                 hideSpinner();
-                alert('Error updating recipe: ' + err.message);
+                showModal('Error updating recipe: ' + err.message);
             })
             .withSuccessHandler(() => {
-              alert('Recipe updated!');
+              showModal('Recipe updated!');
               hideSpinner();
               showView('recipes-list-view');
             }).updateRecipe(originalRecipeName, recipeData, photoBase64);
@@ -802,7 +859,7 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            alert('Error loading recipes: ' + err.message)
+            showModal('Error loading recipes: ' + err.message)
           })
           .withSuccessHandler(recipes => {
             var tbody = document.getElementById('recipes-table').querySelector('tbody');
@@ -847,7 +904,7 @@
           .withFailureHandler(err => {
             hideSpinner();
             // This catches script execution errors or network problems.
-            alert('A script error occurred: ' + err.message);
+            showModal('A script error occurred: ' + err.message);
             var tbody = document.getElementById('ingredients-table').querySelector('tbody');
             tbody.innerHTML = '<tr><td colspan="6" class="error-message">Could not load ingredient data. Please try again.</td></tr>';
           })
@@ -861,7 +918,7 @@
 
             // Case 1: The backend function returned a specific, controlled error.
             if (response.error) {
-              alert('Error from server: ' + response.error);
+              showModal('Error from server: ' + response.error);
               var row = tbody.insertRow();
               var cell = row.insertCell();
               cell.colSpan = 6; // Default colspan for the error message
@@ -993,18 +1050,18 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            alert('Error making recipe: ' + err.message);
+            showModal('Error making recipe: ' + err.message);
            })
           .withSuccessHandler(response => {
             if (response.success) {
-              alert('Recipe made successfully! Inventory has been updated.');
+              showModal('Recipe made successfully! Inventory has been updated.');
               loadInventory(); // Refresh inventory view if needed
             } else {
               var message = "Could not make recipe. Missing ingredients:\n\n";
               response.missing.forEach(ing => {
                 message += `- ${ing.name}: need ${ing.needed.toFixed(2)} ${ing.uom}\n`;
               });
-              alert(message);
+              showModal(message);
             }
             hideSpinner();
           }).makeRecipe(recipeName);
@@ -1015,7 +1072,7 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            alert('Error loading inventory: ' + err.message);
+            showModal('Error loading inventory: ' + err.message);
           })
           .withSuccessHandler(data => {
             var tbody = document.getElementById('inventory-table').querySelector('tbody');
