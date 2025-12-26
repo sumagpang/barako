@@ -250,6 +250,46 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+
+      @media print {
+        body {
+          padding: 0;
+          overflow: visible; /* Show all content for printing */
+        }
+        .container {
+          box-shadow: none;
+          height: auto;
+          overflow-y: visible;
+        }
+        #main-nav, #spinner, .no-print {
+          display: none !important;
+        }
+        .view {
+          display: none !important;
+        }
+        #edit-recipe-view {
+          display: block !important;
+          border: none;
+          box-shadow: none;
+        }
+
+        /* Make inputs and textareas look like plain text for printing */
+        #edit-recipe-view input, #edit-recipe-view textarea {
+            border: none !important;
+            padding: 0 !important;
+            background-color: white !important;
+            color: black !important;
+            resize: none !important;
+        }
+
+        /* Ensure the remove button in dynamic ingredient fields is hidden */
+        .remove-ingredient-btn {
+            display: none !important;
+        }
+
+        /* But make an exception for a "Print" button if you wanted one to show */
+        /* For now, we hide all buttons in the details view */
+      }
     </style>
   </head>
   <body>
@@ -360,7 +400,7 @@
         <label for="edit-recipe-instructions">Instructions:</label>
         <textarea id="edit-recipe-instructions" rows="8"></textarea>
       </div>
-      <div class="form-group">
+      <div class="form-group no-print">
         <label for="edit-recipe-photo">Recipe Photo:</label>
         <input type="file" id="edit-recipe-photo" accept="image/*" onchange="previewEditPhoto(event)">
         <img id="edit-photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
@@ -369,9 +409,10 @@
       <div id="edit-ingredients-container">
         <!-- Dynamic ingredients will be added here -->
       </div>
-      <button type="button" onclick="addEditIngredientField()">Add Ingredient</button>
-      <button onclick="updateRecipe()">Update Recipe</button>
-      <button type="button" onclick="showView('recipes-list-view')">Cancel</button>
+      <button type="button" class="no-print" onclick="addEditIngredientField()">Add Ingredient</button>
+      <button class="no-print" onclick="updateRecipe()">Update Recipe</button>
+      <button type="button" class="no-print" onclick="printRecipe()">Print Recipe</button>
+      <button type="button" class="no-print" onclick="showView('recipes-list-view')">Cancel</button>
     </div>
 
     <!-- Recipes List View -->
@@ -394,20 +435,6 @@
         </table>
     </div>
 
-    <!-- Recipe Details View -->
-    <div id="recipe-details-view" class="view" style="display:none;">
-      <h2 id="details-recipe-name"></h2>
-      <img id="details-photo" src="#" alt="Recipe Photo" style="display:none; max-width: 400px; margin-bottom: 1em;">
-      <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
-      <p><strong>Servings:</strong> <span id="details-servings"></span></p>
-      <h3>Ingredients:</h3>
-      <ul id="details-ingredients-list"></ul>
-      <h3>Instructions:</h3>
-      <p id="details-instructions"></p>
-      <button onclick="makeRecipe(document.getElementById('details-recipe-name').textContent)">Make This Recipe</button>
-      <button onclick="showEditRecipeView(document.getElementById('details-recipe-name').textContent)">Edit Recipe</button>
-      <button onclick="showView('recipes-list-view')">Back to Recipes</button>
-    </div>
 
     <!-- View Ingredients View -->
     <div id="view-ingredients-view" class="view" style="display:none;">
@@ -611,42 +638,6 @@
         }
       }
 
-      function showRecipeDetails(recipeName) {
-        showSpinner();
-        google.script.run
-          .withFailureHandler(err => {
-            hideSpinner();
-            alert('Error loading recipe details: ' + err.message);
-          })
-          .withSuccessHandler(details => {
-            document.getElementById('details-recipe-name').textContent = details.recipeName;
-
-            var photoEl = document.getElementById('details-photo');
-            if (details.photo) {
-              photoEl.src = details.photo;
-              photoEl.style.display = 'block';
-            } else {
-              photoEl.style.display = 'none';
-            }
-
-            document.getElementById('details-total-cost').textContent = details.totalCost.toFixed(2);
-            document.getElementById('details-servings').textContent = details.servings;
-
-            var ingredientsList = document.getElementById('details-ingredients-list');
-            ingredientsList.innerHTML = '';
-            details.ingredients.forEach(ing => {
-              var li = document.createElement('li');
-              li.textContent = `${ing.name} - ${ing.quantity} ${ing.uom}`;
-              ingredientsList.appendChild(li);
-            });
-
-            document.getElementById('details-instructions').textContent = details.instructions;
-
-            hideSpinner();
-            showView('recipe-details-view');
-          }).getRecipeDetails(recipeName);
-      }
-
       function showEditRecipeView(recipeName) {
         loadIngredientsForRecipeForm();
         showSpinner();
@@ -761,6 +752,10 @@
         }
       }
 
+      function printRecipe() {
+        window.print();
+      }
+
       function loadRecipes() {
         showSpinner();
         google.script.run
@@ -787,7 +782,7 @@
               var a = document.createElement('a');
               a.textContent = recipe[0]; // Recipe Name
               a.href = "#";
-              a.onclick = function() { showRecipeDetails(recipe[0]); return false; };
+              a.onclick = function() { showEditRecipeView(recipe[0]); return false; };
               nameCell.appendChild(a);
 
               row.insertCell().textContent = recipe[1].toFixed(2); // Total Cost
