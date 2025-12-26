@@ -282,6 +282,27 @@
         /* For now, we hide all buttons in the details view */
       }
 
+      .print-only {
+        display: none;
+      }
+
+      @media print {
+        .print-only {
+          display: block;
+          text-align: center;
+          margin-top: 2em;
+          font-style: italic;
+        }
+
+        #recipe-details-view {
+            font-size: 12pt;
+        }
+
+        #details-recipe-name {
+            font-size: 24pt;
+        }
+      }
+
       /* Modal Styles */
       .modal {
         display: none;
@@ -331,6 +352,16 @@
         <button onclick="hideModal()">OK</button>
       </div>
     </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+      <div class="modal-content">
+        <p id="confirmation-message"></p>
+        <button id="confirm-btn">Confirm</button>
+        <button onclick="hideConfirmModal()">Cancel</button>
+      </div>
+    </div>
+
 
     <div id="spinner">
       <div class="loader"></div>
@@ -484,6 +515,7 @@
       <ul id="details-ingredients-list"></ul>
       <h3>Instructions:</h3>
       <p id="details-instructions"></p>
+      <footer class="print-only">sumagpang recipe collection</footer>
       <button type="button" onclick="showEditRecipeView(document.getElementById('details-recipe-name').textContent)">Edit Recipe</button>
       <button type="button" onclick="printRecipe()">Print Recipe</button>
       <button type="button" onclick="showView('recipes-list-view')">Back to Recipes</button>
@@ -532,6 +564,19 @@
 
       function hideModal() {
         document.getElementById('notification-modal').style.display = 'none';
+      }
+
+      function showConfirmModal(message, onConfirm) {
+        document.getElementById('confirmation-message').textContent = message;
+        document.getElementById('confirmation-modal').style.display = 'block';
+        document.getElementById('confirm-btn').onclick = function() {
+          onConfirm();
+          hideConfirmModal();
+        };
+      }
+
+      function hideConfirmModal() {
+        document.getElementById('confirmation-modal').style.display = 'none';
       }
 
       function showView(viewId) {
@@ -1043,28 +1088,28 @@
       }
 
       function makeRecipe(recipeName) {
-        if (!confirm("Are you sure you want to make this recipe? This will deduct ingredients from your inventory.")) {
-          return;
-        }
-        showSpinner();
-        google.script.run
-          .withFailureHandler(err => {
-            hideSpinner();
-            showModal('Error making recipe: ' + err.message);
-           })
-          .withSuccessHandler(response => {
-            if (response.success) {
-              showModal('Recipe made successfully! Inventory has been updated.');
-              loadInventory(); // Refresh inventory view if needed
-            } else {
-              var message = "Could not make recipe. Missing ingredients:\n\n";
-              response.missing.forEach(ing => {
-                message += `- ${ing.name}: need ${ing.needed.toFixed(2)} ${ing.uom}\n`;
-              });
-              showModal(message);
-            }
-            hideSpinner();
-          }).makeRecipe(recipeName);
+        var message = "Are you sure you want to make this recipe? This will deduct ingredients from your inventory.";
+        showConfirmModal(message, function() {
+          showSpinner();
+          google.script.run
+            .withFailureHandler(err => {
+              hideSpinner();
+              showModal('Error making recipe: ' + err.message);
+             })
+            .withSuccessHandler(response => {
+              if (response.success) {
+                showModal('Recipe made successfully! Inventory has been updated.');
+                loadInventory(); // Refresh inventory view if needed
+              } else {
+                var message = "Could not make recipe. Missing ingredients:\n\n";
+                response.missing.forEach(ing => {
+                  message += `- ${ing.name}: need ${ing.needed.toFixed(2)} ${ing.uom}\n`;
+                });
+                showModal(message);
+              }
+              hideSpinner();
+            }).makeRecipe(recipeName);
+        });
       }
 
       function loadInventory() {
