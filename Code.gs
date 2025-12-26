@@ -204,6 +204,7 @@ function getUomConverter() {
   return {
     mass: { base: 'g', factors: { kg: 1000, g: 1, mg: 0.001 } },
     volume: { base: 'ml', factors: { l: 1000, ml: 1 } },
+    item: { base: 'pcs', factors: { pcs: 1 } },
 
     getConversionInfo: function(uom) {
       if (!uom) return null;
