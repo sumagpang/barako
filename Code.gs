@@ -457,3 +457,54 @@ function makeRecipe(recipeName) {
   SpreadsheetApp.flush();
   return { success: true };
 }
+
+function generateRecipePdf(recipeName, photoUrl, ingredients, instructions) {
+  var doc = DocumentApp.create('Temporary Recipe - ' + recipeName);
+  var body = doc.getBody();
+
+  // --- Styling ---
+  var headingStyle = {};
+  headingStyle[DocumentApp.Attribute.FONT_SIZE] = 18;
+  headingStyle[DocumentApp.Attribute.BOLD] = true;
+
+  var subHeadingStyle = {};
+  subHeadingStyle[DocumentApp.Attribute.FONT_SIZE] = 14;
+  subHeadingStyle[DocumentApp.Attribute.BOLD] = true;
+  subHeadingStyle[DocumentApp.Attribute.MARGIN_TOP] = 10;
+
+  // --- Content ---
+  body.appendParagraph(recipeName).setHeading(DocumentApp.ParagraphHeading.HEADING1).setAttributes(headingStyle);
+
+  if (photoUrl) {
+    try {
+      var photoBlob = UrlFetchApp.fetch(photoUrl).getBlob();
+      // 4 inches * 72 points/inch = 288
+      body.appendImage(photoBlob).setWidth(288).setHeight(288);
+    } catch (e) {
+      body.appendParagraph("[Could not load image]");
+    }
+  }
+
+  body.appendParagraph("Ingredients").setHeading(DocumentApp.ParagraphHeading.HEADING2).setAttributes(subHeadingStyle);
+  ingredients.forEach(function(ing) {
+    body.appendListItem(ing);
+  });
+
+  body.appendParagraph("Instructions").setHeading(DocumentApp.ParagraphHeading.HEADING2).setAttributes(subHeadingStyle);
+  body.appendParagraph(instructions);
+
+  body.appendParagraph("\n\nsumagpang recipe collection").setItalic(true);
+
+  doc.saveAndClose();
+
+  // --- Conversion & Cleanup ---
+  var pdfBlob = doc.getAs('application/pdf');
+  var base64Pdf = Utilities.base64Encode(pdfBlob.getBytes());
+
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+
+  return {
+    pdfData: base64Pdf,
+    filename: recipeName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf'
+  };
+}

@@ -611,7 +611,6 @@
           </div>
           <button type="button" class="no-print secondary" onclick="addEditIngredientField()">Add Ingredient</button>
           <button class="no-print" onclick="updateRecipe()">Update Recipe</button>
-          <button type="button" class="no-print" onclick="printRecipe()">Print Recipe</button>
           <button type="button" class="no-print" onclick="showView('recipes-list-view')">Cancel</button>
         </div>
 
@@ -1032,7 +1031,42 @@
       }
 
       function printRecipe() {
-        window.print();
+        showSpinner();
+        var recipeName = document.getElementById('details-recipe-name').textContent;
+        var photoEl = document.getElementById('details-photo');
+        var photoUrl = photoEl.style.display !== 'none' ? photoEl.src : null;
+        var ingredients = Array.from(document.getElementById('details-ingredients-list').querySelectorAll('li')).map(li => li.textContent);
+        var instructions = document.getElementById('details-instructions').textContent;
+
+        google.script.run
+          .withFailureHandler(err => {
+            hideSpinner();
+            showModal('Error generating PDF: ' + err.message);
+          })
+          .withSuccessHandler(response => {
+            hideSpinner();
+            if (response && response.pdfData) {
+              // Decode base64 and create a blob
+              var byteCharacters = atob(response.pdfData);
+              var byteNumbers = new Array(byteCharacters.length);
+              for (var i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              var byteArray = new Uint8Array(byteNumbers);
+              var blob = new Blob([byteArray], {type: 'application/pdf'});
+
+              // Create a link and trigger the download
+              var link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = response.filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } else {
+              showModal('Failed to receive PDF data from the server.');
+            }
+          })
+          .generateRecipePdf(recipeName, photoUrl, ingredients, instructions);
       }
 
       function loadRecipes() {
