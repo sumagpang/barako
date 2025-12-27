@@ -316,8 +316,8 @@
       }
 
       #recipe-details-view img {
-        width: 100%;
-        max-width: 500px;
+        width: 200px; /* Approx 2x2 inches */
+        height: 200px;
         border-radius: 12px;
         margin-bottom: 1.5em;
         object-fit: cover;
@@ -375,7 +375,21 @@
         }
 
         #recipe-details-view img {
-            max-width: 80%;
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            float: left;
+            margin-right: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        #recipe-details-view h2, #recipe-details-view p, #recipe-details-view h3, #recipe-details-view ul {
+            page-break-inside: avoid;
+        }
+
+        #details-instructions {
+            white-space: pre-wrap; /* Respect newlines */
+            page-break-inside: avoid;
         }
       }
 
@@ -389,14 +403,17 @@
           text-align: center;
           margin-top: 2em;
           font-style: italic;
+          page-break-before: always; /* Push footer to its own page if needed, but avoid breaking content */
+          clear: both;
         }
 
         #recipe-details-view {
-            font-size: 12pt;
+            font-size: 10pt; /* Smaller font to fit more content */
         }
 
         #details-recipe-name {
-            font-size: 24pt;
+            font-size: 22pt;
+            margin-bottom: 1em;
         }
       }
 
@@ -1036,7 +1053,8 @@
                 var img = document.createElement('img');
                 img.src = recipe[5];
                 img.style.width = '100px';
-                img.style.height = 'auto';
+                img.style.height = '100px';
+                img.style.objectFit = 'cover';
                 img.style.borderRadius = '8px';
                 photoCell.appendChild(img);
               }
