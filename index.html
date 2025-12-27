@@ -3,65 +3,98 @@
   <head>
     <base target="_top">
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
       :root {
-        --primary-color: #4CAF50; /* Green */
-        --secondary-color: #FFC107; /* Amber */
-        --background-color: #f5f5f5;
-        --card-background: #ffffff;
-        --text-color: #333333;
-        --header-color: #2E7D32; /* Darker Green */
-        --border-color: #e0e0e0;
-        --shadow: 0 2px 4px rgba(0,0,0,0.1);
+        --primary-color: #5E9662; /* Muted Green */
+        --secondary-color: #F2C57C; /* Soft Gold */
+        --background-color-start: #F8F9FA;
+        --background-color-end: #E9ECEF;
+        --card-background: #FFFFFF;
+        --text-color: #343A40;
+        --header-color: #3D6B4F; /* Darker Muted Green */
+        --border-color: #DEE2E6;
+        --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        --input-focus-glow: 0 0 0 3px rgba(94, 150, 98, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        height: 100%;
+        margin: 0;
       }
 
       body {
-        font-family: 'Roboto', sans-serif;
-        background-color: var(--background-color);
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, var(--background-color-start), var(--background-color-end));
         color: var(--text-color);
-        margin: 0;
-        padding: 2em;
         line-height: 1.6;
-        height: 100vh;
-        overflow: hidden; /* Prevent body scroll */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5em;
       }
 
-      .container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2em;
+      .app-container {
+        width: 100%;
+        max-width: 1200px;
+        height: 95vh;
         background-color: var(--card-background);
-        border-radius: 8px;
+        border-radius: 16px;
         box-shadow: var(--shadow);
-        height: 90vh;
-        overflow-y: auto; /* Enable vertical scroll on container */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
 
-      h1, h2, h3 {
-        color: var(--header-color);
-        margin-top: 0;
+      header {
+        text-align: center;
+        padding: 1.5em;
+        border-bottom: 1px solid var(--border-color);
       }
 
       h1 {
-        text-align: center;
-        margin-bottom: 1.5em;
-        font-size: 2.5em;
+        color: var(--header-color);
+        margin: 0;
+        font-size: 2.2em;
+        font-weight: 700;
       }
 
       #main-nav {
         display: flex;
         justify-content: center;
         gap: 1em;
-        margin-bottom: 2em;
+        padding: 1em;
+        background-color: #F8F9FA;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      main {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 2.5em;
       }
 
       .view {
         background: var(--card-background);
-        padding: 2em;
-        border-radius: 8px;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border-color);
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      h2 {
+        color: var(--header-color);
+        margin-top: 0;
+        margin-bottom: 1.5em;
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5em;
+        font-weight: 600;
       }
 
       .form-group {
@@ -71,31 +104,29 @@
       label {
         display: block;
         margin-bottom: 0.5em;
-        font-weight: bold;
-        color: #555;
+        font-weight: 600;
+        color: #495057;
       }
 
-      input, select {
+      input, select, textarea {
         width: 100%;
-        padding: 0.8em;
+        padding: 0.8em 1em;
         border: 1px solid var(--border-color);
-        border-radius: 4px;
-        box-sizing: border-box; /* Important for consistent sizing */
-        transition: border-color 0.3s;
+        border-radius: 8px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 1em;
+        transition: border-color 0.2s, box-shadow 0.2s;
       }
 
       input:focus, select:focus, textarea:focus {
         border-color: var(--primary-color);
         outline: none;
+        box-shadow: var(--input-focus-glow);
       }
 
       textarea {
-        width: 100%;
-        padding: 0.8em;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        box-sizing: border-box;
         resize: vertical;
+        min-height: 120px;
       }
 
       button {
@@ -103,125 +134,109 @@
         color: white;
         padding: 0.8em 1.5em;
         border: none;
-        border-radius: 4px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 1em;
-        font-weight: bold;
-        transition: background-color 0.3s, transform 0.2s;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif;
+        transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
         margin-right: 0.5em;
       }
 
       button:hover {
         background-color: var(--header-color);
         transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
 
-      button[type="button"] {
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.secondary {
         background-color: var(--secondary-color);
+        color: #333;
       }
 
-       button[type="button"]:hover {
-        background-color: #FFB300; /* Darker Amber */
+      button.secondary:hover {
+        background-color: #e6b36a;
       }
-
 
       .ingredient-group {
         display: flex;
-        gap: 0.5em;
+        gap: 1em;
         align-items: center;
         margin-bottom: 1em;
         padding: 1em;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background-color: #fafafa;
+        border-radius: 8px;
+        background-color: #F8F9FA;
       }
 
       .ingredient-group select, .ingredient-group input {
-        margin-bottom: 0; /* Override default form-group margin */
+        margin-bottom: 0;
       }
 
       .remove-ingredient-btn {
-        background-color: #f44336; /* Red */
+        background-color: #E74C3C;
         color: white;
-        border: none;
         border-radius: 50%;
-        width: 24px;
-        height: 24px;
+        width: 32px;
+        height: 32px;
         cursor: pointer;
         font-weight: bold;
-        line-height: 24px;
+        line-height: 32px;
         text-align: center;
         flex-shrink: 0;
         padding: 0;
+        font-size: 1.2em;
       }
 
       .remove-ingredient-btn:hover {
-        background-color: #d32f2f;
-      }
-
-      #recipes-list ul {
-        list-style-type: none;
-        padding: 0;
-      }
-
-      #recipes-list li {
-        padding: 0.8em;
-        border-bottom: 1px solid var(--border-color);
-        transition: background-color 0.3s;
-      }
-
-      #recipes-list li:hover {
-        background-color: #f0f0f0;
-      }
-
-      #recipes-list a {
-        cursor: pointer;
-        color: var(--primary-color);
-        text-decoration: none;
-        font-weight: bold;
-      }
-
-      .error-message {
-        color: #D32F2F; /* Red */
-        font-style: italic;
+        background-color: #C0392B;
       }
 
       table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 1em;
-        box-shadow: var(--shadow);
       }
 
       th, td {
-        padding: 0.8em 1em;
+        padding: 1em 1.2em;
         text-align: left;
         border-bottom: 1px solid var(--border-color);
       }
 
       thead {
-        background-color: var(--primary-color);
+        background-color: var(--header-color);
         color: white;
       }
 
+      thead th {
+        font-weight: 600;
+      }
+
+      tbody tr {
+        transition: background-color 0.2s;
+      }
+
       tbody tr:nth-child(even) {
-        background-color: #f9f9f9;
+        background-color: #F8F9FA;
       }
 
       tbody tr:hover {
-        background-color: #f1f8e9; /* Light Green */
+        background-color: #eef4ed; /* Light Green Tint */
       }
 
-      .no-data-message {
-        text-align: center;
-        font-style: italic;
-        color: #888;
-        padding: 2em;
+      td a {
+        cursor: pointer;
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 600;
       }
 
-      #recipe-details-view ul {
-        list-style-position: inside;
-        padding-left: 0;
+      td a:hover {
+        text-decoration: underline;
       }
 
       #spinner {
@@ -230,20 +245,21 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(255, 255, 255, 0.7);
         z-index: 9999;
         display: none;
         justify-content: center;
         align-items: center;
+        backdrop-filter: blur(4px);
       }
 
       .loader {
-        border: 16px solid #f3f3f3;
+        border: 8px solid #f3f3f3;
         border-radius: 50%;
-        border-top: 16px solid var(--primary-color);
-        width: 120px;
-        height: 120px;
-        animation: spin 2s linear infinite;
+        border-top: 8px solid var(--primary-color);
+        width: 80px;
+        height: 80px;
+        animation: spin 1.5s linear infinite;
       }
 
       @keyframes spin {
@@ -251,18 +267,99 @@
         100% { transform: rotate(360deg); }
       }
 
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.3s;
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 2em;
+        border: none;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        position: relative;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from { transform: translateY(-50px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+
+      .modal-close-btn {
+        color: #aaa;
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .modal-content p {
+        font-size: 1.1em;
+        margin-bottom: 1.5em;
+      }
+
+      #recipe-details-view img {
+        width: 100%;
+        max-width: 500px;
+        border-radius: 12px;
+        margin-bottom: 1.5em;
+        object-fit: cover;
+      }
+
+      #recipe-details-view ul {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      #recipe-details-view ul li {
+        padding: 0.5em;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .search-filter-bar {
+          display: flex;
+          gap: 1em;
+          margin-bottom: 1.5em;
+      }
+
+      .search-filter-bar input, .search-filter-bar select {
+          flex-grow: 1;
+      }
+
       @media print {
         body {
           padding: 0;
-          overflow: visible; /* Show all content for printing */
+          overflow: visible;
+          background: none;
         }
-        .container {
+        .app-container {
           box-shadow: none;
           height: auto;
           overflow-y: visible;
         }
-        #main-nav, #spinner, .no-print {
+        header, #main-nav, #spinner, .no-print {
           display: none !important;
+        }
+        main {
+          padding: 0;
+          overflow-y: visible;
         }
         .view {
           display: none !important;
@@ -273,13 +370,13 @@
           box-shadow: none;
         }
 
-        /* Ensure buttons inside the details view are also hidden */
         #recipe-details-view button {
             display: none !important;
         }
 
-        /* But make an exception for a "Print" button if you wanted one to show */
-        /* For now, we hide all buttons in the details view */
+        #recipe-details-view img {
+            max-width: 80%;
+        }
       }
 
       .print-only {
@@ -303,48 +400,63 @@
         }
       }
 
-      /* Modal Styles */
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 10000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.4);
-      }
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        body {
+          padding: 0;
+        }
 
-      .modal-content {
-        background-color: #fefefe;
-        margin: 15% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 500px;
-        border-radius: 8px;
-        text-align: center;
-        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
-      }
+        .app-container {
+          height: 100vh;
+          border-radius: 0;
+        }
 
-      .modal-close-btn {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-      }
+        header {
+          padding: 1em;
+        }
 
-      .modal-close-btn:hover,
-      .modal-close-btn:focus {
-        color: black;
-        text-decoration: none;
-        cursor: pointer;
+        h1 {
+          font-size: 1.8em;
+        }
+
+        #main-nav {
+          flex-wrap: wrap;
+          padding: 0.5em;
+        }
+
+        #main-nav button {
+          font-size: 0.9em;
+          padding: 0.6em 1em;
+        }
+
+        main {
+          padding: 1.5em;
+        }
+
+        .ingredient-group, .search-filter-bar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 0.8em;
+        }
+
+        .modal-content {
+            width: 95%;
+            margin: 25% auto;
+        }
       }
     </style>
   </head>
   <body>
-    <!-- The Modal -->
+    <!-- Modals -->
     <div id="notification-modal" class="modal">
       <div class="modal-content">
         <span class="modal-close-btn" onclick="hideModal()">&times;</span>
@@ -352,198 +464,205 @@
         <button onclick="hideModal()">OK</button>
       </div>
     </div>
-
-    <!-- Confirmation Modal -->
     <div id="confirmation-modal" class="modal">
       <div class="modal-content">
         <p id="confirmation-message"></p>
         <button id="confirm-btn">Confirm</button>
-        <button onclick="hideConfirmModal()">Cancel</button>
+        <button class="secondary" onclick="hideConfirmModal()">Cancel</button>
       </div>
     </div>
-
 
     <div id="spinner">
       <div class="loader"></div>
     </div>
-   <div class="container">
-    <h1>Recipe Book</h1>
 
-    <div id="main-nav">
-      <button onclick="showView('add-ingredient-view')">Add Ingredient</button>
-      <button onclick="showView('add-recipe-view')">Add Recipe</button>
-      <button onclick="showView('recipes-list-view')">View Recipes</button>
-      <button onclick="showView('view-ingredients-view')">View Ingredients</button>
-      <button onclick="showView('inventory-view')">View Inventory</button>
-    </div>
+    <div class="app-container">
+      <header>
+        <h1>Recipe Book</h1>
+      </header>
 
-    <!-- Inventory View -->
-    <div id="inventory-view" class="view" style="display:none;">
-      <h2>Inventory</h2>
-      <table id="inventory-table">
-        <thead>
-          <tr>
-            <th>Ingredient Name</th>
-            <th>Quantity on Hand</th>
-            <th>Base Unit</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+      <nav id="main-nav">
+        <button onclick="showView('add-ingredient-view')">Add Ingredient</button>
+        <button onclick="showView('add-recipe-view')">Add Recipe</button>
+        <button onclick="showView('recipes-list-view')">View Recipes</button>
+        <button onclick="showView('view-ingredients-view')">View Ingredients</button>
+        <button onclick="showView('inventory-view')">View Inventory</button>
+      </nav>
 
-    <!-- Add Ingredient View -->
-    <div id="add-ingredient-view" class="view">
-      <h2>Add Ingredient Purchase</h2>
-      <div class="form-group">
-        <label for="ingredient-name">Name:</label>
-        <input type="text" id="ingredient-name">
-      </div>
-      <div class="form-group">
-        <label for="ingredient-cost">Cost:</label>
-        <input type="number" id="ingredient-cost" step="0.01">
-      </div>
-       <div class="form-group">
-        <label for="ingredient-quantity">Quantity:</label>
-        <input type="number" id="ingredient-quantity" step="0.01">
-      </div>
-      <div class="form-group">
-        <label for="ingredient-uom">Unit of Measure (e.g., kg, L, item):</label>
-        <input type="text" id="ingredient-uom">
-      </div>
-      <div class="form-group">
-        <label for="purchase-date">Purchase Date:</label>
-        <input type="date" id="purchase-date">
-      </div>
-      <div class="form-group">
-        <label for="store">Store:</label>
-        <input type="text" id="store">
-      </div>
-      <div class="form-group">
-        <label for="brand">Brand:</label>
-        <input type="text" id="brand">
-      </div>
-      <button onclick="addIngredient()">Submit</button>
-    </div>
-
-    <!-- Add Recipe View -->
-    <div id="add-recipe-view" class="view" style="display:none;">
-      <h2>Add Recipe</h2>
-      <div class="form-group">
-        <label for="recipe-name">Recipe Name:</label>
-        <input type="text" id="recipe-name">
-      </div>
-      <div class="form-group">
-        <label for="recipe-servings">Servings:</label>
-        <input type="number" id="recipe-servings" step="1" min="1">
-      </div>
-      <div class="form-group">
-        <label for="recipe-instructions">Instructions:</label>
-        <textarea id="recipe-instructions" rows="8"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="recipe-photo">Recipe Photo:</label>
-        <input type="file" id="recipe-photo" accept="image/*" onchange="previewPhoto(event)">
-        <img id="photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
-      </div>
-      <h3>Ingredients</h3>
-      <div id="ingredients-container">
-        <!-- Dynamic ingredients will be added here -->
-      </div>
-      <button type="button" onclick="addIngredientField()">Add Ingredient</button>
-      <button onclick="addRecipe()">Create Recipe</button>
-    </div>
-
-    <!-- Edit Recipe View (hidden by default) -->
-    <div id="edit-recipe-view" class="view" style="display:none;">
-      <h2>Edit Recipe</h2>
-      <input type="hidden" id="original-recipe-name">
-      <div class="form-group">
-        <label for="edit-recipe-name">Recipe Name:</label>
-        <input type="text" id="edit-recipe-name">
-      </div>
-      <div class="form-group">
-        <label for="edit-recipe-servings">Servings:</label>
-        <input type="number" id="edit-recipe-servings" step="1" min="1">
-      </div>
-      <div class="form-group">
-        <label for="edit-recipe-instructions">Instructions:</label>
-        <textarea id="edit-recipe-instructions" rows="8"></textarea>
-      </div>
-      <div class="form-group no-print">
-        <label for="edit-recipe-photo">Recipe Photo:</label>
-        <input type="file" id="edit-recipe-photo" accept="image/*" onchange="previewEditPhoto(event)">
-        <img id="edit-photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
-      </div>
-      <h3>Ingredients</h3>
-      <div id="edit-ingredients-container">
-        <!-- Dynamic ingredients will be added here -->
-      </div>
-      <button type="button" class="no-print" onclick="addEditIngredientField()">Add Ingredient</button>
-      <button class="no-print" onclick="updateRecipe()">Update Recipe</button>
-      <button type="button" class="no-print" onclick="printRecipe()">Print Recipe</button>
-      <button type="button" class="no-print" onclick="showView('recipes-list-view')">Cancel</button>
-    </div>
-
-    <!-- Recipes List View -->
-    <div id="recipes-list-view" class="view" style="display:none;">
-        <h2>All Recipes</h2>
-        <input type="text" id="recipe-search" onkeyup="filterRecipes()" placeholder="Search for recipes..">
-        <table id="recipes-table">
+      <main>
+        <!-- Inventory View -->
+        <div id="inventory-view" class="view" style="display:none;">
+          <h2>Inventory</h2>
+          <table id="inventory-table">
             <thead>
-                <tr>
-                    <th>Photo</th>
-                    <th>Recipe Name</th>
-                    <th>Total Cost</th>
-                    <th>Servings</th>
-                    <th>Cost Per Serving</th>
-                    <th>Suggested Selling Price</th>
-                    <th>Actions</th>
-                </tr>
+              <tr>
+                <th>Ingredient Name</th>
+                <th>Quantity on Hand</th>
+                <th>Base Unit</th>
+              </tr>
             </thead>
             <tbody></tbody>
-        </table>
-    </div>
+          </table>
+        </div>
 
-    <!-- Recipe Details View -->
-    <div id="recipe-details-view" class="view" style="display:none;">
-      <h2 id="details-recipe-name"></h2>
-      <img id="details-photo" src="#" alt="Recipe Photo" style="display:none; max-width: 400px; margin-bottom: 1em;">
-      <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
-      <p><strong>Servings:</strong> <span id="details-servings"></span></p>
-      <h3>Ingredients:</h3>
-      <ul id="details-ingredients-list"></ul>
-      <h3>Instructions:</h3>
-      <p id="details-instructions"></p>
-      <footer class="print-only">sumagpang recipe collection</footer>
-      <button type="button" onclick="showEditRecipeView(document.getElementById('details-recipe-name').textContent)">Edit Recipe</button>
-      <button type="button" onclick="printRecipe()">Print Recipe</button>
-      <button type="button" onclick="showView('recipes-list-view')">Back to Recipes</button>
-    </div>
+        <!-- Add Ingredient View -->
+        <div id="add-ingredient-view" class="view">
+          <h2>Add Ingredient Purchase</h2>
+          <div class="form-group">
+            <label for="ingredient-name">Name:</label>
+            <input type="text" id="ingredient-name">
+          </div>
+          <div class="form-group">
+            <label for="ingredient-cost">Cost:</label>
+            <input type="number" id="ingredient-cost" step="0.01">
+          </div>
+           <div class="form-group">
+            <label for="ingredient-quantity">Quantity:</label>
+            <input type="number" id="ingredient-quantity" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="ingredient-uom">Unit of Measure (e.g., kg, L, item):</label>
+            <input type="text" id="ingredient-uom">
+          </div>
+          <div class="form-group">
+            <label for="purchase-date">Purchase Date:</label>
+            <input type="date" id="purchase-date">
+          </div>
+          <div class="form-group">
+            <label for="store">Store:</label>
+            <input type="text" id="store">
+          </div>
+          <div class="form-group">
+            <label for="brand">Brand:</label>
+            <input type="text" id="brand">
+          </div>
+          <button onclick="addIngredient()">Submit</button>
+        </div>
 
-    <!-- View Ingredients View -->
-    <div id="view-ingredients-view" class="view" style="display:none;">
-      <h2>All Ingredient Purchases</h2>
-      <input type="text" id="ingredient-search" onkeyup="applyIngredientFilters()" placeholder="Search for ingredients..">
-      <select id="month-filter" onchange="applyIngredientFilters()">
-        <option value="">All Months</option>
-        <option value="0">January</option>
-        <option value="1">February</option>
-        <option value="2">March</option>
-        <option value="3">April</option>
-        <option value="4">May</option>
-        <option value="5">June</option>
-        <option value="6">July</option>
-        <option value="7">August</option>
-        <option value="8">September</option>
-        <option value="9">October</option>
-        <option value="10">November</option>
-        <option value="11">December</option>
-      </select>
-      <table id="ingredients-table">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
+        <!-- Add Recipe View -->
+        <div id="add-recipe-view" class="view" style="display:none;">
+          <h2>Add Recipe</h2>
+          <div class="form-group">
+            <label for="recipe-name">Recipe Name:</label>
+            <input type="text" id="recipe-name">
+          </div>
+          <div class="form-group">
+            <label for="recipe-servings">Servings:</label>
+            <input type="number" id="recipe-servings" step="1" min="1">
+          </div>
+          <div class="form-group">
+            <label for="recipe-instructions">Instructions:</label>
+            <textarea id="recipe-instructions" rows="8"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="recipe-photo">Recipe Photo:</label>
+            <input type="file" id="recipe-photo" accept="image/*" onchange="previewPhoto(event)">
+            <img id="photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
+          </div>
+          <h3>Ingredients</h3>
+          <div id="ingredients-container">
+            <!-- Dynamic ingredients will be added here -->
+          </div>
+          <button type="button" class="secondary" onclick="addIngredientField()">Add Ingredient</button>
+          <button onclick="addRecipe()">Create Recipe</button>
+        </div>
+
+        <!-- Edit Recipe View (hidden by default) -->
+        <div id="edit-recipe-view" class="view" style="display:none;">
+          <h2>Edit Recipe</h2>
+          <input type="hidden" id="original-recipe-name">
+          <div class="form-group">
+            <label for="edit-recipe-name">Recipe Name:</label>
+            <input type="text" id="edit-recipe-name">
+          </div>
+          <div class="form-group">
+            <label for="edit-recipe-servings">Servings:</label>
+            <input type="number" id="edit-recipe-servings" step="1" min="1">
+          </div>
+          <div class="form-group">
+            <label for="edit-recipe-instructions">Instructions:</label>
+            <textarea id="edit-recipe-instructions" rows="8"></textarea>
+          </div>
+          <div class="form-group no-print">
+            <label for="edit-recipe-photo">Recipe Photo:</label>
+            <input type="file" id="edit-recipe-photo" accept="image/*" onchange="previewEditPhoto(event)">
+            <img id="edit-photo-preview" src="#" alt="Photo Preview" style="display:none; max-width: 200px; margin-top: 1em;">
+          </div>
+          <h3>Ingredients</h3>
+          <div id="edit-ingredients-container">
+            <!-- Dynamic ingredients will be added here -->
+          </div>
+          <button type="button" class="no-print secondary" onclick="addEditIngredientField()">Add Ingredient</button>
+          <button class="no-print" onclick="updateRecipe()">Update Recipe</button>
+          <button type="button" class="no-print" onclick="printRecipe()">Print Recipe</button>
+          <button type="button" class="no-print" onclick="showView('recipes-list-view')">Cancel</button>
+        </div>
+
+        <!-- Recipes List View -->
+        <div id="recipes-list-view" class="view" style="display:none;">
+            <h2>All Recipes</h2>
+            <div class="search-filter-bar">
+              <input type="text" id="recipe-search" onkeyup="filterRecipes()" placeholder="Search for recipes..">
+            </div>
+            <table id="recipes-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Recipe Name</th>
+                        <th>Total Cost</th>
+                        <th>Servings</th>
+                        <th>Cost Per Serving</th>
+                        <th>Suggested Selling Price</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Recipe Details View -->
+        <div id="recipe-details-view" class="view" style="display:none;">
+          <h2 id="details-recipe-name"></h2>
+          <img id="details-photo" src="#" alt="Recipe Photo" style="display:none;">
+          <p><strong>Total Cost:</strong> <span id="details-total-cost"></span></p>
+          <p><strong>Servings:</strong> <span id="details-servings"></span></p>
+          <h3>Ingredients:</h3>
+          <ul id="details-ingredients-list"></ul>
+          <h3>Instructions:</h3>
+          <p id="details-instructions"></p>
+          <footer class="print-only">sumagpang recipe collection</footer>
+          <button type="button" class="no-print" onclick="showEditRecipeView(document.getElementById('details-recipe-name').textContent)">Edit Recipe</button>
+          <button type="button" class="no-print" onclick="printRecipe()">Print Recipe</button>
+          <button type="button" class="no-print" onclick="showView('recipes-list-view')">Back to Recipes</button>
+        </div>
+
+        <!-- View Ingredients View -->
+        <div id="view-ingredients-view" class="view" style="display:none;">
+          <h2>All Ingredient Purchases</h2>
+          <div class="search-filter-bar">
+            <input type="text" id="ingredient-search" onkeyup="applyIngredientFilters()" placeholder="Search for ingredients..">
+            <select id="month-filter" onchange="applyIngredientFilters()">
+              <option value="">All Months</option>
+              <option value="0">January</option>
+              <option value="1">February</option>
+              <option value="2">March</option>
+              <option value="3">April</option>
+              <option value="4">May</option>
+              <option value="5">June</option>
+              <option value="6">July</option>
+              <option value="7">August</option>
+              <option value="8">September</option>
+              <option value="9">October</option>
+              <option value="10">November</option>
+              <option value="11">December</option>
+            </select>
+          </div>
+          <table id="ingredients-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </main>
     </div>
 
     <script>
@@ -918,6 +1037,7 @@
                 img.src = recipe[5];
                 img.style.width = '100px';
                 img.style.height = 'auto';
+                img.style.borderRadius = '8px';
                 photoCell.appendChild(img);
               }
 
@@ -935,7 +1055,7 @@
 
               var actionsCell = row.insertCell();
               var makeButton = document.createElement('button');
-              makeButton.textContent = 'Make this Recipe';
+              makeButton.textContent = 'Make';
               makeButton.onclick = function() { makeRecipe(recipe[0]); };
               actionsCell.appendChild(makeButton);
             });
@@ -948,10 +1068,9 @@
         google.script.run
           .withFailureHandler(err => {
             hideSpinner();
-            // This catches script execution errors or network problems.
             showModal('A script error occurred: ' + err.message);
             var tbody = document.getElementById('ingredients-table').querySelector('tbody');
-            tbody.innerHTML = '<tr><td colspan="6" class="error-message">Could not load ingredient data. Please try again.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="error-message">Could not load ingredient data. Please try again.</td></tr>';
           })
           .withSuccessHandler(response => {
             var table = document.getElementById('ingredients-table');
@@ -961,12 +1080,11 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // Case 1: The backend function returned a specific, controlled error.
             if (response.error) {
               showModal('Error from server: ' + response.error);
               var row = tbody.insertRow();
               var cell = row.insertCell();
-              cell.colSpan = 6; // Default colspan for the error message
+              cell.colSpan = 7;
               cell.textContent = 'Error: ' + response.error;
               cell.className = 'error-message';
               hideSpinner();
@@ -974,10 +1092,8 @@
             }
 
             var data = response.data;
-            // Define headers. Use headers from the sheet if available, otherwise use a sensible default.
-            var headers = (data && data.length > 0) ? data[0] : ['Name', 'Cost', 'Purchase Date', 'Store', 'Quantity', 'UoM'];
+            var headers = (data && data.length > 0) ? data[0] : ['Name', 'Cost', 'Purchase Date', 'Store', 'Quantity', 'UoM', 'Brand'];
 
-            // Always render the header row so the table structure is present.
             var headerRow = document.createElement('tr');
             headers.forEach(headerText => {
                 var th = document.createElement('th');
@@ -986,7 +1102,6 @@
             });
             thead.appendChild(headerRow);
 
-            // Case 2: The sheet is empty or contains only the header row.
             if (!data || data.length <= 1) {
               var row = tbody.insertRow();
               var cell = row.insertCell();
@@ -994,23 +1109,20 @@
               cell.textContent = 'No ingredient purchases found.';
               cell.className = 'no-data-message';
             } else {
-              // Case 3: The sheet has data rows to display.
               for (var i = 1; i < data.length; i++) {
                 try {
                   var rowData = data[i];
                   var row = document.createElement('tr');
-                  row.setAttribute('data-date', rowData[2]); // Store raw date for filtering
+                  row.setAttribute('data-date', rowData[2]);
 
                   rowData.forEach((cellText, index) => {
                     var td = document.createElement('td');
-                    // Format the date column (index 2), now expecting YYYY-MM-DD
                     if (index === 2 && cellText && /^\d{4}-\d{2}-\d{2}$/.test(cellText)) {
-                      // The backend sends UTC, so create a UTC date to avoid timezone shifts
                       var parts = cellText.split('-');
                       var d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
-                      td.textContent = d.toLocaleDateString(); // Display in user's locale
+                      td.textContent = d.toLocaleDateString();
                     } else {
-                      td.textContent = cellText; // Show original text if not a valid date string
+                      td.textContent = cellText;
                     }
                     row.appendChild(td);
                   });
@@ -1021,7 +1133,7 @@
               }
             }
 
-            applyIngredientFilters(); // Apply filters regardless of data presence
+            applyIngredientFilters();
             hideSpinner();
           }).getAllIngredientPurchases();
       }
@@ -1035,27 +1147,23 @@
         var table = document.getElementById("ingredients-table");
         var tr = table.getElementsByTagName("tr");
 
-        for (var i = 1; i < tr.length; i++) { // Start i=1 to skip header row
+        for (var i = 1; i < tr.length; i++) {
           var row = tr[i];
           var displayRow = true;
 
-          // Month filter
           if (selectedMonth !== "") {
             var rawDateStr = row.getAttribute('data-date');
             if (rawDateStr && /^\d{4}-\d{2}-\d{2}$/.test(rawDateStr)) {
                var parts = rawDateStr.split('-');
-               // JavaScript's getMonth() is 0-indexed, which matches our filter's value.
                var month = parseInt(parts[1], 10) - 1;
                if (month.toString() !== selectedMonth) {
                  displayRow = false;
                }
             } else {
-              // If the date is invalid or empty, it cannot match the month filter.
               displayRow = false;
             }
           }
 
-          // Search text filter (only if row is still visible)
           if (displayRow && searchText !== "") {
             var rowText = row.textContent || row.innerText;
             if (rowText.toUpperCase().indexOf(searchText) === -1) {
@@ -1074,8 +1182,8 @@
         table = document.getElementById("recipes-table");
         tr = table.getElementsByTagName("tr");
 
-        for (i = 1; i < tr.length; i++) { // Start at 1 to skip header
-          td = tr[i].getElementsByTagName("td")[1]; // Second column is the name
+        for (i = 1; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[1];
           if (td) {
             txtValue = td.textContent || td.innerText;
             if (txtValue.toUpperCase().indexOf(filter) > -1) {
@@ -1099,7 +1207,7 @@
             .withSuccessHandler(response => {
               if (response.success) {
                 showModal('Recipe made successfully! Inventory has been updated.');
-                loadInventory(); // Refresh inventory view if needed
+                loadInventory();
               } else {
                 var message = "Could not make recipe. Missing ingredients:\n\n";
                 response.missing.forEach(ing => {
@@ -1122,7 +1230,6 @@
           .withSuccessHandler(data => {
             var tbody = document.getElementById('inventory-table').querySelector('tbody');
             tbody.innerHTML = '';
-            // Skip header row by starting at 1
             for (var i = 1; i < data.length; i++) {
               var row = tbody.insertRow();
               row.insertCell().textContent = data[i][0]; // Name
@@ -1133,12 +1240,9 @@
           }).getInventory();
       }
 
-      // Initial Load
       document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('main-nav').style.display = 'block';
         showView('recipes-list-view');
       });
     </script>
-    </div>
   </body>
 </html>
