@@ -1,0 +1,510 @@
+function getSpreadsheet() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index');
+}
+
+function addIngredient(name, cost, purchaseDate, store, quantity, uom, brand) {
+  var ingredientsSheet = getSpreadsheet().getSheetByName("Ingredients");
+  ingredientsSheet.appendRow([name, cost, purchaseDate, store, quantity, uom, brand]);
+
+  // --- Inventory Update Logic ---
+  var inventorySheet = getSpreadsheet().getSheetByName("Inventory");
+  var uomConverter = getUomConverter();
+  var conversionInfo = uomConverter.getConversionInfo(uom);
+
+  if (conversionInfo) {
+    var quantityInBaseUnit = quantity * conversionInfo.factor;
+    var inventoryData = inventorySheet.getDataRange().getValues();
+    var found = false;
+    for (var i = 1; i < inventoryData.length; i++) {
+      if (inventoryData[i][0] === name && inventoryData[i][2] === conversionInfo.base) {
+        var currentQty = parseFloat(inventoryData[i][1]);
+        inventorySheet.getRange(i + 1, 2).setValue(currentQty + quantityInBaseUnit);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      inventorySheet.appendRow([name, quantityInBaseUnit, conversionInfo.base]);
+    }
+  }
+
+  SpreadsheetApp.flush(); // Ensure all sheets are updated
+  return getUniqueIngredientNames(); // Return the fresh list
+}
+
+function getUniqueIngredientNames() {
+  var sheet = getSpreadsheet().getSheetByName("Ingredients");
+  var data = sheet.getDataRange().getValues();
+  var names = data.slice(1).map(function(row) { // slice(1) to skip header
+    return row[0];
+  });
+  var uniqueNames = [...new Set(names)]; // Get unique names
+  return uniqueNames.sort(); // Return sorted unique names
+}
+
+function getAllIngredientPurchases() {
+  try {
+    var sheet = getSpreadsheet().getSheetByName("Ingredients");
+    if (!sheet) {
+      // If the sheet doesn't exist, return an error.
+      return { error: "Sheet 'Ingredients' not found. Please create it or check the name." };
+    }
+
+    var data = sheet.getDataRange().getValues();
+
+    // If the sheet exists but is completely empty, return an empty data array.
+    if (!data || data.length === 0) {
+      return { data: [] };
+    }
+
+    // Process dates before sending to the client
+    var processedData = data.map(function(row, index) {
+      if (index === 0) return row; // Keep header row as is
+
+      var dateCell = row[2];
+      if (dateCell instanceof Date && !isNaN(dateCell.valueOf())) {
+        // It's a valid Date object, format it reliably
+        row[2] = dateCell.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      } else if (typeof dateCell === 'string' && dateCell.length > 0) {
+        // Attempt to parse a string date
+        var d = new Date(dateCell);
+        if (!isNaN(d.valueOf())) {
+          row[2] = d.toISOString().slice(0, 10);
+        }
+      }
+      // If it's not a valid date or it's empty, leave it as is for the frontend to handle.
+      return row;
+    });
+
+    return { data: processedData };
+
+  } catch (e) {
+    // Catch any other unexpected errors during sheet access.
+    return { error: "An unexpected error occurred: " + e.message };
+  }
+}
+
+function uploadFileToDrive(base64Data, fileName) {
+  var folderId = "1Q4zsUfqDwjrj9i5PWYEiKTgPKxuLCxM3";
+  var folder = DriveApp.getFolderById(folderId);
+
+  var contentType = base64Data.substring(5, base64Data.indexOf(';'));
+  var bytes = Utilities.base64Decode(base64Data.substr(base64Data.indexOf('base64,') + 7));
+  var blob = Utilities.newBlob(bytes, contentType, fileName);
+
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return file.getId();
+}
+
+function addRecipe(recipeName, ingredients, servings, instructions, photo) {
+  var photoId = null;
+  if (photo) {
+    photoId = uploadFileToDrive(photo, recipeName + "_photo");
+  }
+
+  var recipeSheet = getSpreadsheet().getSheetByName("Recipes");
+  recipeSheet.appendRow([recipeName, servings, instructions, photoId]);
+
+  var recipeIngredientsSheet = getSpreadsheet().getSheetByName("RecipeIngredients");
+  ingredients.forEach(function(ingredient) {
+    recipeIngredientsSheet.appendRow([recipeName, ingredient.name, ingredient.quantity, ingredient.uom]);
+  });
+
+  return "Recipe added successfully!";
+}
+
+function getRecipesWithCost() {
+  var ss = getSpreadsheet();
+  var recipesSheet = ss.getSheetByName("Recipes");
+  var ingredientsSheet = ss.getSheetByName("Ingredients");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+
+  var recipesData = recipesSheet.getDataRange().getValues().slice(1); // Skip header
+  var ingredientsData = ingredientsSheet.getDataRange().getValues().slice(1);
+  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues().slice(1);
+
+  // Re-use the conversion utility from getRecipeDetails
+  const uomConverter = getUomConverter();
+
+  // Create a map of the latest ingredient prices per base unit for efficiency
+  var latestBaseUnitPrices = {};
+  ingredientsData.forEach(function(ing) {
+    var name = ing[0];
+    var cost = parseFloat(ing[1]);
+    var purchaseDate = new Date(ing[2]);
+    var quantity = parseFloat(ing[4]);
+    var uom = ing[5];
+
+    var conversionInfo = uomConverter.getConversionInfo(uom);
+    if (quantity > 0 && conversionInfo) {
+      var quantityInBaseUnit = quantity * conversionInfo.factor;
+      var pricePerBaseUnit = cost / quantityInBaseUnit;
+
+      if (!latestBaseUnitPrices[name] || purchaseDate > latestBaseUnitPrices[name].date) {
+        latestBaseUnitPrices[name] = {
+          price: pricePerBaseUnit,
+          baseUnit: conversionInfo.base,
+          date: purchaseDate,
+          type: conversionInfo.type
+        };
+      }
+    }
+  });
+
+  // Create a map of ingredients for each recipe
+  var recipeIngredientsMap = {};
+  recipeIngredientsData.forEach(function(ri) {
+    var recipeName = ri[0];
+    if (!recipeIngredientsMap[recipeName]) {
+      recipeIngredientsMap[recipeName] = [];
+    }
+    recipeIngredientsMap[recipeName].push({
+      name: ri[1],
+      quantity: parseFloat(ri[2]),
+      uom: ri[3]
+    });
+  });
+
+  // Calculate costs for each recipe
+  var results = recipesData.map(function(recipeRow) {
+    var recipeName = recipeRow[0];
+    var servings = parseInt(recipeRow[1], 10) || 1; // Default to 1 serving if invalid
+    var ingredients = recipeIngredientsMap[recipeName] || [];
+    var totalCost = 0;
+
+    ingredients.forEach(function(ingredient) {
+      var purchaseInfo = latestBaseUnitPrices[ingredient.name];
+      var recipeConversionInfo = uomConverter.getConversionInfo(ingredient.uom);
+
+      if (purchaseInfo && recipeConversionInfo && purchaseInfo.type === recipeConversionInfo.type) {
+        var recipeQtyInBaseUnit = ingredient.quantity * recipeConversionInfo.factor;
+        totalCost += recipeQtyInBaseUnit * purchaseInfo.price;
+      }
+    });
+
+    var costPerServing = totalCost / servings;
+    var suggestedSellingPrice = totalCost * 3;
+    var photoId = recipeRow[3] || null;
+    var photoUrl = photoId ? "https://lh3.googleusercontent.com/d/" + photoId : null;
+
+    return [recipeName, totalCost, servings, costPerServing, suggestedSellingPrice, photoUrl];
+  });
+
+  return results;
+}
+
+
+function getUomConverter() {
+  return {
+    mass: { base: 'g', factors: { kg: 1000, g: 1, mg: 0.001 } },
+    volume: { base: 'ml', factors: { l: 1000, ml: 1 } },
+    item: { base: 'pcs', factors: { pcs: 1 } },
+
+    getConversionInfo: function(uom) {
+      if (!uom) return null;
+      uom = uom.toLowerCase();
+      for (const type in this) {
+        if (this[type].factors && this[type].factors[uom]) {
+          return {
+            type: type,
+            base: this[type].base,
+            factor: this[type].factors[uom]
+          };
+        }
+      }
+      return null; // Unit not supported
+    }
+  };
+}
+
+function getRecipeDetails(recipeName) {
+  const uomConverter = getUomConverter();
+  var ss = getSpreadsheet();
+  var recipesSheet = ss.getSheetByName("Recipes");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+  var ingredientsSheet = ss.getSheetByName("Ingredients");
+
+  // Find the specific recipe's details (servings, instructions)
+  var recipesData = recipesSheet.getDataRange().getValues();
+  var recipeInfo = {};
+  for (var i = 1; i < recipesData.length; i++) {
+    if (recipesData[i][0] === recipeName) {
+      recipeInfo.name = recipesData[i][0];
+      recipeInfo.servings = recipesData[i][1];
+      recipeInfo.instructions = recipesData[i][2];
+      recipeInfo.photo = recipesData[i][3];
+      break;
+    }
+  }
+
+  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
+  var ingredientsData = ingredientsSheet.getDataRange().getValues();
+
+  // Create a map of the latest ingredient prices per base unit
+  var latestBaseUnitPrices = {};
+  for (var i = 1; i < ingredientsData.length; i++) {
+    var name = ingredientsData[i][0];
+    var cost = parseFloat(ingredientsData[i][1]);
+    var purchaseDate = new Date(ingredientsData[i][2]);
+    var quantity = parseFloat(ingredientsData[i][4]);
+    var uom = ingredientsData[i][5];
+
+    var conversionInfo = uomConverter.getConversionInfo(uom);
+
+    if (quantity > 0 && conversionInfo) {
+      var quantityInBaseUnit = quantity * conversionInfo.factor;
+      var pricePerBaseUnit = cost / quantityInBaseUnit;
+
+      if (!latestBaseUnitPrices[name] || purchaseDate > latestBaseUnitPrices[name].date) {
+        latestBaseUnitPrices[name] = {
+          price: pricePerBaseUnit,
+          baseUnit: conversionInfo.base,
+          date: purchaseDate,
+          type: conversionInfo.type
+        };
+      }
+    }
+  }
+
+  // Get the ingredients for the specified recipe
+  var recipeIngredients = [];
+  for (var i = 1; i < recipeIngredientsData.length; i++) {
+    if (recipeIngredientsData[i][0] === recipeName) {
+      recipeIngredients.push({
+        name: recipeIngredientsData[i][1],
+        quantity: parseFloat(recipeIngredientsData[i][2]),
+        uom: recipeIngredientsData[i][3]
+      });
+    }
+  }
+
+  var totalCost = 0;
+  var ingredientDetails = [];
+
+  // Calculate total cost using the pre-computed map of base unit prices
+  recipeIngredients.forEach(function(ingredient) {
+    var ingredientName = ingredient.name;
+    var purchaseInfo = latestBaseUnitPrices[ingredientName];
+    var recipeConversionInfo = uomConverter.getConversionInfo(ingredient.uom);
+
+    var lineItem = {
+      name: ingredientName,
+      quantity: ingredient.quantity,
+      uom: ingredient.uom,
+      cost: 0,
+      status: 'OK'
+    };
+
+    if (purchaseInfo && recipeConversionInfo) {
+      if (purchaseInfo.type === recipeConversionInfo.type) {
+        var recipeQtyInBaseUnit = ingredient.quantity * recipeConversionInfo.factor;
+        var lineItemCost = recipeQtyInBaseUnit * purchaseInfo.price;
+        totalCost += lineItemCost;
+        lineItem.cost = lineItemCost;
+        lineItem.baseUnitPrice = purchaseInfo.price;
+        lineItem.baseUnit = purchaseInfo.baseUnit;
+      } else {
+        lineItem.status = 'Incompatible units';
+      }
+    } else {
+      lineItem.status = 'Price or unit not found';
+    }
+
+    ingredientDetails.push(lineItem);
+  });
+
+  var photoUrl = recipeInfo.photo ? "https://lh3.googleusercontent.com/d/" + recipeInfo.photo : null;
+
+  return {
+    recipeName: recipeName,
+    ingredients: ingredientDetails,
+    totalCost: totalCost,
+    servings: recipeInfo.servings,
+    instructions: recipeInfo.instructions,
+    photo: photoUrl
+  };
+}
+
+function updateRecipe(originalRecipeName, recipeData, photo) {
+  var photoId = null;
+  if (photo) {
+    photoId = uploadFileToDrive(photo, recipeData.name + "_photo");
+  } else {
+    // If no new photo is uploaded, try to retain the old one.
+    // This requires fetching the old recipe data first.
+    var recipesSheet = getSpreadsheet().getSheetByName("Recipes");
+    var recipesData = recipesSheet.getDataRange().getValues();
+    for (var i = 1; i < recipesData.length; i++) {
+      if (recipesData[i][0] === originalRecipeName) {
+        photoId = recipesData[i][3]; // Get existing photo ID
+        break;
+      }
+    }
+  }
+
+  var ss = getSpreadsheet();
+  var recipesSheet = ss.getSheetByName("Recipes");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+
+  // --- Fast Update for Recipes Sheet ---
+  var recipesData = recipesSheet.getDataRange().getValues();
+  var recipeFound = false;
+  for (var i = 1; i < recipesData.length; i++) {
+    if (recipesData[i][0] === originalRecipeName) {
+      recipesData[i][0] = recipeData.name;
+      recipesData[i][1] = recipeData.servings;
+      recipesData[i][2] = recipeData.instructions;
+      recipesData[i][3] = photoId;
+      recipeFound = true;
+      break;
+    }
+  }
+  if (recipeFound) {
+    recipesSheet.getDataRange().setValues(recipesData);
+  }
+
+  // --- Fast Update for RecipeIngredients Sheet ---
+  var allIngredients = recipeIngredientsSheet.getDataRange().getValues();
+  var updatedIngredients = allIngredients.filter(function(row) {
+    return row[0] !== originalRecipeName;
+  });
+
+  recipeData.ingredients.forEach(function(ingredient) {
+    updatedIngredients.push([recipeData.name, ingredient.name, ingredient.quantity, ingredient.uom]);
+  });
+
+  recipeIngredientsSheet.clearContents();
+  recipeIngredientsSheet.getRange(1, 1, updatedIngredients.length, updatedIngredients[0].length).setValues(updatedIngredients);
+
+  return "Recipe updated successfully!";
+}
+
+function getInventory() {
+  var inventorySheet = getSpreadsheet().getSheetByName("Inventory");
+  return inventorySheet.getDataRange().getValues();
+}
+
+function makeRecipe(recipeName) {
+  var ss = getSpreadsheet();
+  var inventorySheet = ss.getSheetByName("Inventory");
+  var recipeIngredientsSheet = ss.getSheetByName("RecipeIngredients");
+
+  var inventoryData = inventorySheet.getDataRange().getValues();
+  var recipeIngredientsData = recipeIngredientsSheet.getDataRange().getValues();
+
+  var uomConverter = getUomConverter();
+
+  // Create a map of current inventory
+  var inventoryMap = {};
+  for (var i = 1; i < inventoryData.length; i++) {
+    inventoryMap[inventoryData[i][0]] = {
+      quantity: parseFloat(inventoryData[i][1]),
+      baseUnit: inventoryData[i][2],
+      row: i + 1
+    };
+  }
+
+  // Get ingredients for the recipe
+  var recipeIngredients = [];
+  for (var i = 1; i < recipeIngredientsData.length; i++) {
+    if (recipeIngredientsData[i][0] === recipeName) {
+      recipeIngredients.push({
+        name: recipeIngredientsData[i][1],
+        quantity: parseFloat(recipeIngredientsData[i][2]),
+        uom: recipeIngredientsData[i][3]
+      });
+    }
+  }
+
+  // Check if there's enough inventory
+  var missingIngredients = [];
+  for (var i = 0; i < recipeIngredients.length; i++) {
+    var ing = recipeIngredients[i];
+    var inv = inventoryMap[ing.name];
+    var conversionInfo = uomConverter.getConversionInfo(ing.uom);
+
+    if (!inv || !conversionInfo || inv.baseUnit !== conversionInfo.base) {
+      missingIngredients.push({ name: ing.name, needed: ing.quantity, uom: ing.uom, reason: "Not in inventory or incompatible units" });
+      continue;
+    }
+
+    var neededQty = ing.quantity * conversionInfo.factor;
+    if (inv.quantity < neededQty) {
+      missingIngredients.push({ name: ing.name, needed: neededQty - inv.quantity, uom: inv.baseUnit, reason: "Insufficient quantity" });
+    }
+  }
+
+  if (missingIngredients.length > 0) {
+    return { success: false, missing: missingIngredients };
+  }
+
+  // Deduct from inventory
+  for (var i = 0; i < recipeIngredients.length; i++) {
+    var ing = recipeIngredients[i];
+    var inv = inventoryMap[ing.name];
+    var conversionInfo = uomConverter.getConversionInfo(ing.uom);
+    var neededQty = ing.quantity * conversionInfo.factor;
+
+    inventorySheet.getRange(inv.row, 2).setValue(inv.quantity - neededQty);
+  }
+
+  SpreadsheetApp.flush();
+  return { success: true };
+}
+
+function generateRecipePdf(recipeName, photoUrl, ingredients, instructions) {
+  var doc = DocumentApp.create('Temporary Recipe - ' + recipeName);
+  var body = doc.getBody();
+
+  // --- Styling ---
+  var headingStyle = {};
+  headingStyle[DocumentApp.Attribute.FONT_SIZE] = 18;
+  headingStyle[DocumentApp.Attribute.BOLD] = true;
+
+  var subHeadingStyle = {};
+  subHeadingStyle[DocumentApp.Attribute.FONT_SIZE] = 14;
+  subHeadingStyle[DocumentApp.Attribute.BOLD] = true;
+  subHeadingStyle[DocumentApp.Attribute.MARGIN_TOP] = 10;
+
+  // --- Content ---
+  body.appendParagraph(recipeName).setHeading(DocumentApp.ParagraphHeading.HEADING1).setAttributes(headingStyle);
+
+  if (photoUrl) {
+    try {
+      var photoBlob = UrlFetchApp.fetch(photoUrl).getBlob();
+      // 4 inches * 72 points/inch = 288
+      body.appendImage(photoBlob).setWidth(288).setHeight(288);
+    } catch (e) {
+      body.appendParagraph("[Could not load image]");
+    }
+  }
+
+  body.appendParagraph("Ingredients").setHeading(DocumentApp.ParagraphHeading.HEADING2).setAttributes(subHeadingStyle);
+  ingredients.forEach(function(ing) {
+    body.appendListItem(ing);
+  });
+
+  body.appendParagraph("Instructions").setHeading(DocumentApp.ParagraphHeading.HEADING2).setAttributes(subHeadingStyle);
+  body.appendParagraph(instructions);
+
+  body.appendParagraph("\n\nsumagpang recipe collection").setItalic(true);
+
+  doc.saveAndClose();
+
+  // --- Conversion & Cleanup ---
+  var pdfBlob = doc.getAs('application/pdf');
+  var base64Pdf = Utilities.base64Encode(pdfBlob.getBytes());
+
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+
+  return {
+    pdfData: base64Pdf,
+    filename: recipeName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf'
+  };
+}
