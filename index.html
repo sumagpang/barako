@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WIFI sa BUKID</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .header {
+      background-color: #2e7d32;
+      color: white;
+      width: 100%;
+      text-align: center;
+      padding: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .container {
+      padding: 20px;
+      width: 100%;
+      max-width: 600px;
+      box-sizing: border-box;
+    }
+    .plan-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .plan-card:hover {
+      transform: translateY(-2px);
+    }
+    .plan-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .plan-price {
+      font-size: 32px;
+      color: #2e7d32;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .plan-desc {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .btn {
+      background-color: #ff9800;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      max-width: 200px;
+      text-transform: uppercase;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #f57c00;
+    }
+    .btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .footer {
+      margin-top: auto;
+      padding: 20px;
+      color: #888;
+      font-size: 12px;
+      text-align: center;
+    }
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2e7d32;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: none;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .btn-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>WIFI sa BUKID</h1>
+    <p>Fast & Affordable Internet</p>
+  </div>
+
+  <div class="container">
+    <div id="error-msg" style="color: red; text-align: center; display: none; margin-bottom: 10px;"></div>
+
+    <!-- Plan 1 -->
+    <div class="plan-card">
+      <div class="plan-name">1 Hour Pass</div>
+      <div class="plan-price">₱10.00</div>
+      <div class="plan-desc">Good for quick browsing and chats.</div>
+      <button class="btn" onclick="buyPlan('1hour')">
+        <span class="btn-content">Buy Now <div class="loader" id="loader-1hour"></div></span>
+      </button>
+    </div>
+
+    <!-- Plan 2 -->
+    <div class="plan-card">
+      <div class="plan-name">1 Day Pass</div>
+      <div class="plan-price">₱50.00</div>
+      <div class="plan-desc">Unlimited data for 24 hours.</div>
+      <button class="btn" onclick="buyPlan('1day')">
+        <span class="btn-content">Buy Now <div class="loader" id="loader-1day"></div></span>
+      </button>
+    </div>
+
+    <!-- Plan 3 -->
+    <div class="plan-card">
+      <div class="plan-name">1 Week Pass</div>
+      <div class="plan-price">₱150.00</div>
+      <div class="plan-desc">Best value for long stays.</div>
+      <button class="btn" onclick="buyPlan('1week')">
+        <span class="btn-content">Buy Now <div class="loader" id="loader-1week"></div></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Accepted Payments: GCash, PayMaya, GrabPay via PayMongo<br>
+    © 2024 WIFI sa BUKID
+  </div>
+
+  <script>
+    function buyPlan(planId) {
+      // Disable all buttons
+      var buttons = document.querySelectorAll('.btn');
+      buttons.forEach(b => b.disabled = true);
+
+      // Show loader for this plan
+      var loader = document.getElementById('loader-' + planId);
+      if(loader) loader.style.display = 'inline-block';
+
+      // Call Backend
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .createPayMongoCheckout(planId);
+    }
+
+    function onSuccess(checkoutUrl) {
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        showError("Failed to generate payment link. Please try again.");
+      }
+    }
+
+    function onFailure(error) {
+      showError("Error: " + error.message);
+      // Re-enable buttons
+      var buttons = document.querySelectorAll('.btn');
+      buttons.forEach(b => b.disabled = false);
+      // Hide loaders
+      var loaders = document.querySelectorAll('.loader');
+      loaders.forEach(l => l.style.display = 'none');
+    }
+
+    function showError(msg) {
+      var el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>

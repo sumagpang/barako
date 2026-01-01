@@ -6,86 +6,34 @@ var SHEET_NAME = 'Transactions';
 // SECURITY: Define a shared secret token for the MikroTik to authenticate with this script
 var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';
 
-// SECURITY: Webhook Secret from PayMongo Dashboard (to verify signatures)
-var PAYMONGO_WEBHOOK_SECRET = 'wh_...';
-
-function doPost(e) {
-  try {
-    var output = ContentService.createTextOutput();
-    output.setMimeType(ContentService.MimeType.JSON);
-
-    // 0. Security Check: Verify PayMongo Signature
-    // Note: PayMongo sends a 'Paymongo-Signature' header.
-    // Implementing full HMAC verification in GAS can be complex due to header parsing limitations in some contexts.
-    // As a basic check, ensure the request has a body.
-    // For Production: Use Utilities.computeHmacSha256Signature(payload, secret) and compare.
-
-    if (!e.postData || !e.postData.contents) {
-       output.setContent(JSON.stringify({status: 'error', message: 'No content'}));
-       return output;
-    }
-
-    // 1. Parse Webhook
-    var postData = JSON.parse(e.postData.contents);
-    var type = postData.data.attributes.type;
-
-    // We only care about successful payments
-    if (type !== 'payment.paid') {
-      output.setContent(JSON.stringify({status: 'ignored'}));
-      return output;
-    }
-
-    var paymentData = postData.data.attributes.data.attributes;
-    var amount = paymentData.amount / 100; // PayMongo uses centavos
-    var description = paymentData.description; // e.g., "1 Hour WiFi"
-
-    // Get phone number and sanitize it
-    var rawPhone = paymentData.billing.phone;
-    var mobileNumber = sanitizePhoneNumber(rawPhone);
-
-    if (!mobileNumber) {
-        // Log error but return success to PayMongo so they don't retry indefinitely
-        Logger.log('Invalid Phone Number: ' + rawPhone);
-        output.setContent(JSON.stringify({status: 'error_invalid_phone'}));
-        return output;
-    }
-
-    // 2. Generate WiFi Credentials
-    var username = generateRandomString(6);
-    var password = generateRandomString(4); // Short for ease of typing
-
-    // 3. Save to Database (Google Sheet)
-    var sheet = getOrCreateSheet();
-    var timestamp = new Date();
-    // Status 'PENDING_SYNC' means MikroTik hasn't picked it up yet
-    sheet.appendRow([timestamp, mobileNumber, amount, description, username, password, 'PENDING_SYNC']);
-
-    // 4. Send SMS via Semaphore
-    var message = 'Thanks for purchasing ' + description + '! Your WiFi Code is: ' + username + ' Password: ' + password;
-    sendSms(mobileNumber, message);
-
-    output.setContent(JSON.stringify({status: 'success'}));
-    return output;
-
-  } catch (error) {
-    Logger.log(error);
-    var errorOutput = ContentService.createTextOutput();
-    errorOutput.setMimeType(ContentService.MimeType.JSON);
-    errorOutput.setContent(JSON.stringify({status: 'error', message: error.toString()}));
-    return errorOutput;
-  }
-}
+var PLANS = {
+  '1hour': { name: '1 Hour Pass', amount: 1000, description: '1 Hour WiFi Access' }, // Amount in centavos
+  '1day':  { name: '1 Day Pass',  amount: 5000, description: '1 Day WiFi Access' },
+  '1week': { name: '1 Week Pass', amount: 15000, description: '1 Week WiFi Access' }
+};
 
 function doGet(e) {
-  // This endpoint is for the MikroTik Router to fetch new users
-  // Security Check: Token is required
+  // Mode 1: MikroTik Router Fetching Users (Requires Token)
+  if (e.parameter.token && e.parameter.token === MIKROTIK_TOKEN) {
+    return handleRouterRequest(e);
+  }
+
+  // Mode 2: Storefront (HTML)
+  // Handle success/cancel params if needed (e.g. show a thank you message)
+  if (e.parameter.status === 'success') {
+     return HtmlService.createHtmlOutput('<h1>Payment Successful!</h1><p>Wait for the SMS with your WiFi password.</p>')
+         .setTitle('Payment Success').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
+  return HtmlService.createHtmlOutputFromFile('index')
+      .setTitle('WIFI sa BUKID')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Allow iframing if needed
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function handleRouterRequest(e) {
   var output = ContentService.createTextOutput();
   output.setMimeType(ContentService.MimeType.JSON);
-
-  if (!e.parameter.token || e.parameter.token !== MIKROTIK_TOKEN) {
-     output.setContent(JSON.stringify({error: 'Unauthorized'}));
-     return output;
-  }
 
   var sheet = getOrCreateSheet();
   var data = sheet.getDataRange().getValues();
@@ -113,30 +61,186 @@ function doGet(e) {
   return output;
 }
 
+// Called from Frontend (index.html)
+function createPayMongoCheckout(planId) {
+  var plan = PLANS[planId];
+  if (!plan) throw new Error('Invalid Plan');
+
+  // Create PayMongo Checkout Session
+  // success_url and cancel_url are required.
+  // We point them back to the Web App URL (the store).
+  var webAppUrl = ScriptApp.getService().getUrl();
+
+  var payload = {
+    data: {
+      attributes: {
+        line_items: [
+          {
+            name: plan.name,
+            amount: plan.amount,
+            currency: 'PHP',
+            quantity: 1,
+            description: plan.description
+          }
+        ],
+        payment_method_types: ['gcash', 'paymaya', 'grab_pay'],
+        send_email_receipt: false,
+        description: plan.description,
+        show_description: true,
+        show_line_items: true,
+        success_url: webAppUrl + "?status=success",
+        cancel_url: webAppUrl + "?status=cancelled"
+      }
+    }
+  };
+
+  var apiKey = PropertiesService.getScriptProperties().getProperty('PAYMONGO_SECRET_KEY');
+  if (!apiKey) throw new Error('Payment Server Config Error'); // Don't leak key info
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Basic ' + Utilities.base64Encode(apiKey + ':')
+    },
+    payload: JSON.stringify(payload)
+  };
+
+  try {
+    var response = UrlFetchApp.fetch('https://api.paymongo.com/v1/checkout_sessions', options);
+    var json = JSON.parse(response.getContentText());
+    return json.data.attributes.checkout_url;
+  } catch (e) {
+    Logger.log('PayMongo Error: ' + e.toString());
+    throw new Error('Failed to create payment link.');
+  }
+}
+
+function doPost(e) {
+  try {
+    var output = ContentService.createTextOutput();
+    output.setMimeType(ContentService.MimeType.JSON);
+
+    if (!e.postData || !e.postData.contents) {
+       output.setContent(JSON.stringify({status: 'error', message: 'No content'}));
+       return output;
+    }
+
+    var postData = JSON.parse(e.postData.contents);
+    var eventType = postData.data.attributes.type;
+
+    // Only process checkout payments
+    if (eventType !== 'checkout_session.payment.paid') {
+      output.setContent(JSON.stringify({status: 'ignored'}));
+      return output;
+    }
+
+    // SECURITY: Verify the transaction with PayMongo API to prevent spoofing.
+    // We cannot trust the webhook payload alone because we cannot verify headers in GAS.
+    var checkoutSessionId = postData.data.attributes.data.id;
+    var verifiedSession = verifyPayMongoSession(checkoutSessionId);
+
+    if (!verifiedSession) {
+        Logger.log('Security Alert: Verification failed for session ' + checkoutSessionId);
+        output.setContent(JSON.stringify({status: 'error_verification_failed'}));
+        return output;
+    }
+
+    // Proceed with verified data
+    var attributes = verifiedSession.attributes;
+
+    // Check payment status again to be sure
+    // Note: The session attribute usually has 'payment_intent' which has status 'succeeded'
+    // But since we are handling the 'paid' event, we assume it's paid.
+
+    var description = attributes.description || 'WiFi Access';
+    var amountPaid = 0;
+    if (attributes.line_items && attributes.line_items.length > 0) {
+        amountPaid = attributes.line_items[0].amount / 100;
+    }
+
+    // Get phone number
+    var rawPhone = null;
+    if (attributes.billing && attributes.billing.phone) {
+        rawPhone = attributes.billing.phone;
+    } else if (attributes.customer && attributes.customer.phone) {
+        rawPhone = attributes.customer.phone;
+    }
+
+    var mobileNumber = sanitizePhoneNumber(rawPhone);
+
+    if (!mobileNumber) {
+        Logger.log('No valid phone number found in payment: ' + rawPhone);
+        output.setContent(JSON.stringify({status: 'error_no_phone'}));
+        return output;
+    }
+
+    // 2. Generate WiFi Credentials
+    var username = generateRandomString(6);
+    var password = generateRandomString(4);
+
+    // 3. Save to Database
+    var sheet = getOrCreateSheet();
+    var timestamp = new Date();
+    sheet.appendRow([timestamp, mobileNumber, amountPaid, description, username, password, 'PENDING_SYNC']);
+
+    // 4. Send SMS
+    var message = 'WIFI sa BUKID: Thanks for buying ' + description + '! Code: ' + username + ' Pass: ' + password;
+    sendSms(mobileNumber, message);
+
+    output.setContent(JSON.stringify({status: 'success'}));
+    return output;
+
+  } catch (error) {
+    Logger.log(error);
+    var errorOutput = ContentService.createTextOutput();
+    errorOutput.setMimeType(ContentService.MimeType.JSON);
+    errorOutput.setContent(JSON.stringify({status: 'error', message: error.toString()}));
+    return errorOutput;
+  }
+}
+
 // --- Helper Functions ---
+
+function verifyPayMongoSession(sessionId) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('PAYMONGO_SECRET_KEY');
+  if (!apiKey) return null;
+
+  var options = {
+    method: 'get',
+    headers: {
+      'Authorization': 'Basic ' + Utilities.base64Encode(apiKey + ':')
+    },
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch('https://api.paymongo.com/v1/checkout_sessions/' + sessionId, options);
+    if (response.getResponseCode() !== 200) {
+       return null;
+    }
+
+    var json = JSON.parse(response.getContentText());
+    // Ensure the ID matches and payments exist
+    if (json.data.id === sessionId && json.data.attributes.payments && json.data.attributes.payments.length > 0) {
+        return json.data;
+    }
+    return null;
+  } catch (e) {
+    Logger.log('Verification Error: ' + e);
+    return null;
+  }
+}
 
 function sanitizePhoneNumber(phone) {
   if (!phone) return null;
-
-  // Remove all non-numeric characters
   var cleaned = phone.toString().replace(/\D/g, '');
 
-  // Check for Country Code 63 (Philippines)
-  if (cleaned.startsWith('63') && cleaned.length === 12) {
-    return '0' + cleaned.substring(2);
-  }
+  if (cleaned.startsWith('63') && cleaned.length === 12) return '0' + cleaned.substring(2);
+  if (cleaned.startsWith('09') && cleaned.length === 11) return cleaned;
+  if (cleaned.startsWith('9') && cleaned.length === 10) return '0' + cleaned;
 
-  // Check if it already starts with 09
-  if (cleaned.startsWith('09') && cleaned.length === 11) {
-    return cleaned;
-  }
-
-  // If it's 9xxxxxxxxx (missing 0)
-  if (cleaned.startsWith('9') && cleaned.length === 10) {
-    return '0' + cleaned;
-  }
-
-  return null; // Invalid format
+  return null;
 }
 
 function sendSms(number, message) {
@@ -166,7 +270,7 @@ function sendSms(number, message) {
 }
 
 function generateRandomString(length) {
-  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, 1, O, 0 to avoid confusion
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var result = '';
   for (var i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -176,9 +280,7 @@ function generateRandomString(length) {
 
 function getOrCreateSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-     throw new Error("Script must be bound to a Google Sheet");
-  }
+  if (!ss) throw new Error("Script must be bound to a Google Sheet");
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
@@ -188,17 +290,17 @@ function getOrCreateSheet() {
 }
 
 function getProfileFromDescription(desc) {
-  // Simple mapping logic - Customize as needed
   if (!desc) return 'default';
   if (desc.toLowerCase().indexOf('1 hour') !== -1) return '1hour_plan';
   if (desc.toLowerCase().indexOf('1 day') !== -1) return '1day_plan';
+  if (desc.toLowerCase().indexOf('1 week') !== -1) return '1week_plan';
   return 'default';
 }
 
 function getLimitFromDescription(desc) {
-  // Return time limit in string format for MikroTik (e.g., "1h", "1d")
   if (!desc) return '1h';
   if (desc.toLowerCase().indexOf('1 hour') !== -1) return '1h';
   if (desc.toLowerCase().indexOf('1 day') !== -1) return '1d';
+  if (desc.toLowerCase().indexOf('1 week') !== -1) return '1w';
   return '1h';
 }
