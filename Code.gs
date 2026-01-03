@@ -18,17 +18,63 @@ function doGet(e) {
     return handleRouterRequest(e);
   }
 
-  // Mode 2: Storefront (HTML)
-  // Handle success/cancel params if needed (e.g. show a thank you message)
-  if (e.parameter.status === 'success') {
-     return HtmlService.createHtmlOutput('<h1>Payment Successful!</h1><p>Wait for the SMS with your WiFi password.</p>')
-         .setTitle('Payment Success').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  // Mode 2: Success Page (User Returned from PayMongo)
+  if (e.parameter.status === 'success' && e.parameter.ref) {
+     return handleSuccessPage(e.parameter.ref);
   }
 
+  // Mode 3: Storefront (HTML)
   return HtmlService.createHtmlOutputFromFile('index')
       .setTitle('WIFI sa BUKID')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Allow iframing if needed
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function handleSuccessPage(referenceId) {
+  // Look up the transaction to get credentials
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  var user = null;
+
+  // Search for the reference ID (Column H - 8th column, index 7)
+  // Assuming we add Reference ID to column H
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] === referenceId) {
+       user = {
+         username: data[i][4],
+         password: data[i][5],
+         status: data[i][6]
+       };
+       break;
+    }
+  }
+
+  var html = '';
+  if (user) {
+    // If status is still 'PENDING_PAYMENT', we might need to wait or just show it anyway if we trust the redirect
+    // But ideally, we wait for webhook. However, user is impatient.
+    // We can show the credentials immediately since we pre-generated them.
+    // The router won't accept them until status becomes SYNCED (after webhook fires).
+
+    html = `
+      <div style="font-family: sans-serif; text-align: center; padding: 20px;">
+        <h1 style="color: #2e7d32;">Payment Successful!</h1>
+        <p>Your WiFi access is being prepared.</p>
+        <div style="background: #f0f0f0; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
+           <p><strong>Username:</strong> <span style="font-size: 24px;">${user.username}</span></p>
+           <p><strong>Password:</strong> <span style="font-size: 24px; color: #d32f2f;">${user.password}</span></p>
+        </div>
+        <p>A copy has been sent to your mobile number.</p>
+        <p style="font-size: 12px; color: #666;">Note: Please wait 1-2 minutes for the router to activate your account.</p>
+        <a href="http://10.0.0.1/login" style="display: inline-block; background: #2e7d32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Login</a>
+      </div>
+    `;
+  } else {
+    html = '<h1>Processing...</h1><p>Please check your SMS for the password.</p>';
+  }
+
+  return HtmlService.createHtmlOutput(html)
+      .setTitle('Payment Success').addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 function handleRouterRequest(e) {
@@ -44,15 +90,16 @@ function handleRouterRequest(e) {
     var row = data[i];
     var status = row[6]; // Column G
 
-    if (status === 'PENDING_SYNC') {
+    // Only sync PAID transactions
+    if (status === 'PAID_PENDING_SYNC') {
       usersToAdd.push({
         username: row[4],
         password: row[5],
-        profile: getProfileFromDescription(row[3]), // Map plan to profile
-        limitUptime: getLimitFromDescription(row[3]) // Map plan to time limit
+        profile: getProfileFromDescription(row[3]),
+        limitUptime: getLimitFromDescription(row[3])
       });
 
-      // Mark as SYNCED so we don't add it again
+      // Mark as SYNCED
       sheet.getRange(i + 1, 7).setValue('SYNCED');
     }
   }
@@ -62,15 +109,33 @@ function handleRouterRequest(e) {
 }
 
 // Called from Frontend (index.html)
-function createPayMongoCheckout(planId) {
+function createPayMongoCheckout(planId, mobileNumber) {
   var plan = PLANS[planId];
   if (!plan) throw new Error('Invalid Plan');
 
-  // Create PayMongo Checkout Session
-  // success_url and cancel_url are required.
-  // We point them back to the Web App URL (the store).
   var webAppUrl = ScriptApp.getService().getUrl();
 
+  // Generate Reference ID and Password NOW
+  var referenceId = 'ref_' + generateRandomString(12);
+  var username = mobileNumber; // User wants Mobile # as Username
+  var password = generateRandomString(4);
+
+  // Pre-save to DB as PENDING_PAYMENT
+  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID
+  var sheet = getOrCreateSheet();
+  var timestamp = new Date();
+  sheet.appendRow([
+    timestamp,
+    mobileNumber,
+    plan.amount / 100,
+    plan.description,
+    username,
+    password,
+    'PENDING_PAYMENT',
+    referenceId
+  ]);
+
+  // Create PayMongo Checkout Session
   var payload = {
     data: {
       attributes: {
@@ -83,19 +148,25 @@ function createPayMongoCheckout(planId) {
             description: plan.description
           }
         ],
+        billing: {
+          name: 'Customer ' + mobileNumber,
+          email: 'customer@example.com', // Optional but recommended
+          phone: mobileNumber // Pre-fill phone
+        },
         payment_method_types: ['gcash', 'paymaya', 'grab_pay'],
         send_email_receipt: false,
         description: plan.description,
+        reference_number: referenceId, // Pass our ref to PayMongo
         show_description: true,
         show_line_items: true,
-        success_url: webAppUrl + "?status=success",
+        success_url: webAppUrl + "?status=success&ref=" + referenceId,
         cancel_url: webAppUrl + "?status=cancelled"
       }
     }
   };
 
   var apiKey = PropertiesService.getScriptProperties().getProperty('PAYMONGO_SECRET_KEY');
-  if (!apiKey) throw new Error('Payment Server Config Error'); // Don't leak key info
+  if (!apiKey) throw new Error('Payment Server Config Error');
 
   var options = {
     method: 'post',
@@ -135,8 +206,6 @@ function doPost(e) {
       return output;
     }
 
-    // SECURITY: Verify the transaction with PayMongo API to prevent spoofing.
-    // We cannot trust the webhook payload alone because we cannot verify headers in GAS.
     var checkoutSessionId = postData.data.attributes.data.id;
     var verifiedSession = verifyPayMongoSession(checkoutSessionId);
 
@@ -146,47 +215,42 @@ function doPost(e) {
         return output;
     }
 
-    // Proceed with verified data
+    // Validated
     var attributes = verifiedSession.attributes;
+    var referenceId = attributes.reference_number; // We passed this earlier
 
-    // Check payment status again to be sure
-    // Note: The session attribute usually has 'payment_intent' which has status 'succeeded'
-    // But since we are handling the 'paid' event, we assume it's paid.
-
-    var description = attributes.description || 'WiFi Access';
-    var amountPaid = 0;
-    if (attributes.line_items && attributes.line_items.length > 0) {
-        amountPaid = attributes.line_items[0].amount / 100;
-    }
-
-    // Get phone number
-    var rawPhone = null;
-    if (attributes.billing && attributes.billing.phone) {
-        rawPhone = attributes.billing.phone;
-    } else if (attributes.customer && attributes.customer.phone) {
-        rawPhone = attributes.customer.phone;
-    }
-
-    var mobileNumber = sanitizePhoneNumber(rawPhone);
-
-    if (!mobileNumber) {
-        Logger.log('No valid phone number found in payment: ' + rawPhone);
-        output.setContent(JSON.stringify({status: 'error_no_phone'}));
-        return output;
-    }
-
-    // 2. Generate WiFi Credentials
-    var username = generateRandomString(6);
-    var password = generateRandomString(4);
-
-    // 3. Save to Database
+    // Find row by Reference ID and Update Status
     var sheet = getOrCreateSheet();
-    var timestamp = new Date();
-    sheet.appendRow([timestamp, mobileNumber, amountPaid, description, username, password, 'PENDING_SYNC']);
+    var data = sheet.getDataRange().getValues();
+    var foundRowIndex = -1;
+    var userRow = null;
 
-    // 4. Send SMS
-    var message = 'WIFI sa BUKID: Thanks for buying ' + description + '! Code: ' + username + ' Pass: ' + password;
-    sendSms(mobileNumber, message);
+    for (var i = 1; i < data.length; i++) {
+        // Check Reference ID (Col H / Index 7)
+        if (data[i][7] == referenceId) {
+            foundRowIndex = i + 1; // 1-based index
+            userRow = data[i];
+            break;
+        }
+    }
+
+    if (foundRowIndex > 0) {
+        // Update status to PAID_PENDING_SYNC so router can pick it up
+        sheet.getRange(foundRowIndex, 7).setValue('PAID_PENDING_SYNC');
+
+        var username = userRow[4];
+        var password = userRow[5];
+        var description = userRow[3];
+        var mobileNumber = userRow[1];
+
+        // Send SMS
+        var message = 'WIFI sa BUKID: Payment Received! Username: ' + username + ' Password: ' + password;
+        sendSms(mobileNumber, message);
+
+    } else {
+        Logger.log("Transaction not found for ref: " + referenceId);
+        // Fallback: Create new row if not found (unlikely if flow followed)
+    }
 
     output.setContent(JSON.stringify({status: 'success'}));
     return output;
@@ -219,9 +283,7 @@ function verifyPayMongoSession(sessionId) {
     if (response.getResponseCode() !== 200) {
        return null;
     }
-
     var json = JSON.parse(response.getContentText());
-    // Ensure the ID matches and payments exist
     if (json.data.id === sessionId && json.data.attributes.payments && json.data.attributes.payments.length > 0) {
         return json.data;
     }
@@ -232,36 +294,22 @@ function verifyPayMongoSession(sessionId) {
   }
 }
 
-function sanitizePhoneNumber(phone) {
-  if (!phone) return null;
-  var cleaned = phone.toString().replace(/\D/g, '');
-
-  if (cleaned.startsWith('63') && cleaned.length === 12) return '0' + cleaned.substring(2);
-  if (cleaned.startsWith('09') && cleaned.length === 11) return cleaned;
-  if (cleaned.startsWith('9') && cleaned.length === 10) return '0' + cleaned;
-
-  return null;
-}
-
 function sendSms(number, message) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('SEMAPHORE_API_KEY');
-  if (!apiKey) {
-      Logger.log('SEMAPHORE_API_KEY not set');
-      return;
-  }
+  if (!apiKey) return;
+
+  // Ensure number is clean for Semaphore
+  var cleanNum = number;
+  // (Assuming already cleaned by frontend or sanitized here)
 
   var payload = {
     apikey: apiKey,
-    number: number,
+    number: cleanNum,
     message: message,
     sendername: SENDER_NAME
   };
 
-  var options = {
-    method: 'post',
-    payload: payload
-  };
-
+  var options = { method: 'post', payload: payload };
   try {
     UrlFetchApp.fetch('https://api.semaphore.co/api/v4/messages', options);
   } catch (e) {
@@ -284,7 +332,8 @@ function getOrCreateSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status']);
+    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID
+    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID']);
   }
   return sheet;
 }

@@ -33,6 +33,32 @@
       max-width: 600px;
       box-sizing: border-box;
     }
+    .input-group {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #333;
+    }
+    .input-group input {
+      width: 80%;
+      padding: 12px;
+      font-size: 18px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      text-align: center;
+      outline: none;
+    }
+    .input-group input:focus {
+      border-color: #2e7d32;
+    }
     .plan-card {
       background: white;
       border-radius: 12px;
@@ -123,6 +149,12 @@
   <div class="container">
     <div id="error-msg" style="color: red; text-align: center; display: none; margin-bottom: 10px;"></div>
 
+    <div class="input-group">
+      <label for="mobile">Enter your Mobile Number</label>
+      <input type="tel" id="mobile" placeholder="09xxxxxxxxx" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+      <p style="font-size: 12px; color: #666; margin-top: 5px;">This will be your Username.</p>
+    </div>
+
     <!-- Plan 1 -->
     <div class="plan-card">
       <div class="plan-name">1 Hour Pass</div>
@@ -161,19 +193,33 @@
 
   <script>
     function buyPlan(planId) {
+      var mobileInput = document.getElementById('mobile');
+      var mobile = mobileInput.value;
+
+      // Validate Mobile Number
+      if (!mobile || mobile.length !== 11 || !mobile.startsWith('09')) {
+        showError("Please enter a valid valid 11-digit Globe/Smart number (09xxxxxxxxx).");
+        mobileInput.focus();
+        return;
+      }
+
       // Disable all buttons
       var buttons = document.querySelectorAll('.btn');
       buttons.forEach(b => b.disabled = true);
+      mobileInput.disabled = true;
 
       // Show loader for this plan
       var loader = document.getElementById('loader-' + planId);
       if(loader) loader.style.display = 'inline-block';
 
+      // Clear error
+      document.getElementById('error-msg').style.display = 'none';
+
       // Call Backend
       google.script.run
         .withSuccessHandler(onSuccess)
         .withFailureHandler(onFailure)
-        .createPayMongoCheckout(planId);
+        .createPayMongoCheckout(planId, mobile);
     }
 
     function onSuccess(checkoutUrl) {
@@ -189,6 +235,7 @@
       // Re-enable buttons
       var buttons = document.querySelectorAll('.btn');
       buttons.forEach(b => b.disabled = false);
+      document.getElementById('mobile').disabled = false;
       // Hide loaders
       var loaders = document.querySelectorAll('.loader');
       loaders.forEach(l => l.style.display = 'none');
