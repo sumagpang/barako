@@ -110,7 +110,7 @@ function handleRouterRequest(e) {
 }
 
 // Called from Frontend (index.html)
-function createPayMongoCheckout(planId, mobileNumber) {
+function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   var plan = PLANS[planId];
   if (!plan) throw new Error('Invalid Plan');
 
@@ -136,6 +136,20 @@ function createPayMongoCheckout(planId, mobileNumber) {
     referenceId
   ]);
 
+  // Determine Payment Method Types based on user selection
+  var paymentTypes = ['gcash', 'paymaya', 'grab_pay']; // Default fallback
+
+  if (paymentMethod === 'gcash') {
+    paymentTypes = ['gcash'];
+  } else if (paymentMethod === 'paymaya') {
+    paymentTypes = ['paymaya'];
+  } else if (paymentMethod === 'coinsph') {
+    // Coins.ph is often accessible via QR PH (supported by Maya/GCash/Grab) or other means.
+    // PayMongo doesn't have a specific 'coins' type. We allow all standard types to ensure coverage,
+    // or arguably just Maya/GCash if they handle QR. For now, we allow the main ones.
+    paymentTypes = ['gcash', 'paymaya', 'grab_pay'];
+  }
+
   // Create PayMongo Checkout Session
   var payload = {
     data: {
@@ -154,7 +168,7 @@ function createPayMongoCheckout(planId, mobileNumber) {
           email: 'customer@example.com', // Optional but recommended
           phone: mobileNumber // Pre-fill phone
         },
-        payment_method_types: ['gcash', 'paymaya', 'grab_pay'],
+        payment_method_types: paymentTypes,
         send_email_receipt: false,
         description: plan.description,
         reference_number: referenceId, // Pass our ref to PayMongo
