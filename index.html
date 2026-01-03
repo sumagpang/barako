@@ -183,39 +183,23 @@
     /* Payment Methods */
     .payment-methods {
       display: flex;
-      gap: 15px;
+      gap: 20px;
       margin-bottom: 25px;
-      justify-content: flex-start; /* Or center */
+      justify-content: center; /* Centered */
+      align-items: center;
     }
 
     .pm-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 60px;
     }
 
-    .pm-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 18px;
-      margin-bottom: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    .pm-gcash { background-color: #007bff; }
-    .pm-maya { background-color: #2e7d32; }
-    .pm-coins { background-color: #ffc107; }
-
-    .pm-label {
-      font-size: 10px;
-      color: var(--text-dark);
+    .pm-logo {
+      height: 35px; /* Fixed height for consistency */
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
     }
 
     /* Mobile Input */
@@ -414,16 +398,13 @@
       </div>
       <div class="payment-methods">
         <div class="pm-item">
-          <div class="pm-icon pm-gcash">G</div>
-          <span class="pm-label">GCash</span>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/GCash_logo.svg/500px-GCash_logo.svg.png" class="pm-logo" alt="GCash">
         </div>
         <div class="pm-item">
-          <div class="pm-icon pm-maya">M</div>
-          <span class="pm-label">Maya</span>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Maya_logo.svg/500px-Maya_logo.svg.png" class="pm-logo" alt="Maya">
         </div>
         <div class="pm-item">
-          <div class="pm-icon pm-coins">C</div>
-          <span class="pm-label">Coins</span>
+          <img src="https://avatars.githubusercontent.com/u/12470903?s=200&v=4" class="pm-logo" alt="Coins.ph" style="border-radius: 50%">
         </div>
       </div>
 
