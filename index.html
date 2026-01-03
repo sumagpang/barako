@@ -4,247 +4,539 @@
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WIFI sa BUKID</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary-green: #1b8e3d; /* Adjust based on image */
+      --light-green: #e6f4ea;
+      --border-color: #e0e0e0;
+      --text-dark: #333;
+      --text-light: #666;
+      --accent-orange: #ff6d00;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f0f2f5;
+      font-family: 'Poppins', sans-serif;
+      background-color: #333; /* Dark background like the overlay in image */
       margin: 0;
       padding: 0;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
       min-height: 100vh;
+      background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80'); /* Fallback nature bg */
+      background-size: cover;
+      background-position: center;
     }
+
+    /* Overlay for the background */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5); /* Darkening overlay */
+      z-index: -1;
+    }
+
+    .main-card {
+      background: #f9f9f9;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
     .header {
-      background-color: #2e7d32;
+      background-color: var(--primary-green);
       color: white;
-      width: 100%;
       text-align: center;
-      padding: 20px 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 30px 20px;
+      border-bottom-left-radius: 20px; /* Slight curve maybe? Image looks flat but rounded top */
+      border-bottom-right-radius: 20px;
     }
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    .container {
-      padding: 20px;
-      width: 100%;
-      max-width: 600px;
-      box-sizing: border-box;
-    }
-    .input-group {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 10px;
-      font-weight: bold;
-      color: #333;
-    }
-    .input-group input {
-      width: 80%;
-      padding: 12px;
-      font-size: 18px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      text-align: center;
-      outline: none;
-    }
-    .input-group input:focus {
-      border-color: #2e7d32;
-    }
-    .plan-card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      transition: transform 0.2s;
-    }
-    .plan-card:hover {
-      transform: translateY(-2px);
-    }
-    .plan-name {
-      font-size: 20px;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 10px;
-    }
-    .plan-price {
-      font-size: 32px;
-      color: #2e7d32;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .plan-desc {
-      color: #666;
-      margin-bottom: 20px;
-    }
-    .btn {
-      background-color: #ff9800;
-      color: white;
-      border: none;
-      padding: 12px 30px;
-      border-radius: 25px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      max-width: 200px;
-      text-transform: uppercase;
-      transition: background-color 0.2s;
-    }
-    .btn:hover {
-      background-color: #f57c00;
-    }
-    .btn:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-    .footer {
-      margin-top: auto;
-      padding: 20px;
-      color: #888;
-      font-size: 12px;
-      text-align: center;
-    }
-    .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #2e7d32;
+
+    .header-icon {
+      background: rgba(255, 255, 255, 0.2);
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      animation: spin 1s linear infinite;
-      display: none;
-      margin-left: 10px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .btn-content {
       display: flex;
       align-items: center;
       justify-content: center;
+      margin: 0 auto 10px;
     }
+
+    .header-icon svg {
+      fill: white;
+      width: 24px;
+      height: 24px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .header p {
+      margin: 5px 0 0;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .step-num {
+      background: #d1e7dd;
+      color: var(--primary-green);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    /* Promo Grid */
+    .promo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .promo-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 15px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .promo-card:hover {
+      border-color: var(--primary-green);
+    }
+
+    .promo-card.selected {
+      border-color: var(--primary-green);
+      background-color: var(--light-green);
+      box-shadow: 0 0 0 1px var(--primary-green);
+    }
+
+    .badge-best {
+      position: absolute;
+      top: -8px;
+      right: -5px;
+      background: var(--accent-orange);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .plan-time {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-dark);
+      display: block;
+    }
+
+    .plan-desc {
+      font-size: 10px;
+      color: var(--text-light);
+      margin-top: 2px;
+      display: block;
+    }
+
+    .plan-price {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--primary-green);
+    }
+
+    /* Payment Methods */
+    .payment-methods {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      justify-content: flex-start; /* Or center */
+    }
+
+    .pm-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 60px;
+    }
+
+    .pm-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .pm-gcash { background-color: #007bff; }
+    .pm-maya { background-color: #2e7d32; }
+    .pm-coins { background-color: #ffc107; }
+
+    .pm-label {
+      font-size: 10px;
+      color: var(--text-dark);
+    }
+
+    /* Mobile Input */
+    .mobile-input-container {
+      margin-bottom: 30px;
+    }
+
+    .mobile-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hint-text {
+      font-size: 10px;
+      color: #999;
+    }
+
+    .input-wrapper {
+      position: relative;
+      margin-top: 5px;
+    }
+
+    .prefix {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-dark);
+    }
+
+    input[type="tel"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 12px 12px 50px; /* Space for prefix */
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      outline: none;
+      background: white;
+    }
+
+    input[type="tel"]:focus {
+      border-color: var(--primary-green);
+    }
+
+    /* Footer / Action */
+    .action-area {
+      background: #f9f9f9; /* Or transparent */
+      padding-top: 10px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .total-label {
+      color: var(--text-light);
+      font-size: 14px;
+    }
+
+    .total-amount {
+      color: var(--primary-green);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .btn-proceed {
+      width: 100%;
+      background-color: #cfd8dc; /* Disabled look initially */
+      color: #546e7a;
+      border: none;
+      padding: 15px;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: not-allowed;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .btn-proceed.active {
+      background-color: #b0bec5; /* Slightly darker grey as per image, or primary green? Image shows grey but implies action. */
+      /* Actually image shows "Select Payment Method ->" on a grey button.
+         Usually this becomes colored when valid. I'll make it Green when valid. */
+      background-color: var(--primary-green);
+      color: white;
+      cursor: pointer;
+    }
+
+    .btn-proceed:hover.active {
+      background-color: #146c2e;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 9px;
+      color: #aaa;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+
+    .footer-text a {
+      color: #aaa;
+      text-decoration: underline;
+    }
+
+    /* Loader */
+    .loader {
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+      display: none;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Error Message */
+    #error-msg {
+      color: #d32f2f;
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      display: none;
+    }
+
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h1>WIFI sa BUKID</h1>
-    <p>Fast & Affordable Internet</p>
-  </div>
-
-  <div class="container">
-    <div id="error-msg" style="color: red; text-align: center; display: none; margin-bottom: 10px;"></div>
-
-    <div class="input-group">
-      <label for="mobile">Enter your Mobile Number</label>
-      <input type="tel" id="mobile" placeholder="09xxxxxxxxx" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-      <p style="font-size: 12px; color: #666; margin-top: 5px;">This will be your Username.</p>
+  <div class="main-card">
+    <div class="header">
+      <div class="header-icon">
+        <!-- Simple Wifi Icon SVG -->
+        <svg viewBox="0 0 24 24">
+          <path d="M12.0002 2.99976C7.5402 2.99976 3.4202 4.60976 0.160156 7.30976L1.58016 9.00976C4.34016 6.57976 7.9902 5.19976 12.0002 5.19976C16.0102 5.19976 19.6602 6.57976 22.4202 9.00976L23.8402 7.30976C20.5802 4.60976 16.4602 2.99976 12.0002 2.99976ZM12.0002 7.99976C8.8002 7.99976 5.8602 9.20976 3.6502 11.2398L5.0702 12.9298C6.8802 11.1698 9.3202 10.1998 12.0002 10.1998C14.6802 10.1998 17.1202 11.1698 18.9302 12.9298L20.3502 11.2398C18.1402 9.20976 15.2002 7.99976 12.0002 7.99976ZM12.0002 12.9998C10.1502 12.9998 8.4102 13.6798 7.0702 14.8198L12.0002 20.7398L16.9302 14.8198C15.5902 13.6798 13.8502 12.9998 12.0002 12.9998Z"></path>
+        </svg>
+      </div>
+      <h1>WIFI sa BUKID</h1>
+      <p>High-Speed Internet in Nature</p>
     </div>
 
-    <!-- Plan 1 -->
-    <div class="plan-card">
-      <div class="plan-name">1 Hour Pass</div>
-      <div class="plan-price">₱10.00</div>
-      <div class="plan-desc">Good for quick browsing and chats.</div>
-      <button class="btn" onclick="buyPlan('1hour')">
-        <span class="btn-content">Buy Now <div class="loader" id="loader-1hour"></div></span>
-      </button>
-    </div>
+    <div class="content">
 
-    <!-- Plan 2 -->
-    <div class="plan-card">
-      <div class="plan-name">1 Day Pass</div>
-      <div class="plan-price">₱50.00</div>
-      <div class="plan-desc">Unlimited data for 24 hours.</div>
-      <button class="btn" onclick="buyPlan('1day')">
-        <span class="btn-content">Buy Now <div class="loader" id="loader-1day"></div></span>
-      </button>
-    </div>
+      <!-- Step 1 -->
+      <div class="section-title">
+        <span class="step-num">1</span> Choose your Promo
+      </div>
 
-    <!-- Plan 3 -->
-    <div class="plan-card">
-      <div class="plan-name">1 Week Pass</div>
-      <div class="plan-price">₱150.00</div>
-      <div class="plan-desc">Best value for long stays.</div>
-      <button class="btn" onclick="buyPlan('1week')">
-        <span class="btn-content">Buy Now <div class="loader" id="loader-1week"></div></span>
-      </button>
-    </div>
-  </div>
+      <div class="promo-grid">
+        <!-- 1 Hour -->
+        <div class="promo-card" onclick="selectPlan('1hour', 10, this)">
+          <span class="plan-time">1 Hour</span>
+          <span class="plan-price">₱10</span>
+          <span class="plan-desc">Unli Data</span>
+        </div>
 
-  <div class="footer">
-    Accepted Payments: GCash, PayMaya, GrabPay via PayMongo<br>
-    © 2024 WIFI sa BUKID
+        <!-- 3 Hours -->
+        <div class="promo-card" onclick="selectPlan('3hours', 20, this)">
+          <span class="plan-time">3 Hours</span>
+          <span class="plan-price">₱20</span>
+          <span class="plan-desc">Unli Data</span>
+        </div>
+
+        <!-- 1 Day -->
+        <div class="promo-card" onclick="selectPlan('1day', 50, this)">
+          <div class="badge-best">Best</div>
+          <span class="plan-time">1 Day</span>
+          <span class="plan-price">₱50</span>
+          <span class="plan-desc">24 Hours</span>
+        </div>
+
+        <!-- 1 Week -->
+        <div class="promo-card" onclick="selectPlan('1week', 150, this)">
+          <span class="plan-time">1 Week</span>
+          <span class="plan-price">₱150</span>
+          <span class="plan-desc">7 Days</span>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="section-title">
+        <span class="step-num">2</span> Payment Method
+      </div>
+      <div class="payment-methods">
+        <div class="pm-item">
+          <div class="pm-icon pm-gcash">G</div>
+          <span class="pm-label">GCash</span>
+        </div>
+        <div class="pm-item">
+          <div class="pm-icon pm-maya">M</div>
+          <span class="pm-label">Maya</span>
+        </div>
+        <div class="pm-item">
+          <div class="pm-icon pm-coins">C</div>
+          <span class="pm-label">Coins</span>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="mobile-input-container">
+        <div class="mobile-label-row">
+          <div class="section-title" style="margin-bottom:0">
+            <span class="step-num">3</span> Mobile Number
+          </div>
+          <span class="hint-text">(For Password)</span>
+        </div>
+        <div class="input-wrapper">
+          <span class="prefix">+63</span>
+          <input type="tel" id="mobile" placeholder="912 345 6789" maxlength="10" oninput="validateInput(this)">
+        </div>
+      </div>
+
+      <!-- Footer Action -->
+      <div class="action-area">
+        <div class="total-row">
+          <span class="total-label">Total Amount:</span>
+          <span class="total-amount" id="total-display">₱0.00</span>
+        </div>
+
+        <button id="btn-proceed" class="btn-proceed" onclick="buyPlan()" disabled>
+          Select Payment Method &rarr; <div class="loader" id="loader"></div>
+        </button>
+
+        <div id="error-msg"></div>
+
+        <div class="footer-text">
+          Powered by PayMongo & Semaphore.<br>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <script>
-    function buyPlan(planId) {
-      var mobileInput = document.getElementById('mobile');
-      var mobile = mobileInput.value;
+    let selectedPlanId = null;
 
-      // Validate Mobile Number
-      if (!mobile || mobile.length !== 11 || !mobile.startsWith('09')) {
-        showError("Please enter a valid valid 11-digit Globe/Smart number (09xxxxxxxxx).");
-        mobileInput.focus();
-        return;
+    function selectPlan(id, price, element) {
+      // Update selected state visually
+      document.querySelectorAll('.promo-card').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+
+      // Set state
+      selectedPlanId = id;
+      document.getElementById('total-display').innerText = '₱' + price + '.00';
+
+      checkForm();
+    }
+
+    function validateInput(input) {
+      // Remove non-numeric
+      input.value = input.value.replace(/[^0-9]/g, '');
+      checkForm();
+    }
+
+    function checkForm() {
+      const mobile = document.getElementById('mobile').value;
+      const btn = document.getElementById('btn-proceed');
+
+      // Simple validation: Plan selected + 10 digits (since prefix +63 is separate)
+      if (selectedPlanId && mobile.length === 10) {
+        btn.disabled = false;
+        btn.classList.add('active');
+      } else {
+        btn.disabled = true;
+        btn.classList.remove('active');
       }
+    }
 
-      // Disable all buttons
-      var buttons = document.querySelectorAll('.btn');
-      buttons.forEach(b => b.disabled = true);
-      mobileInput.disabled = true;
+    function buyPlan() {
+      if (!selectedPlanId) return;
 
-      // Show loader for this plan
-      var loader = document.getElementById('loader-' + planId);
-      if(loader) loader.style.display = 'inline-block';
+      const mobileInput = document.getElementById('mobile').value;
+      const fullMobile = '0' + mobileInput; // Convert +63 9xx -> 09xx for backend consistency with standard PH format
 
-      // Clear error
-      document.getElementById('error-msg').style.display = 'none';
+      // UI State
+      const btn = document.getElementById('btn-proceed');
+      const loader = document.getElementById('loader');
+      const errorMsg = document.getElementById('error-msg');
+
+      btn.disabled = true;
+      loader.style.display = 'inline-block';
+      errorMsg.style.display = 'none';
 
       // Call Backend
       google.script.run
         .withSuccessHandler(onSuccess)
         .withFailureHandler(onFailure)
-        .createPayMongoCheckout(planId, mobile);
+        .createPayMongoCheckout(selectedPlanId, fullMobile);
     }
 
-    function onSuccess(checkoutUrl) {
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
+    function onSuccess(url) {
+      if (url) {
+        window.location.href = url;
       } else {
-        showError("Failed to generate payment link. Please try again.");
+        onFailure(new Error("No URL returned"));
       }
     }
 
-    function onFailure(error) {
-      showError("Error: " + error.message);
-      // Re-enable buttons
-      var buttons = document.querySelectorAll('.btn');
-      buttons.forEach(b => b.disabled = false);
-      document.getElementById('mobile').disabled = false;
-      // Hide loaders
-      var loaders = document.querySelectorAll('.loader');
-      loaders.forEach(l => l.style.display = 'none');
-    }
+    function onFailure(err) {
+      const btn = document.getElementById('btn-proceed');
+      const loader = document.getElementById('loader');
+      const errorMsg = document.getElementById('error-msg');
 
-    function showError(msg) {
-      var el = document.getElementById('error-msg');
-      el.textContent = msg;
-      el.style.display = 'block';
+      btn.disabled = false;
+      loader.style.display = 'none';
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = "Error: " + err.message;
     }
   </script>
 

@@ -8,6 +8,7 @@ var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';
 
 var PLANS = {
   '1hour': { name: '1 Hour Pass', amount: 1000, description: '1 Hour WiFi Access' }, // Amount in centavos
+  '3hours': { name: '3 Hours Pass', amount: 2000, description: '3 Hours WiFi Access' },
   '1day':  { name: '1 Day Pass',  amount: 5000, description: '1 Day WiFi Access' },
   '1week': { name: '1 Week Pass', amount: 15000, description: '1 Week WiFi Access' }
 };
@@ -341,6 +342,7 @@ function getOrCreateSheet() {
 function getProfileFromDescription(desc) {
   if (!desc) return 'default';
   if (desc.toLowerCase().indexOf('1 hour') !== -1) return '1hour_plan';
+  if (desc.toLowerCase().indexOf('3 hours') !== -1) return '3hours_plan';
   if (desc.toLowerCase().indexOf('1 day') !== -1) return '1day_plan';
   if (desc.toLowerCase().indexOf('1 week') !== -1) return '1week_plan';
   return 'default';
@@ -349,6 +351,7 @@ function getProfileFromDescription(desc) {
 function getLimitFromDescription(desc) {
   if (!desc) return '1h';
   if (desc.toLowerCase().indexOf('1 hour') !== -1) return '1h';
+  if (desc.toLowerCase().indexOf('3 hours') !== -1) return '3h';
   if (desc.toLowerCase().indexOf('1 day') !== -1) return '1d';
   if (desc.toLowerCase().indexOf('1 week') !== -1) return '1w';
   return '1h';
