@@ -24,7 +24,15 @@ function doGet(e) {
      return handleSuccessPage(e.parameter.ref);
   }
 
-  // Mode 3: Storefront (HTML)
+  // Mode 3: Cancelled Page (User Cancelled in PayMongo)
+  if (e.parameter.status === 'cancelled' && e.parameter.ref) {
+      updateTransactionStatus(e.parameter.ref, 'CANCELLED');
+      return HtmlService.createHtmlOutput('<h1>Transaction Cancelled</h1><p>You have cancelled the payment. Close this window to try again.</p>')
+          .setTitle('Transaction Cancelled')
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
+  // Mode 4: Storefront (HTML)
   return HtmlService.createHtmlOutputFromFile('index')
       .setTitle('WIFI sa BUKID')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Allow iframing if needed
@@ -121,10 +129,12 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   var username = mobileNumber; // User wants Mobile # as Username
   var password = generateRandomString(4);
 
-  // Pre-save to DB as PENDING_PAYMENT
-  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID
+  // Pre-save to DB as INITIALIZING
+  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID
   var sheet = getOrCreateSheet();
   var timestamp = new Date();
+
+  // Append row and get the index (to update later if needed, though we primarily use ref ID)
   sheet.appendRow([
     timestamp,
     mobileNumber,
@@ -132,8 +142,9 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     plan.description,
     username,
     password,
-    'PENDING_PAYMENT',
-    referenceId
+    'INITIALIZING',
+    referenceId,
+    '' // Placeholder for Session ID
   ]);
 
   // Determine Payment Method Types based on user selection
@@ -144,9 +155,6 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   } else if (paymentMethod === 'paymaya') {
     paymentTypes = ['paymaya'];
   } else if (paymentMethod === 'coinsph') {
-    // Coins.ph is often accessible via QR PH (supported by Maya/GCash/Grab) or other means.
-    // PayMongo doesn't have a specific 'coins' type. We allow all standard types to ensure coverage,
-    // or arguably just Maya/GCash if they handle QR. For now, we allow the main ones.
     paymentTypes = ['gcash', 'paymaya', 'grab_pay'];
   }
 
@@ -175,7 +183,7 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
         show_description: true,
         show_line_items: true,
         success_url: webAppUrl + "?status=success&ref=" + referenceId,
-        cancel_url: webAppUrl + "?status=cancelled"
+        cancel_url: webAppUrl + "?status=cancelled&ref=" + referenceId // Added ref here
       }
     }
   };
@@ -195,9 +203,18 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   try {
     var response = UrlFetchApp.fetch('https://api.paymongo.com/v1/checkout_sessions', options);
     var json = JSON.parse(response.getContentText());
-    return json.data.attributes.checkout_url;
+    var checkoutUrl = json.data.attributes.checkout_url;
+    var sessionId = json.data.id;
+
+    // Update the row with Session ID and set status to PENDING_PAYMENT
+    updateTransactionWithSession(referenceId, sessionId, 'PENDING_PAYMENT');
+
+    return checkoutUrl;
+
   } catch (e) {
     Logger.log('PayMongo Error: ' + e.toString());
+    // Mark as failed in DB
+    updateTransactionStatus(referenceId, 'FAILED_API');
     throw new Error('Failed to create payment link.');
   }
 }
@@ -309,6 +326,29 @@ function verifyPayMongoSession(sessionId) {
   }
 }
 
+function updateTransactionStatus(referenceId, newStatus) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] === referenceId) {
+       sheet.getRange(i + 1, 7).setValue(newStatus);
+       break;
+    }
+  }
+}
+
+function updateTransactionWithSession(referenceId, sessionId, newStatus) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] === referenceId) {
+       sheet.getRange(i + 1, 7).setValue(newStatus);
+       sheet.getRange(i + 1, 9).setValue(sessionId); // Column I (Index 8) for SessionID
+       break;
+    }
+  }
+}
+
 function sendSms(number, message) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('SEMAPHORE_API_KEY');
   if (!apiKey) return;
@@ -347,8 +387,15 @@ function getOrCreateSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID
-    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID']);
+    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID
+    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID']);
+  } else {
+    // Basic check to see if SessionID column exists, if not, add it (Backward Compatibility attempt)
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headers.indexOf('SessionID') === -1) {
+       // Append header
+       sheet.getRange(1, headers.length + 1).setValue('SessionID');
+    }
   }
   return sheet;
 }
