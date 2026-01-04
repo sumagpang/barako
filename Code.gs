@@ -130,7 +130,7 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   var password = generateRandomString(4);
 
   // Pre-save to DB as INITIALIZING
-  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID
+  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID, PaymentMethod
   var sheet = getOrCreateSheet();
   var timestamp = new Date();
 
@@ -144,7 +144,8 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     password,
     'INITIALIZING',
     referenceId,
-    '' // Placeholder for Session ID
+    '', // Placeholder for Session ID
+    paymentMethod // Added Payment Method
   ]);
 
   // Determine Payment Method Types based on user selection
@@ -387,14 +388,20 @@ function getOrCreateSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID
-    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID']);
+    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID, PaymentMethod
+    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID', 'PaymentMethod']);
   } else {
-    // Basic check to see if SessionID column exists, if not, add it (Backward Compatibility attempt)
+    // Basic check to see if SessionID or PaymentMethod column exists, if not, add them
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
     if (headers.indexOf('SessionID') === -1) {
-       // Append header
        sheet.getRange(1, headers.length + 1).setValue('SessionID');
+       // refresh headers
+       headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    }
+
+    if (headers.indexOf('PaymentMethod') === -1) {
+       sheet.getRange(1, headers.length + 1).setValue('PaymentMethod');
     }
   }
   return sheet;

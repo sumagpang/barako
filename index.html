@@ -196,8 +196,10 @@
 
         let selectedPaymentMethodName = '';
         let selectedPaymentMethodKey = null;
+        let isProcessing = false;
 
         function selectPlan(element, price, name, id) {
+            if (isProcessing) return;
             // Reset styles
             document.querySelectorAll('.plan-card').forEach(el => {
                 el.classList.remove('selected');
@@ -218,6 +220,7 @@
         }
 
         function selectPayment(element, methodName, methodKey) {
+            if (isProcessing) return;
             document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             selectedPaymentMethodName = methodName;
@@ -237,6 +240,8 @@
         });
 
         function checkForm() {
+            if (isProcessing) return; // Do not update if processing
+
             const btn = document.getElementById('payButton');
             const btnText = document.getElementById('btnText');
             const mobile = mobileInput.value;
@@ -272,13 +277,16 @@
         }
 
         function processPayment() {
+            if (isProcessing) return;
+
             const btn = document.getElementById('payButton');
             const errorMsg = document.getElementById('errorMsg');
             const mobile = mobileInput.value;
 
             // UI Loading State
+            isProcessing = true;
             btn.disabled = true;
-            btn.innerHTML = `<div class="loader mr-2"></div> Processing...`;
+            btn.innerHTML = `<div class="loader mr-2"></div> Redirecting...`;
             errorMsg.classList.add('hidden');
 
             // Format number for backend (add '0' prefix)
@@ -291,15 +299,18 @@
                         showNotification("Redirecting to " + selectedPaymentMethodName + "...", "ph-arrow-square-out");
                         // Redirect to PayMongo
                         window.location.href = url;
+                        // Button stays disabled during redirect
                     } else {
-                        // Reset Button
+                        // Reset Button on logic error
+                        isProcessing = false;
                         checkForm();
                         errorMsg.innerText = "Error: No payment URL returned.";
                         errorMsg.classList.remove('hidden');
                     }
                 })
                 .withFailureHandler(function(err) {
-                    // Reset Button
+                    // Reset Button on network error
+                    isProcessing = false;
                     checkForm();
                     console.error(err);
                     errorMsg.innerText = "Error: " + err.message;
