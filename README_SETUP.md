@@ -85,19 +85,24 @@ This guide provides a detailed, step-by-step walkthrough to configure **PayMongo
     *   **Authorize Access**: Google will ask for permission. Click "Review permissions", choose your account, click "Advanced" > "Go to (Project Name) (unsafe)" > "Allow".
     *   **Copy the Web App URL**. (e.g., `https://script.google.com/macros/s/.../exec`)
 
+    > **Important Note on Updates:** When you update your code later, go to **Deploy > Manage deployments**, click the **Pencil icon** (Edit), select **New Version** from the dropdown, and click **Deploy**. This keeps your URL the same. If you click "New deployment", you will get a *new* URL and must update your Webhook and Router script.
+
 ---
 
 ## Part 4: Connecting PayMongo Webhooks
 
 **Goal:** Tell PayMongo to notify your Google Script when a customer pays.
 
-1.  Go back to the **PayMongo Dashboard**.
-2.  Go to **Developers** > **Webhooks**.
-3.  Click **Create Webhook** (or "Add Webhook").
-4.  **Webhook URL**: Paste the **Web App URL** you copied in Part 3.
-5.  **Events**: Select `checkout_session.payment.paid`.
-6.  Click **Add Webhook**.
-    *   *Note: If you are in Test Mode, this will only fire for test transactions.*
+1.  **Access Dashboard**: Go to the [PayMongo Developer Dashboard](https://dashboard.paymongo.com/developers/webhooks).
+2.  **Create Webhook**: Click **Create Webhook** (or "Add Webhook").
+3.  **Paste URL**: In the **Webhook URL** field, paste the **Web App URL** you copied in Part 3.
+4.  **Select Events**: Check the box for `checkout_session.payment.paid`.
+    *   *Note: Do not select other events unless you know what you are doing.*
+5.  **Save**: Click **Add Webhook**.
+
+**Troubleshooting Webhooks:**
+*   **Test vs Live**: Webhooks are environment-specific. If you are testing with `sk_test_...`, make sure you are in **Test Mode** on the dashboard when creating the webhook. If you switch to Live, you must create a *new* webhook for Live Mode.
+*   **Permissions**: Ensure your Google Web App deployment is set to "Who has access: **Anyone**". If it is set to "Me" or "Google Account", PayMongo cannot reach it.
 
 ---
 
