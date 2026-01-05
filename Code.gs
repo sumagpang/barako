@@ -49,8 +49,9 @@ function doGet(e) {
 }
 
 function getAdminData(password) {
+  try {
     if (password !== ADMIN_PASSWORD) {
-        throw new Error("Invalid Password");
+        return { error: "Invalid Password" };
     }
 
     var sheet = getOrCreateSheet();
@@ -60,9 +61,19 @@ function getAdminData(password) {
     // Skip header
     for (var i = 1; i < data.length; i++) {
         // Columns: Timestamp[0], Phone[1], Amount[2], Description[3], Username[4], Password[5], Status[6], ReferenceID[7], SessionID[8], PaymentMethod[9]
+
+        // Safe Date Conversion
+        var ts = data[i][0];
+        var tsStr = "";
+        if (ts instanceof Date) {
+            tsStr = ts.toISOString();
+        } else {
+            tsStr = String(ts);
+        }
+
         result.push({
-            timestamp: data[i][0],
-            mobile: data[i][1],
+            timestamp: tsStr,
+            mobile: String(data[i][1]), // Force string to prevent weird number formatting
             amount: data[i][2],
             description: data[i][3],
             status: data[i][6],
@@ -70,6 +81,9 @@ function getAdminData(password) {
         });
     }
     return result;
+  } catch (e) {
+    return { error: "Server Error: " + e.toString() };
+  }
 }
 
 function handleSuccessPage(referenceId) {
