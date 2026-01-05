@@ -2,6 +2,7 @@
 // Keys should be stored in Script Properties, not hardcoded.
 var SENDER_NAME = 'SEMAPHORE'; // Your registered Sender Name (or default)
 var SHEET_NAME = 'Transactions';
+var ADMIN_PASSWORD = 'admin123'; // Change this for security!
 
 // SECURITY: Define a shared secret token for the MikroTik to authenticate with this script
 var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';
@@ -17,6 +18,14 @@ function doGet(e) {
   // Mode 1: MikroTik Router Fetching Users (Requires Token)
   if (e.parameter.token && e.parameter.token === MIKROTIK_TOKEN) {
     return handleRouterRequest(e);
+  }
+
+  // Mode 5: Admin Dashboard
+  if (e.parameter.page === 'admin') {
+      return HtmlService.createHtmlOutputFromFile('admin')
+          .setTitle('WIFI Admin')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
   // Mode 2: Success Page (User Returned from PayMongo)
@@ -37,6 +46,30 @@ function doGet(e) {
       .setTitle('WIFI sa BUKID')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Allow iframing if needed
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getAdminData(password) {
+    if (password !== ADMIN_PASSWORD) {
+        throw new Error("Invalid Password");
+    }
+
+    var sheet = getOrCreateSheet();
+    var data = sheet.getDataRange().getValues();
+    var result = [];
+
+    // Skip header
+    for (var i = 1; i < data.length; i++) {
+        // Columns: Timestamp[0], Phone[1], Amount[2], Description[3], Username[4], Password[5], Status[6], ReferenceID[7], SessionID[8], PaymentMethod[9]
+        result.push({
+            timestamp: data[i][0],
+            mobile: data[i][1],
+            amount: data[i][2],
+            description: data[i][3],
+            status: data[i][6],
+            method: data[i][9]
+        });
+    }
+    return result;
 }
 
 function handleSuccessPage(referenceId) {
