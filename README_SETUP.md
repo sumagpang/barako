@@ -56,6 +56,7 @@ This guide provides a detailed, step-by-step walkthrough to configure **PayMongo
 2.  **Upload Code**
     *   Copy the content of `Code.gs` into the script editor.
     *   Copy the content of `index.html` into a new HTML file named `index` in the editor.
+    *   Copy the content of `admin.html` into a new HTML file named `admin` in the editor.
 
 3.  **Set Script Properties (Securely Store Keys)**
     *   In the Apps Script editor, click the **Project Settings** (Gear icon) on the left sidebar.
@@ -68,10 +69,10 @@ This guide provides a detailed, step-by-step walkthrough to configure **PayMongo
         *   Value: *(Paste your PayMongo Secret Key from Part 2)*
     *   Click **Save script properties**.
 
-4.  **Configure Router Token**
+4.  **Configure Router Token and Admin Password**
     *   Open `Code.gs`.
-    *   Find the line: `var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';`
-    *   Change the value to a secure, random password (e.g., `wifi-secret-123`).
+    *   Find `var MIKROTIK_TOKEN = ...`. Change it to a secure token.
+    *   Find `var ADMIN_PASSWORD = 'admin123';`. Change this to your preferred admin password.
     *   Save the file.
 
 5.  **Deploy as Web App**
@@ -154,3 +155,15 @@ This guide provides a detailed, step-by-step walkthrough to configure **PayMongo
 2.  **Buy a Plan**: Select a cheap plan (or use test mode).
 3.  **Check SMS**: You should receive an SMS with your username/password.
 4.  **Check Router**: The user should appear in `IP` > `Hotspot` > `Users` within 1 minute.
+
+---
+
+## Part 7: Accessing the Admin Dashboard
+
+**Goal:** View sales reports and transaction logs.
+
+1.  **Get your Web App URL** (the same one used for the store).
+2.  **Add `?page=admin` to the end of the URL.**
+    *   Example: `https://script.google.com/macros/s/.../exec?page=admin`
+3.  **Log In**:
+    *   Enter the password you configured in `Code.gs` (Default: `admin123`).
