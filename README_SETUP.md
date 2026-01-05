@@ -1,85 +1,156 @@
-# Setup Instructions for WiFi Hotspot System
+# Setup Instructions for WIFI sa BUKID Hotspot System
 
-This system automates the process of selling WiFi vouchers using **PayMongo** (GCash/PayMaya) and delivering passwords via **Semaphore** (SMS).
+This guide provides a detailed, step-by-step walkthrough to configure **PayMongo** (Payment Gateway) and **Semaphore** (SMS Gateway) for your hotspot system.
 
-## Prerequisites
+---
 
-1.  **Google Account** (to host the backend script).
-2.  **PayMongo Account**: Register at [paymongo.com](https://paymongo.com). Get your `Secret Key`.
-3.  **Semaphore Account**: Register at [semaphore.co](https://semaphore.co). Get your `API Key`.
-4.  **MikroTik Router**: Running RouterOS v7.10 or higher.
+## Part 1: Semaphore Configuration (SMS)
 
-## Step 1: Deploy the Backend (Google Apps Script)
+**Goal:** Get an API Key to send SMS messages to your customers.
 
-1.  Open the Google Sheet associated with this script.
-2.  Go to **Extensions > Apps Script**.
-3.  **Security Configuration**:
-    *   Change `MIKROTIK_TOKEN` in `Code.gs` to a secure password.
-    *   **Secrets**: Go to **Project Settings** > **Script Properties**.
-        *   Add `SEMAPHORE_API_KEY`: Your Semaphore API Key.
-        *   Add `PAYMONGO_SECRET_KEY`: Your PayMongo Secret Key (sk_...).
-4.  **Deploy as Web App**:
-    *   Click **Deploy** > **New deployment**.
-    *   Select type: **Web app**.
-    *   Description: "Hotspot Store".
-    *   Execute as: **Me**.
-    *   Who has access: **Anyone**.
-    *   Click **Deploy** and **COPY the Web App URL**.
+1.  **Register Account**
+    *   Go to [semaphore.co](https://semaphore.co).
+    *   Sign up for an account.
 
-## Step 2: Configure PayMongo
+2.  **Get API Key**
+    *   Log in to your Semaphore Dashboard.
+    *   Navigate to **Account** or **API** settings.
+    *   Copy your **API Key**. You will need this later for the Google Apps Script.
 
-1.  Go to PayMongo Dashboard > Developers > Webhooks.
-2.  Add a webhook.
-3.  URL: Paste your **Google Web App URL**.
-4.  Events: Select `checkout_session.payment.paid`.
+3.  **Register Sender Name (Optional but Recommended)**
+    *   By default, messages come from "SEMAPHORE".
+    *   To use a custom name like "WIFI-BUKID", go to **Sender Names** and request one.
+    *   *Note: If you change this, you must update `SENDER_NAME` in `Code.gs`.*
 
-## Step 3: Configure MikroTik Router
+---
 
-1.  **Create User Profiles (CRITICAL)**:
-    *   You MUST create these specific profiles in your MikroTik for the system to work.
-    *   Go to `IP > Hotspot > User Profiles` and add:
-        *   Name: `1hour_plan` (Set Rate Limit, e.g., "5M/5M")
-        *   Name: `1day_plan`
-        *   Name: `1week_plan`
-    *   *Note: If these profiles are missing, the router script will fail to add users.*
+## Part 2: PayMongo Configuration (Payments)
 
-2.  **Sync Script**:
-    *   Create a script `FetchUsers` (see `MikroTik_Script.rsc`).
-    *   Update the URL to your Web App URL + `?token=YOUR_TOKEN`.
-    *   Schedule it to run every minute.
-3.  **Captive Portal (Login Page)**:
-    *   To allow users to buy vouchers, you need to edit the `login.html` file on your MikroTik (in Files).
-    *   Add a link to your Google Web App URL.
-    *   Example HTML code to add to `login.html`:
-        ```html
-        <div style="text-align: center; margin-top: 20px;">
-          <p>Don't have a voucher?</p>
-          <a href="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec" target="_blank"
-             style="background: #2e7d32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-             Buy WiFi Access
-          </a>
-        </div>
-        ```
-    *   **Walled Garden**: You must allow access to Google and PayMongo for unauthorized users.
-    *   Go to `IP > Hotspot > Walled Garden`.
-    *   Add Allow rules for:
-        *   `*.google.com`
-        *   `*.googleapis.com`
-        *   `*.gstatic.com`
+**Goal:** Get API Keys to accept GCash, PayMaya, and Coins.ph payments.
+
+1.  **Register Account**
+    *   Go to [paymongo.com](https://paymongo.com).
+    *   Sign up as a Business or Individual.
+
+2.  **Activate Account**
+    *   Follow the verification steps to activate your account for live payments.
+    *   *Note: You can use "Test Mode" initially to test without real money.*
+
+3.  **Get API Keys**
+    *   Log in to PayMongo Dashboard.
+    *   Go to **Developers** on the sidebar.
+    *   Ensure the toggle (Test Mode / Live Mode) is set to the mode you are working in.
+    *   Copy the **Secret Key** (starts with `sk_test_...` or `sk_live_...`).
+    *   *Important: Do not share this key publicly.*
+
+---
+
+## Part 3: Deploying the Backend Code
+
+**Goal:** Upload the code to Google Apps Script and connect your keys.
+
+1.  **Open Google Sheets**
+    *   Create a new Google Sheet named `WIFI Transactions`.
+    *   Go to **Extensions** > **Apps Script**.
+
+2.  **Upload Code**
+    *   Copy the content of `Code.gs` into the script editor.
+    *   Copy the content of `index.html` into a new HTML file named `index` in the editor.
+
+3.  **Set Script Properties (Securely Store Keys)**
+    *   In the Apps Script editor, click the **Project Settings** (Gear icon) on the left sidebar.
+    *   Scroll down to **Script Properties**.
+    *   Click **Add script property**.
+        *   Property: `SEMAPHORE_API_KEY`
+        *   Value: *(Paste your Semaphore API Key from Part 1)*
+    *   Click **Add script property**.
+        *   Property: `PAYMONGO_SECRET_KEY`
+        *   Value: *(Paste your PayMongo Secret Key from Part 2)*
+    *   Click **Save script properties**.
+
+4.  **Configure Router Token**
+    *   Open `Code.gs`.
+    *   Find the line: `var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';`
+    *   Change the value to a secure, random password (e.g., `wifi-secret-123`).
+    *   Save the file.
+
+5.  **Deploy as Web App**
+    *   Click the blue **Deploy** button > **New deployment**.
+    *   **Select type**: Click the gear icon > **Web app**.
+    *   **Description**: "v1 Init".
+    *   **Execute as**: `Me (your_email@gmail.com)`.
+    *   **Who has access**: `Anyone` (Crucial: Select "Anyone" so the router and customers can access it).
+    *   Click **Deploy**.
+    *   **Authorize Access**: Google will ask for permission. Click "Review permissions", choose your account, click "Advanced" > "Go to (Project Name) (unsafe)" > "Allow".
+    *   **Copy the Web App URL**. (e.g., `https://script.google.com/macros/s/.../exec`)
+
+---
+
+## Part 4: Connecting PayMongo Webhooks
+
+**Goal:** Tell PayMongo to notify your Google Script when a customer pays.
+
+1.  Go back to the **PayMongo Dashboard**.
+2.  Go to **Developers** > **Webhooks**.
+3.  Click **Create Webhook** (or "Add Webhook").
+4.  **Webhook URL**: Paste the **Web App URL** you copied in Part 3.
+5.  **Events**: Select `checkout_session.payment.paid`.
+6.  Click **Add Webhook**.
+    *   *Note: If you are in Test Mode, this will only fire for test transactions.*
+
+---
+
+## Part 5: MikroTik Router Setup
+
+**Goal:** Allow the router to sync paid users from Google Sheets.
+
+1.  **Walled Garden (Allow Access before Login)**
+    *   Open WinBox or WebFig.
+    *   Go to `IP` > `Hotspot` > `Walled Garden`.
+    *   Add rules to allow traffic to these domains (Dst. Host):
+        *   `script.google.com`
+        *   `sheets.googleapis.com`
+        *   `api.paymongo.com`
         *   `*.paymongo.com`
-        *   `*.paymongo.io`
+        *   `checkout.paymongo.com`
+        *   `fonts.googleapis.com` (for styling)
+        *   `cdn.tailwindcss.com` (for styling)
+        *   `unpkg.com` (for icons)
 
-## Step 4: Testing
+2.  **Create Hotspot Profiles**
+    *   Go to `IP` > `Hotspot` > `User Profiles`.
+    *   Create the following profiles exactly as named:
+        *   `1hour_plan`
+        *   `3hours_plan`
+        *   `1day_plan`
+        *   `1week_plan`
+    *   *Tip: Set "Shared Users" to 1 and configure Rate Limits (e.g. 5M/5M) for each.*
 
-1.  Connect to the WiFi.
-2.  Click the "Buy WiFi Access" link on the login page.
-3.  Select "1 Hour Pass" on the store page.
-4.  Pay using Test GCash (if in PayMongo Test Mode).
-5.  Wait for the SMS with the code.
-6.  Login with the code.
+3.  **Import Sync Script**
+    *   Open `System` > `Scripts`.
+    *   Add a new script named `FetchUsers`.
+    *   Copy the content of `MikroTik_Script.rsc`.
+    *   **Update the URL**: Find the line `local url "https://script.google.com/..."` and replace it with your Web App URL.
+    *   **Update the Token**: Find `?token=...` in the URL and ensure it matches the `MIKROTIK_TOKEN` you set in Part 3.
 
-## Troubleshooting
+4.  **Schedule Sync**
+    *   Go to `System` > `Scheduler`.
+    *   Add a new schedule.
+    *   Name: `SyncWifiUsers`.
+    *   Interval: `00:01:00` (Every 1 minute).
+    *   On Event: `FetchUsers` (The name of the script you created).
 
-*   **"Unauthorized" on Store Page**: Ensure you are NOT passing `?token=...` when accessing the store URL.
-*   **No SMS**: Check PayMongo Webhook logs (did it fire?) and Google Script Executions (did it error?).
-*   **Payment Link Error**: Check `PAYMONGO_SECRET_KEY` in Script Properties.
+5.  **Add "Buy Now" Link to Login Page**
+    *   Go to `Files`.
+    *   Download your `hotspot/login.html`.
+    *   Edit it to include a button linking to your Web App URL.
+    *   Upload it back to the router.
+
+---
+
+## Part 6: Verification
+
+1.  **Test Payment**: Open your Web App URL on your phone.
+2.  **Buy a Plan**: Select a cheap plan (or use test mode).
+3.  **Check SMS**: You should receive an SMS with your username/password.
+4.  **Check Router**: The user should appear in `IP` > `Hotspot` > `Users` within 1 minute.
