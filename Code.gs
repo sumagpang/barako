@@ -8,10 +8,10 @@ var ADMIN_PASSWORD = 'admin123'; // Change this for security!
 var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';
 
 var PLANS = {
-  '1hour': { name: '1 Hour Pass', amount: 1000, description: '1 Hour WiFi Access' }, // Amount in centavos
-  '3hours': { name: '3 Hours Pass', amount: 2000, description: '3 Hours WiFi Access' },
-  '1day':  { name: '1 Day Pass',  amount: 5000, description: '1 Day WiFi Access' },
-  '1week': { name: '1 Week Pass', amount: 15000, description: '1 Week WiFi Access' }
+  '1hour': { name: '1 Hour Pass', amount: 1000, description: '1 Hour WiFi Access', durationMinutes: 60 },
+  '3hours': { name: '3 Hours Pass', amount: 2000, description: '3 Hours WiFi Access', durationMinutes: 180 },
+  '1day':  { name: '1 Day Pass',  amount: 5000, description: '1 Day WiFi Access', durationMinutes: 1440 },
+  '1week': { name: '1 Week Pass', amount: 15000, description: '1 Week WiFi Access', durationMinutes: 10080 }
 };
 
 function doGet(e) {
@@ -48,6 +48,71 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+function loginUser(mobile, password) {
+    try {
+        var sheet = getOrCreateSheet();
+        var data = sheet.getDataRange().getValues();
+        var user = null;
+
+        // Skip header, Iterate backwards to find latest
+        for (var i = data.length - 1; i > 0; i--) {
+            // Check Mobile (Col 1/B) and Password (Col 5/F)
+            // Ensure types match string
+            if (String(data[i][1]) === String(mobile) && String(data[i][5]) === String(password)) {
+                // Check if PAID
+                var status = data[i][6];
+                if (status.includes('PAID') || status === 'SYNCED') {
+                    user = {
+                        timestamp: data[i][0],
+                        mobile: String(data[i][1]),
+                        description: data[i][3],
+                        status: data[i][6],
+                        password: String(data[i][5])
+                    };
+                    break;
+                }
+            }
+        }
+
+        if (!user) {
+            return { error: "Invalid Credentials or Plan not Active" };
+        }
+
+        // Calculate Remaining Time
+        // Find Plan Duration
+        var planDuration = 60; // Default 1 hour
+        var desc = user.description.toLowerCase();
+        if (desc.includes('1 hour')) planDuration = 60;
+        if (desc.includes('3 hours')) planDuration = 180;
+        if (desc.includes('1 day')) planDuration = 1440;
+        if (desc.includes('1 week')) planDuration = 10080;
+
+        var startTime = new Date(user.timestamp);
+        var now = new Date();
+        var diffMinutes = Math.floor((now - startTime) / 60000);
+        var remaining = planDuration - diffMinutes;
+
+        if (remaining < 0) remaining = 0;
+
+        // Format Remaining Time
+        var h = Math.floor(remaining / 60);
+        var m = remaining % 60;
+        var remainingStr = h + "h " + m + "m";
+
+        return {
+            success: true,
+            mobile: user.mobile,
+            password: user.password,
+            plan: user.description,
+            remaining: remainingStr,
+            remainingMinutes: remaining
+        };
+
+    } catch (e) {
+        return { error: "Login Error: " + e.toString() };
+    }
+}
+
 function getAdminData(password) {
   try {
     if (password !== ADMIN_PASSWORD) {
@@ -60,8 +125,6 @@ function getAdminData(password) {
 
     // Skip header
     for (var i = 1; i < data.length; i++) {
-        // Columns: Timestamp[0], Phone[1], Amount[2], Description[3], Username[4], Password[5], Status[6], ReferenceID[7], SessionID[8], PaymentMethod[9]
-
         // Safe Date Conversion
         var ts = data[i][0];
         var tsStr = "";
@@ -73,7 +136,7 @@ function getAdminData(password) {
 
         result.push({
             timestamp: tsStr,
-            mobile: String(data[i][1]), // Force string to prevent weird number formatting
+            mobile: String(data[i][1]),
             amount: data[i][2],
             description: data[i][3],
             status: data[i][6],
@@ -93,7 +156,6 @@ function handleSuccessPage(referenceId) {
   var user = null;
 
   // Search for the reference ID (Column H - 8th column, index 7)
-  // Assuming we add Reference ID to column H
   for (var i = 1; i < data.length; i++) {
     if (data[i][7] === referenceId) {
        user = {
@@ -107,11 +169,6 @@ function handleSuccessPage(referenceId) {
 
   var html = '';
   if (user) {
-    // If status is still 'PENDING_PAYMENT', we might need to wait or just show it anyway if we trust the redirect
-    // But ideally, we wait for webhook. However, user is impatient.
-    // We can show the credentials immediately since we pre-generated them.
-    // The router won't accept them until status becomes SYNCED (after webhook fires).
-
     html = `
       <div style="font-family: sans-serif; text-align: center; padding: 20px;">
         <h1 style="color: #2e7d32;">Payment Successful!</h1>
@@ -121,8 +178,8 @@ function handleSuccessPage(referenceId) {
            <p><strong>Password:</strong> <span style="font-size: 24px; color: #d32f2f;">${user.password}</span></p>
         </div>
         <p>A copy has been sent to your mobile number.</p>
-        <p style="font-size: 12px; color: #666;">Note: Please wait 1-2 minutes for the router to activate your account.</p>
-        <a href="http://10.0.0.1/login" style="display: inline-block; background: #2e7d32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Login</a>
+        <a href="http://10.0.0.1/login?username=${user.username}&password=${user.password}" style="display: inline-block; background: #2e7d32; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px;">Connect Now</a>
+        <p style="font-size: 12px; color: #666; margin-top: 20px;">Note: If 'Connect Now' doesn't work, wait 1 minute for activation.</p>
       </div>
     `;
   } else {
@@ -177,11 +234,9 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
   var password = generateRandomString(4);
 
   // Pre-save to DB as INITIALIZING
-  // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID, PaymentMethod
   var sheet = getOrCreateSheet();
   var timestamp = new Date();
 
-  // Append row and get the index (to update later if needed, though we primarily use ref ID)
   sheet.appendRow([
     timestamp,
     mobileNumber,
@@ -195,9 +250,7 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     paymentMethod // Added Payment Method
   ]);
 
-  // Determine Payment Method Types based on user selection
   var paymentTypes = ['gcash', 'paymaya', 'grab_pay']; // Default fallback
-
   if (paymentMethod === 'gcash') {
     paymentTypes = ['gcash'];
   } else if (paymentMethod === 'paymaya') {
@@ -221,17 +274,17 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
         ],
         billing: {
           name: 'Customer ' + mobileNumber,
-          email: 'customer@example.com', // Optional but recommended
-          phone: mobileNumber // Pre-fill phone
+          email: 'customer@example.com',
+          phone: mobileNumber
         },
         payment_method_types: paymentTypes,
         send_email_receipt: false,
         description: plan.description,
-        reference_number: referenceId, // Pass our ref to PayMongo
+        reference_number: referenceId,
         show_description: true,
         show_line_items: true,
         success_url: webAppUrl + "?status=success&ref=" + referenceId,
-        cancel_url: webAppUrl + "?status=cancelled&ref=" + referenceId // Added ref here
+        cancel_url: webAppUrl + "?status=cancelled&ref=" + referenceId
       }
     }
   };
@@ -254,14 +307,12 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     var checkoutUrl = json.data.attributes.checkout_url;
     var sessionId = json.data.id;
 
-    // Update the row with Session ID and set status to PENDING_PAYMENT
     updateTransactionWithSession(referenceId, sessionId, 'PENDING_PAYMENT');
 
     return checkoutUrl;
 
   } catch (e) {
     Logger.log('PayMongo Error: ' + e.toString());
-    // Mark as failed in DB
     updateTransactionStatus(referenceId, 'FAILED_API');
     throw new Error('Failed to create payment link.');
   }
@@ -280,7 +331,6 @@ function doPost(e) {
     var postData = JSON.parse(e.postData.contents);
     var eventType = postData.data.attributes.type;
 
-    // Only process checkout payments
     if (eventType !== 'checkout_session.payment.paid') {
       output.setContent(JSON.stringify({status: 'ignored'}));
       return output;
@@ -295,27 +345,23 @@ function doPost(e) {
         return output;
     }
 
-    // Validated
     var attributes = verifiedSession.attributes;
-    var referenceId = attributes.reference_number; // We passed this earlier
+    var referenceId = attributes.reference_number;
 
-    // Find row by Reference ID and Update Status
     var sheet = getOrCreateSheet();
     var data = sheet.getDataRange().getValues();
     var foundRowIndex = -1;
     var userRow = null;
 
     for (var i = 1; i < data.length; i++) {
-        // Check Reference ID (Col H / Index 7)
         if (data[i][7] == referenceId) {
-            foundRowIndex = i + 1; // 1-based index
+            foundRowIndex = i + 1;
             userRow = data[i];
             break;
         }
     }
 
     if (foundRowIndex > 0) {
-        // Update status to PAID_PENDING_SYNC so router can pick it up
         sheet.getRange(foundRowIndex, 7).setValue('PAID_PENDING_SYNC');
 
         var username = userRow[4];
@@ -323,13 +369,11 @@ function doPost(e) {
         var description = userRow[3];
         var mobileNumber = userRow[1];
 
-        // Send SMS
         var message = 'WIFI sa BUKID: Payment Received! Username: ' + username + ' Password: ' + password;
         sendSms(mobileNumber, message);
 
     } else {
         Logger.log("Transaction not found for ref: " + referenceId);
-        // Fallback: Create new row if not found (unlikely if flow followed)
     }
 
     output.setContent(JSON.stringify({status: 'success'}));
@@ -391,7 +435,7 @@ function updateTransactionWithSession(referenceId, sessionId, newStatus) {
   for (var i = 1; i < data.length; i++) {
     if (data[i][7] === referenceId) {
        sheet.getRange(i + 1, 7).setValue(newStatus);
-       sheet.getRange(i + 1, 9).setValue(sessionId); // Column I (Index 8) for SessionID
+       sheet.getRange(i + 1, 9).setValue(sessionId);
        break;
     }
   }
@@ -401,9 +445,7 @@ function sendSms(number, message) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('SEMAPHORE_API_KEY');
   if (!apiKey) return;
 
-  // Ensure number is clean for Semaphore
   var cleanNum = number;
-  // (Assuming already cleaned by frontend or sanitized here)
 
   var payload = {
     apikey: apiKey,
@@ -435,18 +477,13 @@ function getOrCreateSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    // Columns: Timestamp, Phone, Amount, Description, Username, Password, Status, ReferenceID, SessionID, PaymentMethod
     sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID', 'PaymentMethod']);
   } else {
-    // Basic check to see if SessionID or PaymentMethod column exists, if not, add them
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
     if (headers.indexOf('SessionID') === -1) {
        sheet.getRange(1, headers.length + 1).setValue('SessionID');
-       // refresh headers
        headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
-
     if (headers.indexOf('PaymentMethod') === -1) {
        sheet.getRange(1, headers.length + 1).setValue('PaymentMethod');
     }

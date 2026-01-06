@@ -5,122 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WIFI sa BUKID - Connect</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f0fdf4; /* Light green background */
-        }
-        .plan-card.selected {
-            border-color: #16a34a; /* Green-600 */
-            background-color: #dcfce7; /* Green-100 */
-            transform: scale(1.02);
-        }
-        .payment-method.selected {
-            border-color: #16a34a;
-            background-color: #dcfce7;
-        }
-        /* Hide scrollbar for cleaner look on mobile */
-        ::-webkit-scrollbar {
-            width: 0px;
-            background: transparent;
-        }
-
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #16a34a;
-            width: 20px;
-            height: 20px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        body { font-family: 'Poppins', sans-serif; background-color: #f0fdf4; }
+        .plan-card.selected { border-color: #16a34a; background-color: #dcfce7; transform: scale(1.02); }
+        .payment-method.selected { border-color: #16a34a; background-color: #dcfce7; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #16a34a; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat bg-fixed">
 
-    <!-- Overlay to darken background slightly -->
     <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-0"></div>
 
-    <!-- Main Card -->
     <div class="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20">
 
-        <!-- Header -->
-        <div class="bg-green-700 p-6 text-center relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-green-600 to-green-800 opacity-90"></div>
-            <div class="relative z-10">
-                <div class="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3 backdrop-blur-sm">
-                    <i class="ph ph-wifi-high text-2xl text-white"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-white tracking-wide">WIFI sa BUKID</h1>
-                <p class="text-green-100 text-sm mt-1">High-Speed Internet in Nature</p>
+        <!-- Navbar -->
+        <div class="bg-green-700 p-4 flex justify-between items-center text-white">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-wifi-high text-xl"></i>
+                <h1 class="font-bold tracking-wide">WIFI sa BUKID</h1>
+            </div>
+            <div class="flex gap-2 text-xs font-semibold">
+                <button onclick="switchView('store')" id="navStore" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition">Buy Promo</button>
+                <button onclick="switchView('login')" id="navLogin" class="bg-transparent hover:bg-white/10 px-3 py-1.5 rounded-full transition">My Status</button>
             </div>
         </div>
 
-        <!-- Content -->
-        <div class="p-6 space-y-6">
-
-            <!-- Step 1: Choose Plan -->
+        <!-- STORE VIEW -->
+        <div id="view-store" class="p-6 space-y-6">
             <div>
                 <h2 class="text-gray-700 font-semibold mb-3 flex items-center gap-2">
                     <span class="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold">1</span>
                     Choose your Promo
                 </h2>
                 <div class="grid grid-cols-2 gap-3">
-                    <!-- Plan 1 -->
                     <div onclick="selectPlan(this, 10, '1 Hour', '1hour')" class="plan-card cursor-pointer border-2 border-gray-100 rounded-xl p-3 hover:border-green-300 transition-all duration-200 bg-white shadow-sm group">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">1 Hour</h3>
-                                <p class="text-xs text-gray-500 mt-1">Unli Data</p>
-                            </div>
+                            <div><h3 class="font-bold text-gray-800">1 Hour</h3><p class="text-xs text-gray-500 mt-1">Unli Data</p></div>
                             <span class="text-lg font-bold text-green-600">₱10</span>
                         </div>
                     </div>
-                    <!-- Plan 2 -->
                     <div onclick="selectPlan(this, 20, '3 Hours', '3hours')" class="plan-card cursor-pointer border-2 border-gray-100 rounded-xl p-3 hover:border-green-300 transition-all duration-200 bg-white shadow-sm">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">3 Hours</h3>
-                                <p class="text-xs text-gray-500 mt-1">Unli Data</p>
-                            </div>
+                            <div><h3 class="font-bold text-gray-800">3 Hours</h3><p class="text-xs text-gray-500 mt-1">Unli Data</p></div>
                             <span class="text-lg font-bold text-green-600">₱20</span>
                         </div>
                     </div>
-                    <!-- Plan 3 -->
                     <div onclick="selectPlan(this, 50, '1 Day', '1day')" class="plan-card cursor-pointer border-2 border-gray-100 rounded-xl p-3 hover:border-green-300 transition-all duration-200 bg-white shadow-sm relative overflow-hidden">
                         <div class="absolute top-0 right-0 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">BEST</div>
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">1 Day</h3>
-                                <p class="text-xs text-gray-500 mt-1">24 Hours</p>
-                            </div>
+                            <div><h3 class="font-bold text-gray-800">1 Day</h3><p class="text-xs text-gray-500 mt-1">24 Hours</p></div>
                             <span class="text-lg font-bold text-green-600">₱50</span>
                         </div>
                     </div>
-                    <!-- Plan 4 -->
                     <div onclick="selectPlan(this, 150, '1 Week', '1week')" class="plan-card cursor-pointer border-2 border-gray-100 rounded-xl p-3 hover:border-green-300 transition-all duration-200 bg-white shadow-sm">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">1 Week</h3>
-                                <p class="text-xs text-gray-500 mt-1">7 Days</p>
-                            </div>
+                            <div><h3 class="font-bold text-gray-800">1 Week</h3><p class="text-xs text-gray-500 mt-1">7 Days</p></div>
                             <span class="text-lg font-bold text-green-600">₱150</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Step 2: Payment Method -->
             <div>
                 <h2 class="text-gray-700 font-semibold mb-3 flex items-center gap-2">
                     <span class="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold">2</span>
@@ -142,46 +93,98 @@
                 </div>
             </div>
 
-            <!-- Step 3: Mobile Number -->
             <div>
                 <h2 class="text-gray-700 font-semibold mb-3 flex items-center gap-2">
                     <span class="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold">3</span>
-                    Mobile Number <span class="text-xs font-normal text-gray-400 ml-auto">(For Password)</span>
+                    Mobile Number
                 </h2>
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span class="text-gray-500 text-sm font-bold">+63</span>
-                    </div>
-                    <input type="tel" id="mobileNumber" maxlength="10" placeholder="912 345 6789"
-                        class="block w-full pl-12 pr-3 py-3 border-2 border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-green-500 transition duration-150 ease-in-out sm:text-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 text-sm font-bold">+63</span></div>
+                    <input type="tel" id="mobileNumber" maxlength="10" placeholder="912 345 6789" class="block w-full pl-12 pr-3 py-3 border-2 border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-green-500 transition duration-150 ease-in-out sm:text-sm">
                 </div>
             </div>
 
-            <!-- Total and Submit -->
             <div class="pt-2 border-t border-gray-100">
                 <div class="flex justify-between items-center mb-4">
                     <span class="text-gray-500">Total Amount:</span>
                     <span id="totalDisplay" class="text-2xl font-bold text-green-700">₱0.00</span>
                 </div>
-
-                <button id="payButton" onclick="processPayment()" disabled
-                    class="w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-not-allowed">
-                    <span id="btnText">Select a Plan</span>
-                    <i class="ph ph-arrow-right font-bold"></i>
+                <button id="payButton" onclick="processPayment()" disabled class="w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-not-allowed">
+                    <span id="btnText">Select a Plan</span><i class="ph ph-arrow-right font-bold"></i>
                 </button>
-
-                <p class="text-center text-[10px] text-gray-400 mt-3">
-                    Powered by PayMongo & Semaphore. <br>
-                    <a href="#" class="underline hover:text-green-600">Terms of Service</a>
-                </p>
-
-                <!-- Error Message Area -->
                 <div id="errorMsg" class="hidden mt-3 text-center text-red-500 text-xs font-medium"></div>
             </div>
         </div>
+
+        <!-- LOGIN VIEW -->
+        <div id="view-login" class="hidden p-8 flex flex-col justify-center min-h-[400px]">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Login to Dashboard</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Mobile Number</label>
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 text-sm font-bold">+63</span></div>
+                        <input type="tel" id="loginMobile" maxlength="10" placeholder="912 345 6789" class="block w-full pl-12 p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Passcode</label>
+                    <input type="text" id="loginCode" placeholder="Enter Code (from SMS)" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 font-mono text-center tracking-widest uppercase">
+                </div>
+                <button onclick="processLogin()" id="loginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition mt-2">Check Status</button>
+                <p id="loginStatus" class="text-center text-red-500 text-sm hidden"></p>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="hidden p-0 bg-gray-50 h-full">
+            <div class="bg-green-700 p-6 pb-12 rounded-b-3xl shadow-md text-white text-center">
+                <p class="opacity-80 text-xs uppercase tracking-widest mb-1">Time Remaining</p>
+                <h1 class="text-4xl font-bold" id="dashRemaining">--h --m</h1>
+                <p class="text-sm mt-2 opacity-90" id="dashPlan">Loading...</p>
+            </div>
+
+            <div class="px-6 -mt-8 space-y-4 pb-6">
+                <!-- Status Card -->
+                <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-400 text-xs">IP Address</p>
+                            <p class="font-mono text-gray-700 font-semibold" id="dashIp">Unknown</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-gray-400 text-xs">MAC Address</p>
+                            <p class="font-mono text-gray-700 font-semibold" id="dashMac">Unknown</p>
+                        </div>
+                        <div class="col-span-2 border-t pt-3 flex justify-between">
+                            <div><p class="text-gray-400 text-xs">Downloaded</p><p class="font-bold text-gray-800" id="dashDown">--</p></div>
+                            <div class="text-right"><p class="text-gray-400 text-xs">Uploaded</p><p class="font-bold text-gray-800" id="dashUp">--</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="space-y-3">
+                    <form action="http://10.0.0.1/login" method="post" target="_blank" id="connectForm">
+                        <input type="hidden" name="username" id="formUser">
+                        <input type="hidden" name="password" id="formPass">
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2">
+                            <i class="ph ph-plug"></i> Connect to WiFi
+                        </button>
+                    </form>
+
+                    <a href="http://10.0.0.1/logout" target="_blank" class="block w-full bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold py-3 rounded-xl shadow-sm text-center flex items-center justify-center gap-2">
+                        <i class="ph ph-power"></i> Disconnect
+                    </a>
+
+                    <button onclick="logoutDashboard()" class="w-full text-gray-400 text-xs hover:text-gray-600 mt-2">Log out of Dashboard</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Modals / Notifications -->
+    <!-- Notification -->
     <div id="notification" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-11/12 max-w-sm bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg hidden z-50 transition-all duration-300">
         <div class="flex items-center gap-3">
             <i id="notifIcon" class="ph ph-info text-xl"></i>
@@ -190,31 +193,123 @@
     </div>
 
     <script>
+        // --- VIEW MANAGEMENT ---
+        function switchView(viewName) {
+            ['store', 'login', 'dashboard'].forEach(v => {
+                document.getElementById('view-' + v).classList.add('hidden');
+            });
+            document.getElementById('view-' + viewName).classList.remove('hidden');
+
+            // Nav Styling
+            const navStore = document.getElementById('navStore');
+            const navLogin = document.getElementById('navLogin');
+
+            if (viewName === 'store') {
+                navStore.className = "bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition";
+                navLogin.className = "bg-transparent hover:bg-white/10 px-3 py-1.5 rounded-full transition";
+            } else {
+                navLogin.className = "bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition";
+                navStore.className = "bg-transparent hover:bg-white/10 px-3 py-1.5 rounded-full transition";
+            }
+        }
+
+        // --- DASHBOARD LOGIC ---
+        function processLogin() {
+            const mobile = document.getElementById('loginMobile').value;
+            const code = document.getElementById('loginCode').value;
+            const btn = document.getElementById('loginBtn');
+            const status = document.getElementById('loginStatus');
+
+            if (mobile.length !== 10 || !code) {
+                status.innerText = "Please enter valid mobile and code";
+                status.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Verifying...";
+            status.classList.add('hidden');
+
+            const fullMobile = '0' + mobile;
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    btn.disabled = false;
+                    btn.innerText = "Check Status";
+
+                    if (res.error) {
+                        status.innerText = res.error;
+                        status.classList.remove('hidden');
+                    } else {
+                        // Success
+                        loadDashboard(res);
+                        switchView('dashboard');
+                    }
+                })
+                .withFailureHandler(function(e) {
+                    btn.disabled = false;
+                    btn.innerText = "Check Status";
+                    status.innerText = "Connection Error";
+                    status.classList.remove('hidden');
+                })
+                .loginUser(fullMobile, code);
+        }
+
+        function loadDashboard(data) {
+            document.getElementById('dashRemaining').innerText = data.remaining;
+            document.getElementById('dashPlan').innerText = data.plan;
+
+            // Setup Connect Form
+            document.getElementById('formUser').value = data.mobile;
+            document.getElementById('formPass').value = data.password;
+
+            // Parse URL Params for Status (from Router redirect)
+            const params = new URLSearchParams(window.location.search);
+            const ip = params.get('ip');
+            const mac = params.get('mac');
+            const bytesIn = params.get('bytes_in');
+            const bytesOut = params.get('bytes_out');
+
+            if (ip) document.getElementById('dashIp').innerText = ip;
+            if (mac) document.getElementById('dashMac').innerText = mac;
+            if (bytesIn) document.getElementById('dashDown').innerText = formatBytes(bytesIn);
+            if (bytesOut) document.getElementById('dashUp').innerText = formatBytes(bytesOut);
+        }
+
+        function logoutDashboard() {
+            document.getElementById('loginMobile').value = '';
+            document.getElementById('loginCode').value = '';
+            switchView('login');
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        // --- STORE LOGIC (Existing) ---
         let selectedPlanPrice = 0;
         let selectedPlanName = '';
         let selectedPlanId = null;
-
         let selectedPaymentMethodName = '';
         let selectedPaymentMethodKey = null;
         let isProcessing = false;
 
         function selectPlan(element, price, name, id) {
             if (isProcessing) return;
-            // Reset styles
             document.querySelectorAll('.plan-card').forEach(el => {
                 el.classList.remove('selected');
                 el.querySelector('h3').classList.remove('text-green-700');
             });
-
-            // Set active style
             element.classList.add('selected');
             element.querySelector('h3').classList.add('text-green-700');
-
-            // Set data
             selectedPlanPrice = price;
             selectedPlanName = name;
             selectedPlanId = id;
-
             updateTotal();
             checkForm();
         }
@@ -234,14 +329,12 @@
 
         const mobileInput = document.getElementById('mobileNumber');
         mobileInput.addEventListener('input', function(e) {
-            // Allow only numbers
             this.value = this.value.replace(/[^0-9]/g, '');
             checkForm();
         });
 
         function checkForm() {
-            if (isProcessing) return; // Do not update if processing
-
+            if (isProcessing) return;
             const btn = document.getElementById('payButton');
             const btnText = document.getElementById('btnText');
             const mobile = mobileInput.value;
@@ -255,7 +348,6 @@
                 btn.disabled = true;
                 btn.classList.add('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
                 btn.classList.remove('bg-green-600', 'text-white', 'hover:bg-green-700', 'shadow-lg');
-
                 if (selectedPlanPrice === 0) btnText.innerText = "Select a Plan";
                 else if (!selectedPaymentMethodKey) btnText.innerText = "Select Payment Method";
                 else if (mobile.length < 10) btnText.innerText = "Enter Valid Mobile Number";
@@ -266,42 +358,31 @@
             const notif = document.getElementById('notification');
             const notifText = document.getElementById('notifText');
             const notifIcon = document.getElementById('notifIcon');
-
             notifText.innerText = msg;
             notifIcon.className = `ph ${icon} text-xl`;
-
             notif.classList.remove('hidden');
-            setTimeout(() => {
-                notif.classList.add('hidden');
-            }, 3000);
+            setTimeout(() => { notif.classList.add('hidden'); }, 3000);
         }
 
         function processPayment() {
             if (isProcessing) return;
-
             const btn = document.getElementById('payButton');
             const errorMsg = document.getElementById('errorMsg');
             const mobile = mobileInput.value;
 
-            // UI Loading State
             isProcessing = true;
             btn.disabled = true;
             btn.innerHTML = `<div class="loader mr-2"></div> Redirecting...`;
             errorMsg.classList.add('hidden');
 
-            // Format number for backend (add '0' prefix)
             const fullMobile = '0' + mobile;
 
-            // Call Backend
             google.script.run
                 .withSuccessHandler(function(url) {
                     if (url) {
-                        showNotification("Redirecting to " + selectedPaymentMethodName + "...", "ph-arrow-square-out");
-                        // Redirect to PayMongo
+                        showNotification("Redirecting...", "ph-arrow-square-out");
                         window.location.href = url;
-                        // Button stays disabled during redirect
                     } else {
-                        // Reset Button on logic error
                         isProcessing = false;
                         checkForm();
                         errorMsg.innerText = "Error: No payment URL returned.";
@@ -309,10 +390,8 @@
                     }
                 })
                 .withFailureHandler(function(err) {
-                    // Reset Button on network error
                     isProcessing = false;
                     checkForm();
-                    console.error(err);
                     errorMsg.innerText = "Error: " + err.message;
                     errorMsg.classList.remove('hidden');
                 })
