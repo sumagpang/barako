@@ -1,10 +1,8 @@
-// CONFIGURATION (Ideally set these in Project Settings > Script Properties)
-// Keys should be stored in Script Properties, not hardcoded.
-var SENDER_NAME = 'SEMAPHORE'; // Your registered Sender Name (or default)
+// CONFIGURATION
+var SENDER_NAME = 'SEMAPHORE';
 var SHEET_NAME = 'Transactions';
-var ADMIN_PASSWORD = 'admin123'; // Change this for security!
-
-// SECURITY: Define a shared secret token for the MikroTik to authenticate with this script
+var LIVE_SHEET_NAME = 'LiveStatus';
+var ADMIN_PASSWORD = 'admin123';
 var MIKROTIK_TOKEN = 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING';
 
 var PLANS = {
@@ -15,12 +13,10 @@ var PLANS = {
 };
 
 function doGet(e) {
-  // Mode 1: MikroTik Router Fetching Users (Requires Token)
   if (e.parameter.token && e.parameter.token === MIKROTIK_TOKEN) {
     return handleRouterRequest(e);
   }
 
-  // Mode 5: Admin Dashboard
   if (e.parameter.page === 'admin') {
       return HtmlService.createHtmlOutputFromFile('admin')
           .setTitle('WIFI Admin')
@@ -28,12 +24,10 @@ function doGet(e) {
           .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
-  // Mode 2: Success Page (User Returned from PayMongo)
   if (e.parameter.status === 'success' && e.parameter.ref) {
      return handleSuccessPage(e.parameter.ref);
   }
 
-  // Mode 3: Cancelled Page (User Cancelled in PayMongo)
   if (e.parameter.status === 'cancelled' && e.parameter.ref) {
       updateTransactionStatus(e.parameter.ref, 'CANCELLED');
       return HtmlService.createHtmlOutput('<h1>Transaction Cancelled</h1><p>You have cancelled the payment. Close this window to try again.</p>')
@@ -41,10 +35,9 @@ function doGet(e) {
           .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
-  // Mode 4: Storefront (HTML)
   return HtmlService.createHtmlOutputFromFile('index')
       .setTitle('WIFI sa BUKID')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // Allow iframing if needed
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -54,12 +47,8 @@ function loginUser(mobile, password) {
         var data = sheet.getDataRange().getValues();
         var user = null;
 
-        // Skip header, Iterate backwards to find latest
         for (var i = data.length - 1; i > 0; i--) {
-            // Check Mobile (Col 1/B) and Password (Col 5/F)
-            // Ensure types match string
             if (String(data[i][1]) === String(mobile) && String(data[i][5]) === String(password)) {
-                // Check if PAID
                 var status = data[i][6];
                 if (status.includes('PAID') || status === 'SYNCED') {
                     user = {
@@ -78,9 +67,7 @@ function loginUser(mobile, password) {
             return { error: "Invalid Credentials or Plan not Active" };
         }
 
-        // Calculate Remaining Time
-        // Find Plan Duration
-        var planDuration = 60; // Default 1 hour
+        var planDuration = 60;
         var desc = user.description.toLowerCase();
         if (desc.includes('1 hour')) planDuration = 60;
         if (desc.includes('3 hours')) planDuration = 180;
@@ -94,7 +81,6 @@ function loginUser(mobile, password) {
 
         if (remaining < 0) remaining = 0;
 
-        // Format Remaining Time
         var h = Math.floor(remaining / 60);
         var m = remaining % 60;
         var remainingStr = h + "h " + m + "m";
@@ -119,43 +105,110 @@ function getAdminData(password) {
         return { error: "Invalid Password" };
     }
 
+    // 1. Get Transactions
     var sheet = getOrCreateSheet();
     var data = sheet.getDataRange().getValues();
-    var result = [];
+    var transactions = [];
 
-    // Skip header
     for (var i = 1; i < data.length; i++) {
-        // Safe Date Conversion
         var ts = data[i][0];
-        var tsStr = "";
-        if (ts instanceof Date) {
-            tsStr = ts.toISOString();
-        } else {
-            tsStr = String(ts);
-        }
+        var tsStr = (ts instanceof Date) ? ts.toISOString() : String(ts);
 
-        result.push({
+        transactions.push({
             timestamp: tsStr,
             mobile: String(data[i][1]),
             amount: data[i][2],
             description: data[i][3],
             status: data[i][6],
-            method: data[i][9]
+            method: data[i][9],
+            mac: data[i][10] || 'N/A' // Added MAC
         });
     }
-    return result;
+
+    // 2. Get Live Users
+    var liveSheet = getOrCreateLiveSheet();
+    var liveData = liveSheet.getDataRange().getValues();
+    var liveUsers = [];
+
+    for (var i = 1; i < liveData.length; i++) {
+        liveUsers.push({
+            mac: liveData[i][0],
+            bytesIn: liveData[i][1],
+            bytesOut: liveData[i][2],
+            uptime: liveData[i][3],
+            lastUpdate: liveData[i][4]
+        });
+    }
+
+    // Join Live Stats with Transaction Data to get Mobile Number
+    // Create a reverse copy for searching to find the MOST RECENT transaction
+    var reversedTransactions = transactions.slice().reverse();
+
+    var enrichedLiveUsers = liveUsers.map(function(u) {
+       // Find most recent transaction with this MAC
+       var matchedTx = reversedTransactions.find(function(t) { return t.mac === u.mac; });
+       var mobile = matchedTx ? matchedTx.mobile : 'Unknown';
+
+       // Calculate remaining time roughly based on uptime vs plan?
+       // Better: Just use the plan logic from loginUser if we have the mobile.
+       // For simplicity, we'll pass raw uptime for now, or the frontend can calculate if needed.
+       // Actually, the user wants "Remaining Time".
+       // Let's try to calculate it if we found the transaction.
+       var remainingStr = u.uptime; // Fallback
+       if (matchedTx) {
+          var planDuration = 60;
+          if (matchedTx.description.toLowerCase().includes('3 hours')) planDuration = 180;
+          if (matchedTx.description.toLowerCase().includes('1 day')) planDuration = 1440;
+          if (matchedTx.description.toLowerCase().includes('1 week')) planDuration = 10080;
+
+          var startTime = new Date(matchedTx.timestamp);
+          var now = new Date();
+          var diffMinutes = Math.floor((now - startTime) / 60000);
+          var rem = planDuration - diffMinutes;
+          if (rem < 0) rem = 0;
+           var h = Math.floor(rem / 60);
+           var m = rem % 60;
+           remainingStr = h + "h " + m + "m";
+       }
+
+       return {
+           mac: u.mac,
+           mobile: mobile,
+           uploaded: formatBytes(u.bytesIn), // In is Upload from router perspective? No, Router In is from client.
+           // Standard: Router Rx (In) = Client Upload. Router Tx (Out) = Client Download.
+           // However, MikroTik /ip hotspot active print uses 'bytes-in' (from user to router) and 'bytes-out' (router to user).
+           // So Bytes In = Upload, Bytes Out = Download.
+           downloaded: formatBytes(u.bytesOut),
+           uploadedRaw: u.bytesIn,
+           downloadedRaw: u.bytesOut,
+           remainingTime: remainingStr
+       };
+    });
+
+    return {
+        transactions: transactions,
+        liveUsers: enrichedLiveUsers
+    };
+
   } catch (e) {
     return { error: "Server Error: " + e.toString() };
   }
 }
 
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+
 function handleSuccessPage(referenceId) {
-  // Look up the transaction to get credentials
   var sheet = getOrCreateSheet();
   var data = sheet.getDataRange().getValues();
   var user = null;
 
-  // Search for the reference ID (Column H - 8th column, index 7)
   for (var i = 1; i < data.length; i++) {
     if (data[i][7] === referenceId) {
        user = {
@@ -198,12 +251,10 @@ function handleRouterRequest(e) {
   var data = sheet.getDataRange().getValues();
   var usersToAdd = [];
 
-  // Skip header row
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var status = row[6]; // Column G
+    var status = row[6];
 
-    // Only sync PAID transactions
     if (status === 'PAID_PENDING_SYNC') {
       usersToAdd.push({
         username: row[4],
@@ -212,7 +263,6 @@ function handleRouterRequest(e) {
         limitUptime: getLimitFromDescription(row[3])
       });
 
-      // Mark as SYNCED
       sheet.getRange(i + 1, 7).setValue('SYNCED');
     }
   }
@@ -221,21 +271,22 @@ function handleRouterRequest(e) {
   return output;
 }
 
-// Called from Frontend (index.html)
-function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
+// Updated to accept MAC Address
+function createPayMongoCheckout(planId, mobileNumber, paymentMethod, macAddress) {
   var plan = PLANS[planId];
   if (!plan) throw new Error('Invalid Plan');
 
   var webAppUrl = ScriptApp.getService().getUrl();
 
-  // Generate Reference ID and Password NOW
   var referenceId = 'ref_' + generateRandomString(12);
-  var username = mobileNumber; // User wants Mobile # as Username
+  var username = mobileNumber;
   var password = generateRandomString(4);
 
-  // Pre-save to DB as INITIALIZING
   var sheet = getOrCreateSheet();
   var timestamp = new Date();
+
+  // Safe default for macAddress
+  var mac = macAddress || 'Unknown';
 
   sheet.appendRow([
     timestamp,
@@ -246,11 +297,12 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     password,
     'INITIALIZING',
     referenceId,
-    '', // Placeholder for Session ID
-    paymentMethod // Added Payment Method
+    '',
+    paymentMethod,
+    mac // Save MAC
   ]);
 
-  var paymentTypes = ['gcash', 'paymaya', 'grab_pay']; // Default fallback
+  var paymentTypes = ['gcash', 'paymaya', 'grab_pay'];
   if (paymentMethod === 'gcash') {
     paymentTypes = ['gcash'];
   } else if (paymentMethod === 'paymaya') {
@@ -259,7 +311,6 @@ function createPayMongoCheckout(planId, mobileNumber, paymentMethod) {
     paymentTypes = ['gcash', 'paymaya', 'grab_pay'];
   }
 
-  // Create PayMongo Checkout Session
   var payload = {
     data: {
       attributes: {
@@ -329,6 +380,13 @@ function doPost(e) {
     }
 
     var postData = JSON.parse(e.postData.contents);
+
+    // Check if this is a Router Stats Update
+    if (postData.action === 'router_stats') {
+        return storeRouterStats(postData);
+    }
+
+    // Otherwise, assume PayMongo Webhook
     var eventType = postData.data.attributes.type;
 
     if (eventType !== 'checkout_session.payment.paid') {
@@ -366,7 +424,6 @@ function doPost(e) {
 
         var username = userRow[4];
         var password = userRow[5];
-        var description = userRow[3];
         var mobileNumber = userRow[1];
 
         var message = 'WIFI sa BUKID: Payment Received! Username: ' + username + ' Password: ' + password;
@@ -386,6 +443,34 @@ function doPost(e) {
     errorOutput.setContent(JSON.stringify({status: 'error', message: error.toString()}));
     return errorOutput;
   }
+}
+
+function storeRouterStats(data) {
+    var output = ContentService.createTextOutput();
+    output.setMimeType(ContentService.MimeType.JSON);
+
+    // Validate Token
+    if (data.token !== MIKROTIK_TOKEN) {
+        output.setContent(JSON.stringify({status: 'error', message: 'Invalid Token'}));
+        return output;
+    }
+
+    var liveSheet = getOrCreateLiveSheet();
+    // Clear old data (keep header)
+    if (liveSheet.getLastRow() > 1) {
+        liveSheet.getRange(2, 1, liveSheet.getLastRow() - 1, liveSheet.getLastColumn()).clearContent();
+    }
+
+    var users = data.users; // Array of {mac, bytes-in, bytes-out, uptime}
+    if (users && users.length > 0) {
+        var rows = users.map(function(u) {
+            return [u.mac, u['bytes-in'], u['bytes-out'], u.uptime, new Date()];
+        });
+        liveSheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+    }
+
+    output.setContent(JSON.stringify({status: 'success'}));
+    return output;
 }
 
 // --- Helper Functions ---
@@ -477,7 +562,7 @@ function getOrCreateSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID', 'PaymentMethod']);
+    sheet.appendRow(['Timestamp', 'Phone', 'Amount', 'Description', 'Username', 'Password', 'Status', 'ReferenceID', 'SessionID', 'PaymentMethod', 'MacAddress']);
   } else {
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     if (headers.indexOf('SessionID') === -1) {
@@ -486,7 +571,21 @@ function getOrCreateSheet() {
     }
     if (headers.indexOf('PaymentMethod') === -1) {
        sheet.getRange(1, headers.length + 1).setValue('PaymentMethod');
+       headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
+    if (headers.indexOf('MacAddress') === -1) {
+       sheet.getRange(1, headers.length + 1).setValue('MacAddress');
+    }
+  }
+  return sheet;
+}
+
+function getOrCreateLiveSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(LIVE_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(LIVE_SHEET_NAME);
+    sheet.appendRow(['MAC', 'BytesIn', 'BytesOut', 'Uptime', 'LastUpdate']);
   }
   return sheet;
 }

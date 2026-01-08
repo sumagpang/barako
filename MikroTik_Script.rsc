@@ -1,4 +1,4 @@
-# MikroTik RouterOS Script for Hotspot Sync
+# MikroTik RouterOS Script for Hotspot Sync & Reporting
 #
 # Instructions:
 # 1. System > Scripts > Add New
@@ -11,21 +11,22 @@
 
 {
     # REPLACE THIS URL with your actual Google Apps Script Web App URL (must end with /exec)
-    # SECURITY: Append ?token=YOUR_SECRET_TOKEN to the URL
-    :local url "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec?token=YOUR_SECRET_TOKEN";
+    # SECURITY: Ensure the token matches the MIKROTIK_TOKEN in Code.gs
+    :local baseUrl "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
+    :local token "CHANGE_THIS_TO_A_LONG_RANDOM_STRING";
 
-    # Wrap the fetch in a do-on-error block to catch network failures
+    # ---------------------------------------------------
+    # PART 1: FETCH NEW USERS (GET Request)
+    # ---------------------------------------------------
+    :local fetchUrl ($baseUrl . "?token=" . $token);
+
     :do {
-        # Fetch data from Google Cloud
-        :local result ([/tool fetch url=$url output=user as-value]);
+        :local result ([/tool fetch url=$fetchUrl output=user as-value]);
         :local status ($result->"status");
         :local data ($result->"data");
 
         if ($status = "finished") do={
-
-            # RouterOS doesn't have a native JSON parser in older versions (v6).
-            # This script assumes RouterOS v7.10+ with :deserialize support.
-
+            # RouterOS v7.10+ required for :deserialize
             :local usersArray [:deserialize from=json $data];
 
             :foreach user in=$usersArray do={
@@ -34,17 +35,47 @@
                 :local uProfile ($user->"profile");
                 :local uLimit ($user->"limitUptime");
 
-                # Check if user already exists to avoid errors
                 :if ([:len [/ip hotspot user find name=$uName]] = 0) do={
                     :log info ("Adding Hotspot User: " . $uName);
-
-                    # Add the user to Hotspot
-                    # Ensure the 'profile' exists in /ip hotspot user profile
                     /ip hotspot user add name=$uName password=$uPass profile=$uProfile limit-uptime=$uLimit;
                 }
             }
         }
     } on-error={
         :log warning "Failed to fetch users from Google Script";
+    }
+
+    # ---------------------------------------------------
+    # PART 2: REPORT ACTIVE USERS (POST Request)
+    # ---------------------------------------------------
+    :do {
+        # Construct JSON for active users
+        :local activeUsers [/ip hotspot active print as-value];
+        :local userList [:toarray ""];
+
+        :foreach u in=$activeUsers do={
+            :local mac ($u->"mac-address");
+            :local bytesIn ($u->"bytes-in");
+            :local bytesOut ($u->"bytes-out");
+            :local uptime ($u->"uptime");
+
+            # Create a dictionary for this user
+            :local userObj { "mac"=$mac; "bytes-in"=$bytesIn; "bytes-out"=$bytesOut; "uptime"=$uptime };
+            :set userList ($userList, $userObj);
+        }
+
+        :if ([:len $userList] > 0) do={
+             # Build the final payload
+             :local payload { "action"="router_stats"; "token"=$token; "users"=$userList };
+             :local jsonPayload [:serialize to=json $payload];
+
+             # Post to Google Script
+             /tool fetch url=$baseUrl http-method=post http-header-field="Content-Type: application/json" http-data=$jsonPayload output=none;
+
+             :log info ("Reported " . [:len $userList] . " active users to cloud.");
+        }
+
+    } on-error={
+        :log warning "Failed to report router stats";
     }
 }
