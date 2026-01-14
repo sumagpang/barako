@@ -16,15 +16,15 @@ def test_bill_splitter():
         window.google = {
             script: {
                 run: {
-                    successHandler: null,
-                    failureHandler: null,
                     withSuccessHandler: function(func) {
-                        this.successHandler = func;
-                        return this;
+                        const runner = Object.create(this);
+                        runner.successHandler = func;
+                        return runner;
                     },
                     withFailureHandler: function(func) {
-                        this.failureHandler = func;
-                        return this;
+                        const runner = Object.create(this);
+                        runner.failureHandler = func;
+                        return runner;
                     },
                     getInitialData: function() {
                         const data = {
@@ -32,32 +32,41 @@ def test_bill_splitter():
                                 { id: '1', name: 'Alice', moveIn: '2023-01-01', moveOut: null },
                                 { id: '2', name: 'Bob', moveIn: '2023-02-01', moveOut: null }
                             ],
-                            billTypes: ['Electricity', 'Water']
+                            billTypes: []
                         };
-                        setTimeout(() => this.successHandler(data), 100);
+                        setTimeout(() => this.successHandler && this.successHandler(data), 100);
                     },
-                    calculatePreview: function(bill) {
+                    calculatePreview: function(month, amount) {
+                        console.log('Mock: Calculating preview for ' + month + ' amount ' + amount);
                         const res = {
                            totalDays: 30,
                            allocations: [
                                { housemateId: '1', name: 'Alice', daysActive: 30, amount: 50 },
                                { housemateId: '2', name: 'Bob', daysActive: 30, amount: 50 }
                            ],
-                           totalAllocated: 100
+                           totalAllocated: 100,
+                           startDate: '2023-03-01',
+                           endDate: '2023-03-31'
                         };
-                        setTimeout(() => this.successHandler(res), 500);
+                        setTimeout(() => {
+                           console.log('Mock: Returning preview result');
+                           this.successHandler && this.successHandler(res);
+                        }, 500);
                     },
-                    saveBill: function(bill, preview) {
-                        setTimeout(() => this.successHandler(true), 500);
+                    saveBill: function(month, items, preview) {
+                        setTimeout(() => this.successHandler && this.successHandler(true), 500);
                     },
                     getHistory: function() {
-                        setTimeout(() => this.successHandler({}), 100);
+                        setTimeout(() => this.successHandler && this.successHandler({}), 100);
                     },
                     saveHousemate: function(form, id) {
-                         setTimeout(() => this.successHandler(true), 100);
+                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
                     },
                     addBillType: function(type) {
-                         setTimeout(() => this.successHandler(true), 100);
+                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
+                    },
+                    deleteBillGroup: function(id) {
+                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
                     }
                 }
             }
@@ -68,33 +77,28 @@ def test_bill_splitter():
         page.reload()
 
         try:
-            # Wait for data to load
-            # The spinner should disappear
-            page.wait_for_selector(".ph-spinner", state="detached")
+            # Wait for main content to appear (FairShare title)
+            page.wait_for_selector("text=FairShare")
 
-            # Verify Bill Types loaded by checking the select options
-            # "Electricity" is the first option
-            expect(page.locator("select")).to_have_value("Electricity")
+            # Verify inputs exist (Ooredoo, Kahramaa, Others)
+            # Use specific locator for the label to avoid matching the button
+            expect(page.locator("label", has_text="Ooredoo (Internet)")).to_be_visible()
 
-            # Fill out form
-            page.fill("input[type='number']", "100")
+            # Fill inputs
+            # The input is inside the same container as the label.
+            # We can just target the first number input since we know Ooredoo is first.
+            page.locator("input[type='number']").first.fill("100")
 
-            # Date inputs
-            page.locator("input[type='date']").nth(0).fill("2023-03-01")
-            page.locator("input[type='date']").nth(1).fill("2023-03-30")
+            # Wait for calculation (triggered by watch)
+            # We should see housemates appear in the preview list
+            # Note: The mock delay is 500ms
+            page.wait_for_selector("text=Alice", timeout=5000)
 
-            # Click Calculate
-            page.click("text=Calculate Allocation")
-
-            # Wait for preview
-            page.wait_for_selector("text=Allocation Preview", timeout=5000)
-
-            # Now Alice should be visible in the preview list
-            expect(page.locator("text=Alice")).to_be_visible()
-            expect(page.locator("text=₱50.00").first).to_be_visible()
+            # Verify amounts
+            expect(page.locator("text=QR 50.00").first).to_be_visible()
 
             # Take screenshot
-            page.screenshot(path="verification/bill_splitter_preview.png")
+            page.screenshot(path="verification/bill_splitter_redesign.png")
             print("Verification successful, screenshot saved.")
 
         except Exception as e:

@@ -6,245 +6,287 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+      body { font-family: 'Inter', sans-serif; }
       .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
       .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
   </head>
   <body class="bg-gray-50 min-h-screen text-gray-800">
-    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col relative">
 
-      <!-- Header -->
-      <div class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-10">
-        <h1 class="text-xl font-bold flex items-center gap-2">
-          <i class="ph ph-receipt"></i> Bill Splitter
-        </h1>
-        <button @click="fetchData" class="p-2 hover:bg-indigo-500 rounded-full transition" title="Refresh">
-          <i class="ph ph-arrow-clockwise" :class="{'animate-spin': loading}"></i>
+      <!-- Top Bar -->
+      <div class="bg-white p-4 flex justify-between items-center sticky top-0 z-10 border-b border-gray-100">
+        <div class="flex items-center gap-2 text-indigo-700">
+          <div class="bg-indigo-600 text-white p-1 rounded">
+             <i class="ph ph-currency-dollar font-bold text-lg"></i>
+          </div>
+          <span class="font-bold text-xl tracking-tight">FairShare</span>
+        </div>
+        <button @click="currentTab = 'settings'" class="text-gray-400 hover:text-gray-600 transition">
+          <i class="ph ph-gear text-2xl"></i>
         </button>
       </div>
 
       <!-- Main Content -->
-      <div class="flex-1 p-4 overflow-y-auto">
+      <div class="flex-1 p-4 pb-24 overflow-y-auto">
 
-        <!-- Loading State -->
-        <div v-if="loading && !housemates.length" class="flex flex-col items-center justify-center h-64 text-gray-400">
-          <i class="ph ph-spinner animate-spin text-4xl mb-2"></i>
-          <p>Loading data...</p>
-        </div>
+        <!-- View: Calculator -->
+        <div v-if="currentTab === 'calculator'" class="space-y-6">
 
-        <!-- Tab: New Bill -->
-        <div v-if="currentTab === 'bill'" class="space-y-6">
-          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-            <h2 class="font-semibold text-indigo-900 mb-4">Record New Bill</h2>
+          <!-- Header Card -->
+          <div class="bg-indigo-600 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
+             <!-- Decorative circle -->
+             <div class="absolute -right-6 -top-6 w-24 h-24 bg-white opacity-10 rounded-full"></div>
+
+             <div class="flex justify-between items-start mb-1">
+               <span class="text-indigo-200 text-xs font-medium uppercase tracking-wider">Billing Period</span>
+               <span class="text-indigo-200 text-xs font-medium uppercase tracking-wider">Total Bill</span>
+             </div>
+
+             <div class="flex justify-between items-end">
+               <div class="relative group">
+                 <input type="month" v-model="selectedMonth" class="bg-indigo-500/50 text-white border-none rounded px-3 py-1 text-sm font-medium focus:ring-2 focus:ring-white outline-none cursor-pointer">
+                 <i class="ph ph-calendar absolute right-2 top-1.5 pointer-events-none text-indigo-200"></i>
+               </div>
+               <div class="text-3xl font-bold">QR {{ totalAmount.toFixed(2) }}</div>
+             </div>
+          </div>
+
+          <!-- Bill Types Inputs -->
+          <div class="grid grid-cols-1 gap-3">
+             <div v-for="(item, idx) in billItems" :key="idx" class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+               <div class="flex justify-between mb-1">
+                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
+                   <i v-if="getIcon(item.type) === 'wifi'" class="ph ph-wifi-high text-red-400"></i>
+                   <i v-else-if="getIcon(item.type) === 'lightning'" class="ph ph-lightning text-yellow-500"></i>
+                   <i v-else class="ph ph-dots-three text-purple-400"></i>
+                   {{ item.type }}
+                 </label>
+                 <button v-if="billItems.length > 1" @click="removeBillItem(idx)" class="text-gray-300 hover:text-red-500">
+                    <i class="ph ph-x"></i>
+                 </button>
+               </div>
+               <div class="flex items-center gap-2">
+                 <i v-if="getIcon(item.type) === 'wifi'" class="ph ph-wifi-high text-gray-400"></i>
+                 <i v-else-if="getIcon(item.type) === 'lightning'" class="ph ph-lightning text-gray-400"></i>
+                 <i v-else class="ph ph-dots-three text-gray-400"></i>
+                 <input type="number" v-model.number="item.amount" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
+               </div>
+             </div>
+
+             <!-- Add Bill Type Button -->
+             <div class="flex gap-2 overflow-x-auto py-1">
+                <button v-for="t in availableTypes" :key="t" @click="addBillItem(t)"
+                  class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">
+                  + {{ t }}
+                </button>
+                <button @click="showTypeModal = true" class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200">
+                  Custom...
+                </button>
+             </div>
+          </div>
+
+          <!-- Housemates Section -->
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                <i class="ph ph-users"></i> Housemates
+              </h2>
+              <button @click="openHousemateModal()" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100 transition">
+                + Add Person
+              </button>
+            </div>
 
             <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Bill Type</label>
-                <div class="flex gap-2">
-                  <select v-model="newBill.type" class="flex-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
-                    <option v-for="t in billTypes" :key="t" :value="t">{{ t }}</option>
-                  </select>
-                  <button @click="showTypeModal = true" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700">
-                    <i class="ph ph-plus"></i>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Total Amount</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-gray-500">₱</span>
-                  <input type="number" v-model.number="newBill.amount" class="w-full p-2 pl-7 border rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00">
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
-                  <input type="date" v-model="newBill.start" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
-                  <input type="date" v-model="newBill.end" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                </div>
-              </div>
-
-              <button @click="calculatePreview" :disabled="!isBillValid"
-                class="w-full py-3 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm">
-                Calculate Allocation
-              </button>
-            </div>
-          </div>
-
-          <!-- Preview Section -->
-          <div v-if="preview" class="bg-white border rounded-lg overflow-hidden animate-fade-in">
-            <div class="bg-gray-100 px-4 py-2 border-b flex justify-between items-center">
-              <span class="font-medium text-gray-700">Allocation Preview</span>
-              <span class="text-xs text-gray-500">{{ preview.totalDays }} days</span>
-            </div>
-            <div class="divide-y">
-              <div v-for="item in preview.allocations" :key="item.housemateId" class="p-3 flex justify-between items-center hover:bg-gray-50">
-                <div>
-                  <div class="font-medium text-gray-900">{{ item.name }}</div>
-                  <div class="text-xs text-gray-500">{{ item.daysActive }} days active</div>
-                </div>
-                <div class="font-bold text-gray-800">₱{{ item.amount.toFixed(2) }}</div>
-              </div>
-            </div>
-            <div class="p-3 bg-gray-50 border-t">
-              <button @click="submitBill" class="w-full py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition">
-                Confirm & Save
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab: History -->
-        <div v-if="currentTab === 'history'" class="space-y-4">
-           <h2 class="font-semibold text-gray-800 mb-2">Monthly History</h2>
-           <div v-for="(group, monthKey) in history" :key="monthKey" class="border rounded-lg bg-white overflow-hidden">
-             <div @click="toggleMonth(monthKey)" class="p-4 bg-gray-50 flex justify-between items-center cursor-pointer hover:bg-gray-100">
-               <div class="flex items-center gap-3">
-                 <i class="ph ph-calendar text-indigo-500 text-xl"></i>
-                 <div>
-                   <div class="font-medium text-gray-900">{{ formatMonth(monthKey) }}</div>
-                   <div class="text-xs text-gray-500">{{ group.bills.length }} bills</div>
-                 </div>
-               </div>
-               <div class="text-right">
-                 <div class="font-bold text-gray-900">₱{{ group.total.toFixed(2) }}</div>
-                 <i class="ph ph-caret-down text-gray-400" :class="{'rotate-180': expandedMonth === monthKey}"></i>
-               </div>
-             </div>
-
-             <div v-if="expandedMonth === monthKey" class="border-t divide-y">
-               <!-- Breakdown by Housemate -->
-                <div class="p-3 bg-indigo-50 text-sm">
-                  <div class="font-medium text-indigo-900 mb-2">Housemate Shares</div>
-                  <div v-for="(amt, name) in group.housemateTotals" :key="name" class="flex justify-between py-1">
-                    <span class="text-gray-600">{{ name }}</span>
-                    <span class="font-semibold text-gray-800">₱{{ amt.toFixed(2) }}</span>
+              <div v-for="alloc in previewAllocations" :key="alloc.housemateId" class="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-lg">
+                    {{ alloc.name.charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">NAME</div>
+                    <div class="font-semibold text-gray-800">{{ alloc.name }}</div>
                   </div>
                 </div>
 
-               <!-- List of Bills -->
-               <div v-for="bill in group.bills" :key="bill.id" class="p-3 hover:bg-gray-50">
-                 <div class="flex justify-between mb-1">
-                   <span class="font-medium text-gray-800">{{ bill.type }}</span>
-                   <span class="font-bold text-gray-700">₱{{ bill.amount.toFixed(2) }}</span>
-                 </div>
-                 <div class="text-xs text-gray-500 flex justify-between">
-                   <span>{{ formatDate(bill.start) }} - {{ formatDate(bill.end) }}</span>
-                   <span class="text-indigo-600 cursor-pointer" @click.stop="viewBillDetails(bill)">View Details</span>
-                 </div>
-               </div>
-             </div>
-           </div>
-
-           <div v-if="Object.keys(history).length === 0" class="text-center py-10 text-gray-400">
-             No records found.
-           </div>
-        </div>
-
-        <!-- Tab: Settings (Housemates) -->
-        <div v-if="currentTab === 'settings'" class="space-y-6">
-
-          <!-- Housemates List -->
-          <div class="bg-white rounded-lg border shadow-sm">
-            <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
-              <h3 class="font-semibold text-gray-700">Housemates</h3>
-              <button @click="openHousemateModal()" class="text-sm bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Add New</button>
-            </div>
-            <div class="divide-y">
-              <div v-for="h in housemates" :key="h.id" class="p-3 flex justify-between items-center">
-                <div>
-                  <div class="font-medium text-gray-900">{{ h.name }}</div>
-                  <div class="text-xs text-gray-500">
-                    Since: {{ formatDate(h.moveIn) }}
-                    <span v-if="h.moveOut"> | Left: {{ formatDate(h.moveOut) }}</span>
-                  </div>
+                <div class="text-center">
+                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">DAYS STAYED</div>
+                   <div class="font-semibold text-gray-800 flex items-baseline justify-center gap-1">
+                     {{ alloc.daysActive }} <span class="text-xs text-gray-400 font-normal">days</span>
+                   </div>
                 </div>
-                <button @click="openHousemateModal(h)" class="text-gray-400 hover:text-indigo-600">
-                  <i class="ph ph-pencil-simple text-xl"></i>
+
+                <div class="text-right">
+                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">TO PAY</div>
+                   <div class="font-bold text-gray-800">QR {{ alloc.amount.toFixed(2) }}</div>
+                </div>
+
+                <button class="text-gray-300 hover:text-red-500 ml-2">
+                   <i class="ph ph-trash"></i>
                 </button>
               </div>
-            </div>
-            <div v-if="housemates.length === 0" class="p-4 text-center text-gray-400 text-sm">
-              No housemates added yet.
+
+              <div v-if="previewAllocations.length === 0" class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed">
+                Select a month to calculate shares.
+              </div>
             </div>
           </div>
 
-          <!-- Bill Types List -->
-          <div class="bg-white rounded-lg border shadow-sm">
-             <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
-              <h3 class="font-semibold text-gray-700">Bill Types</h3>
-              <!-- Added directly in the form, but visible here too -->
-             </div>
-             <div class="p-3 flex flex-wrap gap-2">
-               <span v-for="t in billTypes" :key="t" class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700 border flex items-center gap-2">
-                 {{ t }}
-               </span>
-               <button @click="showTypeModal = true" class="px-3 py-1 border border-dashed border-gray-300 rounded-full text-sm text-gray-500 hover:border-indigo-500 hover:text-indigo-500">
-                 + Add
-               </button>
-             </div>
-          </div>
+        </div>
 
+        <!-- View: History -->
+        <div v-else-if="currentTab === 'history'" class="space-y-4">
+           <div class="flex items-center gap-2 mb-4">
+             <button @click="currentTab = 'calculator'" class="p-1 hover:bg-gray-100 rounded-full">
+               <i class="ph ph-arrow-left text-xl"></i>
+             </button>
+             <h2 class="font-bold text-xl text-gray-800">Previous Bills</h2>
+           </div>
+
+           <div v-for="(monthData, monthKey) in history" :key="monthKey" class="space-y-4">
+             <div v-for="record in monthData.records" :key="record.id" class="bg-white border rounded-xl overflow-hidden shadow-sm">
+               <!-- Header -->
+               <div @click="toggleRecord(record.id)" class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <span class="font-bold text-xs">{{ formatMonthShort(monthKey) }}</span>
+                    </div>
+                    <div>
+                      <div class="font-bold text-gray-800">{{ formatMonthLong(monthKey) }}</div>
+                      <div class="text-xs text-gray-400">Click to view details</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] text-gray-400 uppercase font-bold">TOTAL</div>
+                    <div class="font-bold text-gray-900 text-lg">QR {{ record.total.toFixed(2) }}</div>
+                  </div>
+                  <i class="ph ph-caret-down text-gray-400 transition-transform duration-300" :class="{'rotate-180': expandedRecord === record.id}"></i>
+               </div>
+
+               <!-- Details -->
+               <div v-if="expandedRecord === record.id" class="border-t bg-gray-50/50 p-4 space-y-4 animate-fade-in">
+
+                  <!-- Breakdown -->
+                  <div class="grid grid-cols-3 gap-2">
+                    <div v-for="item in record.items" :key="item.type" class="bg-white p-2 rounded border text-center">
+                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">{{ item.type }}</div>
+                      <div class="font-bold text-gray-800">{{ item.amount }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Allocations -->
+                  <div>
+                    <h4 class="text-xs font-bold text-indigo-900 mb-2 flex items-center gap-1">
+                      <i class="ph ph-users"></i> Housemate Shares
+                    </h4>
+                    <div class="bg-white rounded border divide-y">
+                      <div v-for="alloc in record.allocations" :key="alloc.name" class="p-3 flex justify-between items-center text-sm">
+                        <div class="flex items-center gap-2">
+                          <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+                          <span class="text-gray-700 font-medium">{{ alloc.name }}</span>
+                          <span class="text-gray-400 text-xs">({{ alloc.days }} days)</span>
+                        </div>
+                        <div class="font-bold text-gray-800 bg-gray-50 px-2 py-1 rounded">QR {{ alloc.amount.toFixed(2) }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button @click="deleteRecord(record.id)" class="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-3 py-2 rounded hover:bg-red-50 transition">
+                      <i class="ph ph-trash"></i> Delete Record
+                    </button>
+                    <button @click="loadToCalculator(record, monthKey)" class="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded transition border border-indigo-200">
+                      <i class="ph ph-calculator"></i> Load to Calculator
+                    </button>
+                  </div>
+               </div>
+             </div>
+           </div>
+
+           <div v-if="Object.keys(history).length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400">
+              <i class="ph ph-clock-counter-clockwise text-4xl mb-2 opacity-50"></i>
+              <p>No history yet.</p>
+           </div>
+        </div>
+
+        <!-- View: Settings (Housemates/Types) -->
+        <div v-else-if="currentTab === 'settings'" class="space-y-6">
+           <div class="flex items-center gap-2 mb-4">
+             <button @click="currentTab = 'calculator'" class="p-1 hover:bg-gray-100 rounded-full">
+               <i class="ph ph-arrow-left text-xl"></i>
+             </button>
+             <h2 class="font-bold text-xl text-gray-800">Settings</h2>
+           </div>
+
+           <!-- Reuse existing settings logic but styled better -->
+            <div class="bg-white rounded-xl border shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                  <h3 class="font-bold text-gray-700">Housemates</h3>
+                  <button @click="openHousemateModal()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full hover:bg-indigo-700">+ Add</button>
+                </div>
+                <div class="divide-y">
+                  <div v-for="h in housemates" :key="h.id" class="p-4 flex justify-between items-center">
+                    <div>
+                      <div class="font-bold text-gray-900">{{ h.name }}</div>
+                      <div class="text-xs text-gray-500">
+                        In: {{ formatDate(h.moveIn) }}
+                        <span v-if="h.moveOut"> | Out: {{ formatDate(h.moveOut) }}</span>
+                      </div>
+                    </div>
+                    <button @click="openHousemateModal(h)" class="text-gray-400 hover:text-indigo-600 p-2">
+                      <i class="ph ph-pencil-simple text-xl"></i>
+                    </button>
+                  </div>
+                </div>
+             </div>
         </div>
 
       </div>
 
-      <!-- Bottom Nav -->
-      <div class="bg-white border-t flex justify-around p-2 pb-safe">
-        <button @click="currentTab = 'bill'" class="flex flex-col items-center p-2 rounded w-full transition" :class="currentTab === 'bill' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-          <i class="ph ph-plus-circle text-2xl" :class="currentTab === 'bill' ? 'ph-fill' : ''"></i>
-          <span class="text-[10px] font-medium mt-1">New Bill</span>
+      <!-- Bottom Action Bar (Only on Calculator) -->
+      <div v-if="currentTab === 'calculator'" class="bg-white p-4 border-t flex gap-4 fixed bottom-0 w-full max-w-md z-20">
+        <button @click="currentTab = 'history'" class="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2">
+          <i class="ph ph-clock-counter-clockwise"></i> History
         </button>
-        <button @click="currentTab = 'history'" class="flex flex-col items-center p-2 rounded w-full transition" :class="currentTab === 'history' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-          <i class="ph ph-clock-counter-clockwise text-2xl" :class="currentTab === 'history' ? 'ph-fill' : ''"></i>
-          <span class="text-[10px] font-medium mt-1">History</span>
-        </button>
-        <button @click="currentTab = 'settings'" class="flex flex-col items-center p-2 rounded w-full transition" :class="currentTab === 'settings' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'">
-          <i class="ph ph-users text-2xl" :class="currentTab === 'settings' ? 'ph-fill' : ''"></i>
-          <span class="text-[10px] font-medium mt-1">Manage</span>
+        <button @click="saveCalculation" class="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2">
+          <i class="ph ph-floppy-disk"></i> Record Calculation
         </button>
       </div>
 
       <!-- Modals -->
-
-      <!-- Housemate Modal -->
-      <div v-if="showHousemateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+      <div v-if="showHousemateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100">
           <h3 class="text-lg font-bold mb-4">{{ editingHousemate ? 'Edit' : 'Add' }} Housemate</h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
-              <input v-model="housemateForm.name" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
+              <input v-model="housemateForm.name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">Move In Date</label>
-              <input type="date" v-model="housemateForm.moveIn" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Move In Date</label>
+              <input type="date" v-model="housemateForm.moveIn" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">Move Out Date (Optional)</label>
-              <input type="date" v-model="housemateForm.moveOut" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Move Out Date (Optional)</label>
+              <input type="date" v-model="housemateForm.moveOut" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
           </div>
           <div class="mt-6 flex justify-end gap-2">
-            <button @click="showHousemateModal = false" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-            <button @click="saveHousemate" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Save</button>
+            <button @click="showHousemateModal = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button @click="saveHousemate" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200">Save</button>
           </div>
         </div>
       </div>
 
-      <!-- Bill Type Modal -->
-      <div v-if="showTypeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-          <h3 class="text-lg font-bold mb-4">Add Bill Type</h3>
-          <input v-model="newBillType" placeholder="e.g. Internet" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none mb-4">
+      <div v-if="showTypeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+          <h3 class="text-lg font-bold mb-4">Add Custom Bill Type</h3>
+          <input v-model="newBillType" placeholder="e.g. Netflix" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none mb-4">
           <div class="flex justify-end gap-2">
-            <button @click="showTypeModal = false" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-            <button @click="addBillType" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" :disabled="!newBillType">Add</button>
+            <button @click="showTypeModal = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button @click="addCustomType" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700" :disabled="!newBillType">Add</button>
           </div>
         </div>
       </div>
@@ -252,18 +294,26 @@
     </div>
 
     <script>
-      const { createApp, ref, computed, onMounted } = Vue;
+      const { createApp, ref, computed, onMounted, watch } = Vue;
 
       createApp({
         setup() {
           const loading = ref(false);
-          const currentTab = ref('bill');
-          const housemates = ref([]);
-          const billTypes = ref([]);
-          const history = ref({}); // { '2023-10': { total: 100, bills: [], housemateTotals: {} } }
+          const currentTab = ref('calculator');
 
-          const newBill = ref({ type: '', amount: null, start: '', end: '' });
-          const preview = ref(null);
+          // Data
+          const housemates = ref([]);
+          const availableTypes = ref([]); // From backend
+          const history = ref({});
+
+          // Calculator State
+          const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
+          const billItems = ref([
+            { type: 'Ooredoo (Internet)', amount: null },
+            { type: 'Kahramaa (Electricity)', amount: null },
+            { type: 'Others', amount: null }
+          ]);
+          const previewAllocations = ref([]);
 
           // Modals
           const showHousemateModal = ref(false);
@@ -272,13 +322,15 @@
           const showTypeModal = ref(false);
           const newBillType = ref('');
 
-          const expandedMonth = ref(null);
+          // History View
+          const expandedRecord = ref(null);
 
-          const isBillValid = computed(() => {
-            return newBill.value.type && newBill.value.amount > 0 && newBill.value.start && newBill.value.end;
+          // Computed
+          const totalAmount = computed(() => {
+            return billItems.value.reduce((sum, item) => sum + (item.amount || 0), 0);
           });
 
-          // API Calls
+          // API Wrapper
           const runScript = (name, args = []) => {
             return new Promise((resolve, reject) => {
               google.script.run
@@ -293,27 +345,91 @@
             try {
               const res = await runScript('getInitialData');
               housemates.value = res.housemates;
-              billTypes.value = res.billTypes;
-              // Also fetch history
-              history.value = await runScript('getHistory');
+              const serverTypes = res.billTypes;
+              // Merge server types but keep defaults if needed, or just rely on server.
+              // For now, let's keep the defaults in UI but allow adding from server.
+              if(serverTypes.length > 0) availableTypes.value = serverTypes;
+              else availableTypes.value = ['Ooredoo (Internet)', 'Kahramaa (Electricity)', 'Others'];
 
-              // Set default dates for new bill (start of month to today)
-              const today = new Date();
-              const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-              newBill.value.start = firstDay.toISOString().split('T')[0];
-              newBill.value.end = today.toISOString().split('T')[0];
-              if (billTypes.value.length > 0) newBill.value.type = billTypes.value[0];
+              // Ensure billItems have types
+              if(billItems.value.length === 0) {
+                 billItems.value = [{ type: availableTypes.value[0], amount: null }];
+              }
+
+              refreshHistory();
             } catch (e) {
-              alert('Error loading data: ' + e.message);
+              console.error(e);
             } finally {
               loading.value = false;
             }
           };
 
-          const calculatePreview = async () => {
+          const refreshHistory = async () => {
+             history.value = await runScript('getHistory');
+          };
+
+          // Watchers for Real-time Calculation
+          watch([selectedMonth, totalAmount, housemates], async () => {
+             if (selectedMonth.value && totalAmount.value > 0) {
+               try {
+                 const res = await runScript('calculatePreview', [selectedMonth.value, totalAmount.value]);
+                 console.log('Preview result:', res);
+                 if (res && res.allocations) {
+                   previewAllocations.value = res.allocations;
+                 }
+               } catch(e) { console.error(e); }
+             } else {
+               previewAllocations.value = [];
+             }
+          }, { deep: true });
+
+          // Methods
+          const getIcon = (type) => {
+            if (!type) return 'dots';
+            const t = type.toLowerCase();
+            if (t.includes('internet') || t.includes('wifi') || t.includes('ooredoo')) return 'wifi';
+            if (t.includes('electricity') || t.includes('power') || t.includes('kahramaa')) return 'lightning';
+            return 'dots';
+          };
+
+          const addBillItem = (type) => {
+            if (!billItems.value.find(i => i.type === type)) {
+               billItems.value.push({ type: type, amount: null });
+            }
+          };
+
+          const removeBillItem = (idx) => {
+            billItems.value.splice(idx, 1);
+          };
+
+          const addCustomType = async () => {
+             if(newBillType.value) {
+               await runScript('addBillType', [newBillType.value]);
+               availableTypes.value.push(newBillType.value);
+               addBillItem(newBillType.value);
+               newBillType.value = '';
+               showTypeModal.value = false;
+             }
+          };
+
+          const saveCalculation = async () => {
+            if (!selectedMonth.value || totalAmount.value <= 0) return alert('Please enter bill details.');
+
             loading.value = true;
             try {
-              preview.value = await runScript('calculatePreview', [newBill.value]);
+              // Prepare payload
+              // Items with amount > 0
+              const items = billItems.value.filter(i => i.amount > 0);
+              const preview = { allocations: previewAllocations.value };
+
+              await runScript('saveBill', [selectedMonth.value, items, preview]);
+
+              // Reset
+              billItems.value.forEach(i => i.amount = null);
+              alert('Calculation saved!');
+              refreshHistory();
+              currentTab.value = 'history';
+
             } catch (e) {
               alert(e.message);
             } finally {
@@ -321,79 +437,55 @@
             }
           };
 
-          const submitBill = async () => {
-            if (!confirm('Save this bill?')) return;
-            loading.value = true;
-            try {
-              await runScript('saveBill', [newBill.value, preview.value]);
-              alert('Bill saved!');
-              preview.value = null;
-              newBill.value.amount = null;
-              fetchData(); // Refresh history
-              currentTab.value = 'history';
-            } catch (e) {
-              alert('Error saving: ' + e.message);
-            } finally {
-              loading.value = false;
-            }
+          const deleteRecord = async (id) => {
+             if(!confirm('Delete this record?')) return;
+             await runScript('deleteBillGroup', [id]);
+             refreshHistory();
           };
 
-          // Settings Logic
+          const loadToCalculator = (record, monthKey) => {
+             selectedMonth.value = monthKey;
+             // Map items
+             billItems.value = record.items.map(i => ({ type: i.type, amount: i.amount }));
+             currentTab.value = 'calculator';
+          };
+
+          // Housemate Management
           const openHousemateModal = (h = null) => {
             editingHousemate.value = h;
             if (h) {
               housemateForm.value = { ...h };
-              // Ensure dates are formatted YYYY-MM-DD
-              if(housemateForm.value.moveIn) housemateForm.value.moveIn = housemateForm.value.moveIn.split('T')[0];
-              if(housemateForm.value.moveOut) housemateForm.value.moveOut = housemateForm.value.moveOut.split('T')[0];
             } else {
-              housemateForm.value = { name: '', moveIn: new Date().toISOString().split('T')[0], moveOut: '' };
+              housemateForm.value = { name: '', moveIn: '', moveOut: '' };
             }
             showHousemateModal.value = true;
           };
 
           const saveHousemate = async () => {
-            loading.value = true;
-            try {
-              await runScript('saveHousemate', [housemateForm.value, editingHousemate.value ? editingHousemate.value.id : null]);
-              showHousemateModal.value = false;
-              fetchData();
-            } catch (e) {
-              alert(e.message);
-            } finally {
-              loading.value = false;
-            }
+            await runScript('saveHousemate', [housemateForm.value, editingHousemate.value ? editingHousemate.value.id : null]);
+            showHousemateModal.value = false;
+            // Refetch to update list
+            const res = await runScript('getInitialData');
+            housemates.value = res.housemates;
           };
 
-          const addBillType = async () => {
-             loading.value = true;
-             try {
-               await runScript('addBillType', [newBillType.value]);
-               newBillType.value = '';
-               showTypeModal.value = false;
-               fetchData();
-             } catch(e) {
-               alert(e.message);
-             } finally {
-               loading.value = false;
-             }
+          // Formatting
+          const formatMonthShort = (ym) => {
+             const [y, m] = ym.split('-');
+             const d = new Date(y, m-1, 1);
+             return d.toLocaleDateString('en-US', { month: 'short' });
           };
 
-          // Helpers
-          const formatDate = (d) => {
-            if (!d) return '';
-            return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+          const formatMonthLong = (ym) => {
+             const [y, m] = ym.split('-');
+             const d = new Date(y, m-1, 1);
+             return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
           };
 
-          const formatMonth = (key) => {
-             // key is YYYY-MM
-             const [y, m] = key.split('-');
-             const date = new Date(y, m - 1, 1);
-             return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-          };
+          const formatDate = (d) => d; // Already YYYY-MM-DD
 
-          const toggleMonth = (key) => {
-            expandedMonth.value = expandedMonth.value === key ? null : key;
+          const toggleRecord = (id) => {
+            expandedRecord.value = expandedRecord.value === id ? null : id;
           };
 
           onMounted(() => {
@@ -401,13 +493,14 @@
           });
 
           return {
-            loading, currentTab, housemates, billTypes, history,
-            newBill, preview, isBillValid,
-            showHousemateModal, housemateForm, editingHousemate,
-            showTypeModal, newBillType,
-            expandedMonth,
-            calculatePreview, submitBill, openHousemateModal, saveHousemate, addBillType,
-            formatDate, formatMonth, toggleMonth, fetchData
+            currentTab, loading,
+            selectedMonth, totalAmount, billItems, previewAllocations,
+            housemates, availableTypes, history,
+            showHousemateModal, housemateForm, editingHousemate, openHousemateModal, saveHousemate,
+            showTypeModal, newBillType, addCustomType,
+            getIcon, addBillItem, removeBillItem, saveCalculation,
+            expandedRecord, toggleRecord, deleteRecord, loadToCalculator,
+            formatMonthShort, formatMonthLong, formatDate
           };
         }
       }).mount('#app');

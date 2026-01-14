@@ -139,15 +139,15 @@ function addBillType(type) {
   sheet.appendRow([type]);
 }
 
-function calculatePreview(bill) {
+function calculatePreview(month, amount) {
   const housemates = _getSheetData('Housemates');
-  // Parse inputs as local dates
-  const start = _dateFromStr(bill.start);
-  const end = _dateFromStr(bill.end);
-  const amount = parseFloat(bill.amount);
+  // Parse inputs as local dates from Month string "YYYY-MM"
+  const parts = month.split('-');
+  const start = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+  const end = new Date(Number(parts[0]), Number(parts[1]), 0); // Last day of month
 
   // Calculate total days in period
-  const totalBillDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  const totalBillDays = end.getDate(); // Simple for full months
 
   let dailyTotals = new Array(totalBillDays).fill(0);
   let housemateStats = {}; // { id: { daysActive: 0, cost: 0 } }
@@ -184,10 +184,6 @@ function calculatePreview(bill) {
         housemateStats[hid].daysActive++;
         housemateStats[hid].cost += share;
       });
-    } else {
-      // Warning: Days with 0 people. Who pays?
-      // In this simple model, it remains unallocated or falls to owner.
-      // For now, let's ignore or maybe return a warning.
     }
   }
 
@@ -203,27 +199,39 @@ function calculatePreview(bill) {
   return {
     totalDays: totalBillDays,
     allocations: allocations,
-    totalAllocated: allocations.reduce((sum, a) => sum + a.amount, 0)
+    totalAllocated: allocations.reduce((sum, a) => sum + a.amount, 0),
+    startDate: Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    endDate: Utilities.formatDate(end, Session.getScriptTimeZone(), 'yyyy-MM-dd')
   };
 }
 
-function saveBill(bill, preview) {
+function saveBill(month, items, preview) {
+  // items: [{type: 'Ooredoo', amount: 100}, ...]
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const billId = _getUuid();
+  const billId = _getUuid(); // Shared ID for all items in this batch
   const timestamp = new Date();
 
-  // Save Bill
+  // Calculate Start/End based on month for record keeping
+  const parts = month.split('-');
+  const start = Utilities.formatDate(new Date(Number(parts[0]), Number(parts[1]) - 1, 1), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const end = Utilities.formatDate(new Date(Number(parts[0]), Number(parts[1]), 0), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  // Save Bills (Multiple rows, same ID)
   const billsSheet = ss.getSheetByName('Bills');
-  billsSheet.appendRow([
+  const billRows = items.map(item => [
     billId,
     timestamp,
-    bill.type,
-    bill.amount,
-    bill.start,
-    bill.end
+    item.type,
+    item.amount,
+    start,
+    end
   ]);
 
-  // Save Allocations
+  if (billRows.length > 0) {
+     billsSheet.getRange(billsSheet.getLastRow() + 1, 1, billRows.length, 6).setValues(billRows);
+  }
+
+  // Save Allocations (One set for the whole batch)
   const allocSheet = ss.getSheetByName('Allocations');
   const allocData = preview.allocations.map(a => [
     billId,
@@ -234,59 +242,83 @@ function saveBill(bill, preview) {
   ]);
 
   if (allocData.length > 0) {
-    // Write in bulk
     allocSheet.getRange(allocSheet.getLastRow() + 1, 1, allocData.length, 5).setValues(allocData);
   }
 
   return true;
 }
 
+function deleteBillGroup(billId) {
+   const ss = SpreadsheetApp.getActiveSpreadsheet();
+   const billsSheet = ss.getSheetByName('Bills');
+   const allocSheet = ss.getSheetByName('Allocations');
+
+   // Helper to delete rows by matching value in column 1 (ID)
+   // Warning: Deleting rows shifts indices. Must delete from bottom up.
+   const deleteByVal = (sheet) => {
+     const data = sheet.getDataRange().getValues();
+     // Start from last row
+     for (let i = data.length - 1; i >= 1; i--) {
+       if (data[i][0] == billId) {
+         sheet.deleteRow(i + 1);
+       }
+     }
+   };
+
+   deleteByVal(billsSheet);
+   deleteByVal(allocSheet);
+
+   return true;
+}
+
 function getHistory() {
   const bills = _getSheetData('Bills');
   const allocations = _getSheetData('Allocations');
 
-  // Group by Month (YYYY-MM based on Bill Start Date or just Date Recorded? Usually Bill Date)
-  // Let's use StartDate for grouping.
-
   const history = {};
 
+  // Group by Bill ID first, then by Month
+  const groups = {};
+
   bills.forEach(b => {
-    // b.StartDate might be string or Date
-    const d = _dateFromStr(b.StartDate);
+    if (!groups[b.ID]) {
+       groups[b.ID] = {
+         id: b.ID,
+         items: [],
+         total: 0,
+         start: b.StartDate,
+         end: b.EndDate,
+         allocations: []
+       };
+    }
+    groups[b.ID].items.push({ type: b.BillType, amount: Number(b.Amount) });
+    groups[b.ID].total += Number(b.Amount);
+  });
+
+  // Add allocations
+  allocations.forEach(a => {
+    if (groups[a.BillID]) {
+      groups[a.BillID].allocations.push({
+        name: a.Name,
+        amount: Number(a.Amount),
+        days: a.DaysActive
+      });
+    }
+  });
+
+  // Convert groups to history object (key by Month)
+  Object.values(groups).forEach(g => {
+    const d = _dateFromStr(g.start);
     if (!d) return;
     const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM');
 
     if (!history[key]) {
-      history[key] = { total: 0, bills: [], housemateTotals: {} };
+      history[key] = { records: [] };
     }
-
-    history[key].total += Number(b.Amount);
-    history[key].bills.push({
-      id: b.ID,
-      type: b.BillType,
-      amount: Number(b.Amount),
-      start: b.StartDate,
-      end: b.EndDate
-    });
+    history[key].records.push(g);
   });
 
-  // Aggregate housemate totals per month
-  allocations.forEach(a => {
-    const bill = bills.find(b => b.ID == a.BillID);
-    if (!bill) return;
-
-    const d = _dateFromStr(bill.StartDate);
-    const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM');
-
-    if (history[key]) {
-      if (!history[key].housemateTotals[a.Name]) {
-        history[key].housemateTotals[a.Name] = 0;
-      }
-      history[key].housemateTotals[a.Name] += Number(a.Amount);
-    }
-  });
-
-  // Sort keys desc
+  // Sort
   const sortedHistory = {};
   Object.keys(history).sort().reverse().forEach(k => sortedHistory[k] = history[k]);
 
