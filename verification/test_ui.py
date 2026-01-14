@@ -26,47 +26,21 @@ def test_bill_splitter():
                         runner.failureHandler = func;
                         return runner;
                     },
-                    getInitialData: function() {
-                        const data = {
-                            housemates: [
-                                { id: '1', name: 'Alice', moveIn: '2023-01-01', moveOut: null },
-                                { id: '2', name: 'Bob', moveIn: '2023-02-01', moveOut: null }
-                            ],
-                            billTypes: []
-                        };
+                    getHousemates: function() {
+                        const data = ['Alice', 'Bob'];
                         setTimeout(() => this.successHandler && this.successHandler(data), 100);
                     },
-                    calculatePreview: function(month, amount) {
-                        console.log('Mock: Calculating preview for ' + month + ' amount ' + amount);
-                        const res = {
-                           totalDays: 30,
-                           allocations: [
-                               { housemateId: '1', name: 'Alice', daysActive: 30, amount: 50 },
-                               { housemateId: '2', name: 'Bob', daysActive: 30, amount: 50 }
-                           ],
-                           totalAllocated: 100,
-                           startDate: '2023-03-01',
-                           endDate: '2023-03-31'
-                        };
-                        setTimeout(() => {
-                           console.log('Mock: Returning preview result');
-                           this.successHandler && this.successHandler(res);
-                        }, 500);
-                    },
-                    saveBill: function(month, items, preview) {
-                        setTimeout(() => this.successHandler && this.successHandler(true), 500);
+                    saveBill: function(data) {
+                        setTimeout(() => this.successHandler && this.successHandler("Success"), 500);
                     },
                     getHistory: function() {
-                        setTimeout(() => this.successHandler && this.successHandler({}), 100);
+                        setTimeout(() => this.successHandler && this.successHandler([]), 100);
                     },
-                    saveHousemate: function(form, id) {
-                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
+                    saveHousemates: function(list) {
+                         setTimeout(() => this.successHandler && this.successHandler("Success"), 100);
                     },
-                    addBillType: function(type) {
-                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
-                    },
-                    deleteBillGroup: function(id) {
-                         setTimeout(() => this.successHandler && this.successHandler(true), 100);
+                    deleteHistoryItem: function(date, month) {
+                         setTimeout(() => this.successHandler && this.successHandler("Success"), 100);
                     }
                 }
             }
@@ -81,24 +55,24 @@ def test_bill_splitter():
             page.wait_for_selector("text=FairShare")
 
             # Verify inputs exist (Ooredoo, Kahramaa, Others)
-            # Use specific locator for the label to avoid matching the button
             expect(page.locator("label", has_text="Ooredoo (Internet)")).to_be_visible()
 
-            # Fill inputs
-            # The input is inside the same container as the label.
-            # We can just target the first number input since we know Ooredoo is first.
-            page.locator("input[type='number']").first.fill("100")
+            # Fill Ooredoo amount
+            page.locator("input[placeholder='0']").first.fill("100")
 
-            # Wait for calculation (triggered by watch)
-            # We should see housemates appear in the preview list
-            # Note: The mock delay is 500ms
+            # Wait for reactivity (Vue updates DOM)
+            # Total should be 100
+            expect(page.locator("text=QR 100.00")).to_be_visible()
+
+            # Wait for housemates to load and display (Alice and Bob)
             page.wait_for_selector("text=Alice", timeout=5000)
 
-            # Verify amounts
+            # Verify amounts (50 each)
+            # "TO PAY" is QR 50.00
             expect(page.locator("text=QR 50.00").first).to_be_visible()
 
             # Take screenshot
-            page.screenshot(path="verification/bill_splitter_redesign.png")
+            page.screenshot(path="verification/bill_splitter_simplified.png")
             print("Verification successful, screenshot saved.")
 
         except Exception as e:

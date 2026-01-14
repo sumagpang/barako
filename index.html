@@ -55,35 +55,32 @@
 
           <!-- Bill Types Inputs -->
           <div class="grid grid-cols-1 gap-3">
-             <div v-for="(item, idx) in billItems" :key="idx" class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+             <!-- Fixed Types for new Backend: Ooredoo, Kahramaa, Others -->
+             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
                <div class="flex justify-between mb-1">
                  <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
-                   <i v-if="getIcon(item.type) === 'wifi'" class="ph ph-wifi-high text-red-400"></i>
-                   <i v-else-if="getIcon(item.type) === 'lightning'" class="ph ph-lightning text-yellow-500"></i>
-                   <i v-else class="ph ph-dots-three text-purple-400"></i>
-                   {{ item.type }}
+                   <i class="ph ph-wifi-high text-red-400"></i> Ooredoo (Internet)
                  </label>
-                 <button v-if="billItems.length > 1" @click="removeBillItem(idx)" class="text-gray-300 hover:text-red-500">
-                    <i class="ph ph-x"></i>
-                 </button>
                </div>
-               <div class="flex items-center gap-2">
-                 <i v-if="getIcon(item.type) === 'wifi'" class="ph ph-wifi-high text-gray-400"></i>
-                 <i v-else-if="getIcon(item.type) === 'lightning'" class="ph ph-lightning text-gray-400"></i>
-                 <i v-else class="ph ph-dots-three text-gray-400"></i>
-                 <input type="number" v-model.number="item.amount" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
-               </div>
+               <input type="number" v-model.number="amounts.ooredoo" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
              </div>
 
-             <!-- Add Bill Type Button -->
-             <div class="flex gap-2 overflow-x-auto py-1">
-                <button v-for="t in availableTypes" :key="t" @click="addBillItem(t)"
-                  class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">
-                  + {{ t }}
-                </button>
-                <button @click="showTypeModal = true" class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200">
-                  Custom...
-                </button>
+             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+               <div class="flex justify-between mb-1">
+                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
+                   <i class="ph ph-lightning text-yellow-500"></i> Kahramaa (Electricity)
+                 </label>
+               </div>
+               <input type="number" v-model.number="amounts.kahramaa" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
+             </div>
+
+             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+               <div class="flex justify-between mb-1">
+                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
+                   <i class="ph ph-dots-three text-purple-400"></i> Others
+                 </label>
+               </div>
+               <input type="number" v-model.number="amounts.other" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
              </div>
           </div>
 
@@ -94,41 +91,38 @@
                 <i class="ph ph-users"></i> Housemates
               </h2>
               <button @click="openHousemateModal()" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100 transition">
-                + Add Person
+                Manage List
               </button>
             </div>
 
             <div class="space-y-3">
-              <div v-for="alloc in previewAllocations" :key="alloc.housemateId" class="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between">
+              <!-- Client Side Calculation -->
+              <div v-for="h in housemates" :key="h" class="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-lg">
-                    {{ alloc.name.charAt(0) }}
+                    {{ h.charAt(0) }}
                   </div>
                   <div>
                     <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">NAME</div>
-                    <div class="font-semibold text-gray-800">{{ alloc.name }}</div>
+                    <div class="font-semibold text-gray-800">{{ h }}</div>
                   </div>
                 </div>
 
                 <div class="text-center">
-                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">DAYS STAYED</div>
+                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">SHARE</div>
                    <div class="font-semibold text-gray-800 flex items-baseline justify-center gap-1">
-                     {{ alloc.daysActive }} <span class="text-xs text-gray-400 font-normal">days</span>
+                     <span class="text-xs text-gray-400 font-normal">Equal Split</span>
                    </div>
                 </div>
 
                 <div class="text-right">
                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">TO PAY</div>
-                   <div class="font-bold text-gray-800">QR {{ alloc.amount.toFixed(2) }}</div>
+                   <div class="font-bold text-gray-800">QR {{ currentSharePerPerson.toFixed(2) }}</div>
                 </div>
-
-                <button class="text-gray-300 hover:text-red-500 ml-2">
-                   <i class="ph ph-trash"></i>
-                </button>
               </div>
 
-              <div v-if="previewAllocations.length === 0" class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed">
-                Select a month to calculate shares.
+              <div v-if="housemates.length === 0" class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed">
+                No housemates added. Go to Settings.
               </div>
             </div>
           </div>
@@ -144,34 +138,43 @@
              <h2 class="font-bold text-xl text-gray-800">Previous Bills</h2>
            </div>
 
-           <div v-for="(monthData, monthKey) in history" :key="monthKey" class="space-y-4">
-             <div v-for="record in monthData.records" :key="record.id" class="bg-white border rounded-xl overflow-hidden shadow-sm">
+           <div v-if="loading" class="text-center text-gray-400 py-8">Loading history...</div>
+
+           <div v-for="(record, idx) in history" :key="idx" class="bg-white border rounded-xl overflow-hidden shadow-sm mb-4">
                <!-- Header -->
-               <div @click="toggleRecord(record.id)" class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition">
+               <div @click="toggleRecord(idx)" class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                      <span class="font-bold text-xs">{{ formatMonthShort(monthKey) }}</span>
+                      <span class="font-bold text-xs">{{ formatMonthShort(record.month) }}</span>
                     </div>
                     <div>
-                      <div class="font-bold text-gray-800">{{ formatMonthLong(monthKey) }}</div>
-                      <div class="text-xs text-gray-400">Click to view details</div>
+                      <div class="font-bold text-gray-800">{{ formatMonthLong(record.month) }}</div>
+                      <div class="text-xs text-gray-400">{{ formatDate(record.date) }}</div>
                     </div>
                   </div>
                   <div class="text-right">
                     <div class="text-[10px] text-gray-400 uppercase font-bold">TOTAL</div>
                     <div class="font-bold text-gray-900 text-lg">QR {{ record.total.toFixed(2) }}</div>
                   </div>
-                  <i class="ph ph-caret-down text-gray-400 transition-transform duration-300" :class="{'rotate-180': expandedRecord === record.id}"></i>
+                  <i class="ph ph-caret-down text-gray-400 transition-transform duration-300" :class="{'rotate-180': expandedRecord === idx}"></i>
                </div>
 
                <!-- Details -->
-               <div v-if="expandedRecord === record.id" class="border-t bg-gray-50/50 p-4 space-y-4 animate-fade-in">
+               <div v-if="expandedRecord === idx" class="border-t bg-gray-50/50 p-4 space-y-4 animate-fade-in">
 
                   <!-- Breakdown -->
                   <div class="grid grid-cols-3 gap-2">
-                    <div v-for="item in record.items" :key="item.type" class="bg-white p-2 rounded border text-center">
-                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">{{ item.type }}</div>
-                      <div class="font-bold text-gray-800">{{ item.amount }}</div>
+                    <div class="bg-white p-2 rounded border text-center">
+                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Ooredoo</div>
+                      <div class="font-bold text-gray-800">{{ record.ooredoo }}</div>
+                    </div>
+                    <div class="bg-white p-2 rounded border text-center">
+                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Kahramaa</div>
+                      <div class="font-bold text-gray-800">{{ record.kahramaa }}</div>
+                    </div>
+                    <div class="bg-white p-2 rounded border text-center">
+                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Other</div>
+                      <div class="font-bold text-gray-800">{{ record.other }}</div>
                     </div>
                   </div>
 
@@ -181,37 +184,35 @@
                       <i class="ph ph-users"></i> Housemate Shares
                     </h4>
                     <div class="bg-white rounded border divide-y">
-                      <div v-for="alloc in record.allocations" :key="alloc.name" class="p-3 flex justify-between items-center text-sm">
+                      <div v-for="h in record.housemates" :key="h" class="p-3 flex justify-between items-center text-sm">
                         <div class="flex items-center gap-2">
                           <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
-                          <span class="text-gray-700 font-medium">{{ alloc.name }}</span>
-                          <span class="text-gray-400 text-xs">({{ alloc.days }} days)</span>
+                          <!-- Handle string name or object with name/amount -->
+                          <span class="text-gray-700 font-medium">{{ typeof h === 'string' ? h : h.name }}</span>
                         </div>
-                        <div class="font-bold text-gray-800 bg-gray-50 px-2 py-1 rounded">QR {{ alloc.amount.toFixed(2) }}</div>
+                        <div class="font-bold text-gray-800 bg-gray-50 px-2 py-1 rounded">
+                             QR {{ (typeof h === 'object' && h.amount) ? h.amount.toFixed(2) : record.sharePerPerson.toFixed(2) }}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <!-- Actions -->
                   <div class="flex justify-end gap-3 pt-2">
-                    <button @click="deleteRecord(record.id)" class="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-3 py-2 rounded hover:bg-red-50 transition">
+                    <button @click="deleteRecord(record)" class="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-3 py-2 rounded hover:bg-red-50 transition">
                       <i class="ph ph-trash"></i> Delete Record
-                    </button>
-                    <button @click="loadToCalculator(record, monthKey)" class="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded transition border border-indigo-200">
-                      <i class="ph ph-calculator"></i> Load to Calculator
                     </button>
                   </div>
                </div>
-             </div>
            </div>
 
-           <div v-if="Object.keys(history).length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400">
+           <div v-if="!loading && history.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400">
               <i class="ph ph-clock-counter-clockwise text-4xl mb-2 opacity-50"></i>
               <p>No history yet.</p>
            </div>
         </div>
 
-        <!-- View: Settings (Housemates/Types) -->
+        <!-- View: Settings (Housemates) -->
         <div v-else-if="currentTab === 'settings'" class="space-y-6">
            <div class="flex items-center gap-2 mb-4">
              <button @click="currentTab = 'calculator'" class="p-1 hover:bg-gray-100 rounded-full">
@@ -220,25 +221,26 @@
              <h2 class="font-bold text-xl text-gray-800">Settings</h2>
            </div>
 
-           <!-- Reuse existing settings logic but styled better -->
-            <div class="bg-white rounded-xl border shadow-sm overflow-hidden">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                  <h3 class="font-bold text-gray-700">Housemates</h3>
-                  <button @click="openHousemateModal()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full hover:bg-indigo-700">+ Add</button>
+            <div class="bg-white rounded-xl border shadow-sm overflow-hidden p-4">
+                <h3 class="font-bold text-gray-700 mb-4">Manage Housemates</h3>
+                <div class="flex gap-2 mb-4">
+                    <input v-model="newHousemateName" @keyup.enter="addHousemate" placeholder="Enter name" class="flex-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <button @click="addHousemate" class="bg-indigo-600 text-white px-4 rounded hover:bg-indigo-700 font-bold">Add</button>
                 </div>
-                <div class="divide-y">
-                  <div v-for="h in housemates" :key="h.id" class="p-4 flex justify-between items-center">
-                    <div>
-                      <div class="font-bold text-gray-900">{{ h.name }}</div>
-                      <div class="text-xs text-gray-500">
-                        In: {{ formatDate(h.moveIn) }}
-                        <span v-if="h.moveOut"> | Out: {{ formatDate(h.moveOut) }}</span>
-                      </div>
-                    </div>
-                    <button @click="openHousemateModal(h)" class="text-gray-400 hover:text-indigo-600 p-2">
-                      <i class="ph ph-pencil-simple text-xl"></i>
+
+                <div class="space-y-2">
+                  <div v-for="(h, idx) in housemates" :key="idx" class="p-3 bg-gray-50 rounded flex justify-between items-center border">
+                    <span class="font-medium text-gray-800">{{ h }}</span>
+                    <button @click="removeHousemate(idx)" class="text-red-400 hover:text-red-600">
+                      <i class="ph ph-trash text-lg"></i>
                     </button>
                   </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t flex justify-end">
+                     <button @click="saveHousemates" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 shadow shadow-green-200">
+                        Save Changes
+                     </button>
                 </div>
              </div>
         </div>
@@ -255,46 +257,10 @@
         </button>
       </div>
 
-      <!-- Modals -->
-      <div v-if="showHousemateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-100">
-          <h3 class="text-lg font-bold mb-4">{{ editingHousemate ? 'Edit' : 'Add' }} Housemate</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
-              <input v-model="housemateForm.name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Move In Date</label>
-              <input type="date" v-model="housemateForm.moveIn" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Move Out Date (Optional)</label>
-              <input type="date" v-model="housemateForm.moveOut" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-            </div>
-          </div>
-          <div class="mt-6 flex justify-end gap-2">
-            <button @click="showHousemateModal = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button @click="saveHousemate" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showTypeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-          <h3 class="text-lg font-bold mb-4">Add Custom Bill Type</h3>
-          <input v-model="newBillType" placeholder="e.g. Netflix" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none mb-4">
-          <div class="flex justify-end gap-2">
-            <button @click="showTypeModal = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button @click="addCustomType" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700" :disabled="!newBillType">Add</button>
-          </div>
-        </div>
-      </div>
-
     </div>
 
     <script>
-      const { createApp, ref, computed, onMounted, watch } = Vue;
+      const { createApp, ref, computed, onMounted } = Vue;
 
       createApp({
         setup() {
@@ -302,32 +268,31 @@
           const currentTab = ref('calculator');
 
           // Data
-          const housemates = ref([]);
-          const availableTypes = ref([]); // From backend
-          const history = ref({});
+          const housemates = ref([]); // Array of strings
+          const history = ref([]);
 
           // Calculator State
           const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
-          const billItems = ref([
-            { type: 'Ooredoo (Internet)', amount: null },
-            { type: 'Kahramaa (Electricity)', amount: null },
-            { type: 'Others', amount: null }
-          ]);
-          const previewAllocations = ref([]);
+          const amounts = ref({
+              ooredoo: null,
+              kahramaa: null,
+              other: null
+          });
 
-          // Modals
-          const showHousemateModal = ref(false);
-          const editingHousemate = ref(null);
-          const housemateForm = ref({ name: '', moveIn: '', moveOut: '' });
-          const showTypeModal = ref(false);
-          const newBillType = ref('');
+          // Settings State
+          const newHousemateName = ref("");
 
           // History View
           const expandedRecord = ref(null);
 
           // Computed
           const totalAmount = computed(() => {
-            return billItems.value.reduce((sum, item) => sum + (item.amount || 0), 0);
+            return (amounts.value.ooredoo || 0) + (amounts.value.kahramaa || 0) + (amounts.value.other || 0);
+          });
+
+          const currentSharePerPerson = computed(() => {
+             if (housemates.value.length === 0) return 0;
+             return totalAmount.value / housemates.value.length;
           });
 
           // API Wrapper
@@ -343,91 +308,72 @@
           const fetchData = async () => {
             loading.value = true;
             try {
-              const res = await runScript('getInitialData');
-              housemates.value = res.housemates;
-              const serverTypes = res.billTypes;
-              // Merge server types but keep defaults if needed, or just rely on server.
-              // For now, let's keep the defaults in UI but allow adding from server.
-              if(serverTypes.length > 0) availableTypes.value = serverTypes;
-              else availableTypes.value = ['Ooredoo (Internet)', 'Kahramaa (Electricity)', 'Others'];
+              // Fetch Housemates
+              const hm = await runScript('getHousemates');
+              housemates.value = hm;
 
-              // Ensure billItems have types
-              if(billItems.value.length === 0) {
-                 billItems.value = [{ type: availableTypes.value[0], amount: null }];
-              }
+              // Fetch History
+              const hist = await runScript('getHistory');
+              history.value = hist;
 
-              refreshHistory();
             } catch (e) {
               console.error(e);
+              // For demo purposes if script fails (e.g. dev mode without backend)
+              // housemates.value = ['Alice', 'Bob'];
             } finally {
               loading.value = false;
             }
           };
 
-          const refreshHistory = async () => {
-             history.value = await runScript('getHistory');
-          };
-
-          // Watchers for Real-time Calculation
-          watch([selectedMonth, totalAmount, housemates], async () => {
-             if (selectedMonth.value && totalAmount.value > 0) {
-               try {
-                 const res = await runScript('calculatePreview', [selectedMonth.value, totalAmount.value]);
-                 console.log('Preview result:', res);
-                 if (res && res.allocations) {
-                   previewAllocations.value = res.allocations;
-                 }
-               } catch(e) { console.error(e); }
-             } else {
-               previewAllocations.value = [];
-             }
-          }, { deep: true });
-
-          // Methods
-          const getIcon = (type) => {
-            if (!type) return 'dots';
-            const t = type.toLowerCase();
-            if (t.includes('internet') || t.includes('wifi') || t.includes('ooredoo')) return 'wifi';
-            if (t.includes('electricity') || t.includes('power') || t.includes('kahramaa')) return 'lightning';
-            return 'dots';
-          };
-
-          const addBillItem = (type) => {
-            if (!billItems.value.find(i => i.type === type)) {
-               billItems.value.push({ type: type, amount: null });
-            }
-          };
-
-          const removeBillItem = (idx) => {
-            billItems.value.splice(idx, 1);
-          };
-
-          const addCustomType = async () => {
-             if(newBillType.value) {
-               await runScript('addBillType', [newBillType.value]);
-               availableTypes.value.push(newBillType.value);
-               addBillItem(newBillType.value);
-               newBillType.value = '';
-               showTypeModal.value = false;
+          // Actions
+          const saveHousemates = async () => {
+             loading.value = true;
+             try {
+                 await runScript('saveHousemates', [housemates.value]);
+                 alert('Housemates saved!');
+             } catch(e) {
+                 alert('Error: ' + e.message);
+             } finally {
+                 loading.value = false;
              }
           };
 
           const saveCalculation = async () => {
             if (!selectedMonth.value || totalAmount.value <= 0) return alert('Please enter bill details.');
+            if (housemates.value.length === 0) return alert('No housemates to split with!');
 
             loading.value = true;
             try {
               // Prepare payload
-              // Items with amount > 0
-              const items = billItems.value.filter(i => i.amount > 0);
-              const preview = { allocations: previewAllocations.value };
+              // Store housemates as objects with calculated amount for future proofing
+              const housemateData = housemates.value.map(h => ({
+                  name: h,
+                  amount: currentSharePerPerson.value
+              }));
 
-              await runScript('saveBill', [selectedMonth.value, items, preview]);
+              const payload = {
+                  month: selectedMonth.value,
+                  kahramaa: amounts.value.kahramaa || 0,
+                  ooredoo: amounts.value.ooredoo || 0,
+                  other: amounts.value.other || 0,
+                  total: totalAmount.value,
+                  sharePerPerson: currentSharePerPerson.value,
+                  housemates: housemateData
+              };
+
+              await runScript('saveBill', [payload]);
 
               // Reset
-              billItems.value.forEach(i => i.amount = null);
+              amounts.value.kahramaa = null;
+              amounts.value.ooredoo = null;
+              amounts.value.other = null;
+
               alert('Calculation saved!');
-              refreshHistory();
+
+              // Refresh History
+              const hist = await runScript('getHistory');
+              history.value = hist;
+
               currentTab.value = 'history';
 
             } catch (e) {
@@ -437,55 +383,59 @@
             }
           };
 
-          const deleteRecord = async (id) => {
+          const deleteRecord = async (record) => {
              if(!confirm('Delete this record?')) return;
-             await runScript('deleteBillGroup', [id]);
-             refreshHistory();
+             loading.value = true;
+             try {
+                 await runScript('deleteHistoryItem', [record.date, record.month]);
+                 // Refresh
+                 const hist = await runScript('getHistory');
+                 history.value = hist;
+             } catch(e) {
+                 alert(e.message);
+             } finally {
+                 loading.value = false;
+             }
           };
 
-          const loadToCalculator = (record, monthKey) => {
-             selectedMonth.value = monthKey;
-             // Map items
-             billItems.value = record.items.map(i => ({ type: i.type, amount: i.amount }));
-             currentTab.value = 'calculator';
+          // Local Housemate List Management
+          const addHousemate = () => {
+              if(newHousemateName.value.trim()) {
+                  housemates.value.push(newHousemateName.value.trim());
+                  newHousemateName.value = "";
+              }
           };
 
-          // Housemate Management
-          const openHousemateModal = (h = null) => {
-            editingHousemate.value = h;
-            if (h) {
-              housemateForm.value = { ...h };
-            } else {
-              housemateForm.value = { name: '', moveIn: '', moveOut: '' };
-            }
-            showHousemateModal.value = true;
-          };
-
-          const saveHousemate = async () => {
-            await runScript('saveHousemate', [housemateForm.value, editingHousemate.value ? editingHousemate.value.id : null]);
-            showHousemateModal.value = false;
-            // Refetch to update list
-            const res = await runScript('getInitialData');
-            housemates.value = res.housemates;
+          const removeHousemate = (idx) => {
+              housemates.value.splice(idx, 1);
           };
 
           // Formatting
           const formatMonthShort = (ym) => {
+             if(!ym) return '';
              const [y, m] = ym.split('-');
              const d = new Date(y, m-1, 1);
              return d.toLocaleDateString('en-US', { month: 'short' });
           };
 
           const formatMonthLong = (ym) => {
+             if(!ym) return '';
              const [y, m] = ym.split('-');
              const d = new Date(y, m-1, 1);
              return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
           };
 
-          const formatDate = (d) => d; // Already YYYY-MM-DD
+          const formatDate = (iso) => {
+              if(!iso) return '';
+              return new Date(iso).toLocaleDateString();
+          };
 
-          const toggleRecord = (id) => {
-            expandedRecord.value = expandedRecord.value === id ? null : id;
+          const toggleRecord = (idx) => {
+            expandedRecord.value = expandedRecord.value === idx ? null : idx;
+          };
+
+          const openHousemateModal = () => {
+              currentTab.value = 'settings';
           };
 
           onMounted(() => {
@@ -494,12 +444,12 @@
 
           return {
             currentTab, loading,
-            selectedMonth, totalAmount, billItems, previewAllocations,
-            housemates, availableTypes, history,
-            showHousemateModal, housemateForm, editingHousemate, openHousemateModal, saveHousemate,
-            showTypeModal, newBillType, addCustomType,
-            getIcon, addBillItem, removeBillItem, saveCalculation,
-            expandedRecord, toggleRecord, deleteRecord, loadToCalculator,
+            selectedMonth, amounts, totalAmount, currentSharePerPerson,
+            housemates, history,
+            newHousemateName,
+            expandedRecord, toggleRecord,
+            saveHousemates, saveCalculation, deleteRecord,
+            addHousemate, removeHousemate, openHousemateModal,
             formatMonthShort, formatMonthLong, formatDate
           };
         }
