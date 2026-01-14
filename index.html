@@ -1,459 +1,619 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-      body { font-family: 'Inter', sans-serif; }
-      .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-      .fade-enter-from, .fade-leave-to { opacity: 0; }
-    </style>
-  </head>
-  <body class="bg-gray-50 min-h-screen text-gray-800">
-    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col relative">
+<head>
+  <base target="_top">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-      <!-- Top Bar -->
-      <div class="bg-white p-4 flex justify-between items-center sticky top-0 z-10 border-b border-gray-100">
-        <div class="flex items-center gap-2 text-indigo-700">
-          <div class="bg-indigo-600 text-white p-1 rounded">
-             <i class="ph ph-currency-dollar font-bold text-lg"></i>
-          </div>
-          <span class="font-bold text-xl tracking-tight">FairShare</span>
+  <style>
+    /* Modern Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .scale-in { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    /* Input Number Remove Spinners */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 h-screen flex flex-col font-sans overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-indigo-600 text-white pt-6 pb-4 px-5 shadow-lg flex justify-between items-end z-20 sticky top-0">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">Bill Splitter</h1>
+      <p class="text-indigo-200 text-xs mt-0.5">Prorated Calculator</p>
+    </div>
+    <div class="bg-indigo-500/50 p-2 rounded-lg backdrop-blur-sm">
+      <i class="ph ph-lightning-fill text-2xl text-yellow-300"></i>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-y-auto p-4 relative space-y-4 pb-24" id="main-content">
+
+    <!-- Loader -->
+    <div id="loader" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col gap-3 items-center justify-center z-50 transition-opacity duration-300">
+      <div class="animate-spin rounded-full h-10 w-10 border-4 border-indigo-100 border-t-indigo-600"></div>
+      <div class="text-xs font-medium text-indigo-600 animate-pulse">Loading...</div>
+    </div>
+
+    <!-- NOTIFICATION MODAL (Success/Info) -->
+    <div id="modal-notification" class="fixed inset-0 bg-black/60 z-[70] hidden flex items-center justify-center backdrop-blur-sm fade-in">
+      <div class="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 shadow-2xl scale-in text-center">
+        <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+          <i class="ph ph-check-circle text-3xl"></i>
         </div>
-        <button @click="currentTab = 'settings'" class="text-gray-400 hover:text-gray-600 transition">
-          <i class="ph ph-gear text-2xl"></i>
+        <h3 class="text-lg font-bold text-gray-800 mb-2" id="modal-notif-title">Success</h3>
+        <p class="text-gray-500 text-sm mb-6" id="modal-notif-msg">Action completed.</p>
+        <button onclick="closeModal('modal-notification')" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition active:scale-95">
+          Okay
+        </button>
+      </div>
+    </div>
+
+    <!-- CONFIRMATION MODAL (Are you sure?) -->
+    <div id="modal-confirm" class="fixed inset-0 bg-black/60 z-[70] hidden flex items-center justify-center backdrop-blur-sm fade-in">
+      <div class="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 shadow-2xl scale-in text-center">
+        <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+          <i class="ph ph-warning-circle text-3xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-gray-800 mb-2">Are you sure?</h3>
+        <p class="text-gray-500 text-sm mb-6" id="modal-confirm-msg">This action cannot be undone.</p>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-confirm')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">
+            Cancel
+          </button>
+          <button id="modal-confirm-btn" class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition shadow-lg shadow-red-200">
+            Yes, Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: CALCULATOR -->
+    <div id="view-calculator" class="view-section fade-in max-w-lg mx-auto space-y-5 hidden">
+      <!-- Date & Bills Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 overflow-hidden">
+        <div class="p-4 bg-gray-50 border-b border-gray-100">
+          <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Billing Period</label>
+          <input type="month" id="billing-month" class="w-full bg-transparent font-bold text-gray-700 text-lg outline-none focus:text-indigo-600 transition-colors cursor-pointer">
+        </div>
+        <div class="p-4 grid grid-cols-3 gap-3">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-blue-600 uppercase">Kahramaa</label>
+            <input type="number" id="cost-kahramaa" placeholder="0" class="cost-input w-full bg-blue-50/50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all">
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-red-600 uppercase">Ooredoo</label>
+            <input type="number" id="cost-ooredoo" placeholder="0" class="cost-input w-full bg-red-50/50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-red-100 outline-none transition-all">
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-gray-500 uppercase">Other</label>
+            <input type="number" id="cost-other" placeholder="0" class="cost-input w-full bg-gray-50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+          </div>
+        </div>
+        <div class="bg-gray-900 text-white p-3 flex justify-between items-center px-5">
+          <span class="text-xs font-medium text-gray-400">Total Bill</span>
+          <span class="font-mono text-xl font-bold tracking-tight" id="display-total">0.00 <span class="text-sm font-normal text-gray-500">QR</span></span>
+        </div>
+      </div>
+
+      <!-- Housemates List -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-end px-2">
+          <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Split Breakdown</h2>
+          <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium" id="days-in-month-label">30 Days</span>
+        </div>
+        <div id="calc-housemates-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Action Button -->
+      <button onclick="saveBill()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+        <i class="ph ph-floppy-disk text-xl"></i> Save Entry
+      </button>
+    </div>
+
+    <!-- VIEW: HISTORY -->
+    <div id="view-history" class="view-section fade-in max-w-lg mx-auto hidden pb-20">
+
+      <!-- History Tabs -->
+      <div class="flex p-1 bg-gray-200 rounded-xl mb-4">
+        <button onclick="toggleHistoryTab('records')" id="tab-records" class="flex-1 py-2 rounded-lg text-sm font-bold text-gray-600 transition-all bg-white shadow-sm text-indigo-600">
+          Records
+        </button>
+        <button onclick="toggleHistoryTab('analytics')" id="tab-analytics" class="flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">
+          Analytics
         </button>
       </div>
 
-      <!-- Main Content -->
-      <div class="flex-1 p-4 pb-24 overflow-y-auto">
-
-        <!-- View: Calculator -->
-        <div v-if="currentTab === 'calculator'" class="space-y-6">
-
-          <!-- Header Card -->
-          <div class="bg-indigo-600 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
-             <!-- Decorative circle -->
-             <div class="absolute -right-6 -top-6 w-24 h-24 bg-white opacity-10 rounded-full"></div>
-
-             <div class="flex justify-between items-start mb-1">
-               <span class="text-indigo-200 text-xs font-medium uppercase tracking-wider">Billing Period</span>
-               <span class="text-indigo-200 text-xs font-medium uppercase tracking-wider">Total Bill</span>
-             </div>
-
-             <div class="flex justify-between items-end">
-               <div class="relative group">
-                 <input type="month" v-model="selectedMonth" class="bg-indigo-500/50 text-white border-none rounded px-3 py-1 text-sm font-medium focus:ring-2 focus:ring-white outline-none cursor-pointer">
-                 <i class="ph ph-calendar absolute right-2 top-1.5 pointer-events-none text-indigo-200"></i>
-               </div>
-               <div class="text-3xl font-bold">QR {{ totalAmount.toFixed(2) }}</div>
-             </div>
-          </div>
-
-          <!-- Bill Types Inputs -->
-          <div class="grid grid-cols-1 gap-3">
-             <!-- Fixed Types for new Backend: Ooredoo, Kahramaa, Others -->
-             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
-               <div class="flex justify-between mb-1">
-                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
-                   <i class="ph ph-wifi-high text-red-400"></i> Ooredoo (Internet)
-                 </label>
-               </div>
-               <input type="number" v-model.number="amounts.ooredoo" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
-             </div>
-
-             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
-               <div class="flex justify-between mb-1">
-                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
-                   <i class="ph ph-lightning text-yellow-500"></i> Kahramaa (Electricity)
-                 </label>
-               </div>
-               <input type="number" v-model.number="amounts.kahramaa" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
-             </div>
-
-             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
-               <div class="flex justify-between mb-1">
-                 <label class="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
-                   <i class="ph ph-dots-three text-purple-400"></i> Others
-                 </label>
-               </div>
-               <input type="number" v-model.number="amounts.other" placeholder="0" class="bg-transparent w-full outline-none font-semibold text-gray-700 placeholder-gray-300">
-             </div>
-          </div>
-
-          <!-- Housemates Section -->
-          <div>
-            <div class="flex justify-between items-center mb-3">
-              <h2 class="font-bold text-gray-800 flex items-center gap-2">
-                <i class="ph ph-users"></i> Housemates
-              </h2>
-              <button @click="openHousemateModal()" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100 transition">
-                Manage List
-              </button>
-            </div>
-
-            <div class="space-y-3">
-              <!-- Client Side Calculation -->
-              <div v-for="h in housemates" :key="h" class="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-lg">
-                    {{ h.charAt(0) }}
-                  </div>
-                  <div>
-                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">NAME</div>
-                    <div class="font-semibold text-gray-800">{{ h }}</div>
-                  </div>
-                </div>
-
-                <div class="text-center">
-                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">SHARE</div>
-                   <div class="font-semibold text-gray-800 flex items-baseline justify-center gap-1">
-                     <span class="text-xs text-gray-400 font-normal">Equal Split</span>
-                   </div>
-                </div>
-
-                <div class="text-right">
-                   <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">TO PAY</div>
-                   <div class="font-bold text-gray-800">QR {{ currentSharePerPerson.toFixed(2) }}</div>
-                </div>
-              </div>
-
-              <div v-if="housemates.length === 0" class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed">
-                No housemates added. Go to Settings.
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- View: History -->
-        <div v-else-if="currentTab === 'history'" class="space-y-4">
-           <div class="flex items-center gap-2 mb-4">
-             <button @click="currentTab = 'calculator'" class="p-1 hover:bg-gray-100 rounded-full">
-               <i class="ph ph-arrow-left text-xl"></i>
-             </button>
-             <h2 class="font-bold text-xl text-gray-800">Previous Bills</h2>
-           </div>
-
-           <div v-if="loading" class="text-center text-gray-400 py-8">Loading history...</div>
-
-           <div v-for="(record, idx) in history" :key="idx" class="bg-white border rounded-xl overflow-hidden shadow-sm mb-4">
-               <!-- Header -->
-               <div @click="toggleRecord(idx)" class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                      <span class="font-bold text-xs">{{ formatMonthShort(record.month) }}</span>
-                    </div>
-                    <div>
-                      <div class="font-bold text-gray-800">{{ formatMonthLong(record.month) }}</div>
-                      <div class="text-xs text-gray-400">{{ formatDate(record.date) }}</div>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-[10px] text-gray-400 uppercase font-bold">TOTAL</div>
-                    <div class="font-bold text-gray-900 text-lg">QR {{ record.total.toFixed(2) }}</div>
-                  </div>
-                  <i class="ph ph-caret-down text-gray-400 transition-transform duration-300" :class="{'rotate-180': expandedRecord === idx}"></i>
-               </div>
-
-               <!-- Details -->
-               <div v-if="expandedRecord === idx" class="border-t bg-gray-50/50 p-4 space-y-4 animate-fade-in">
-
-                  <!-- Breakdown -->
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-white p-2 rounded border text-center">
-                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Ooredoo</div>
-                      <div class="font-bold text-gray-800">{{ record.ooredoo }}</div>
-                    </div>
-                    <div class="bg-white p-2 rounded border text-center">
-                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Kahramaa</div>
-                      <div class="font-bold text-gray-800">{{ record.kahramaa }}</div>
-                    </div>
-                    <div class="bg-white p-2 rounded border text-center">
-                      <div class="text-[9px] uppercase font-bold text-gray-400 truncate">Other</div>
-                      <div class="font-bold text-gray-800">{{ record.other }}</div>
-                    </div>
-                  </div>
-
-                  <!-- Allocations -->
-                  <div>
-                    <h4 class="text-xs font-bold text-indigo-900 mb-2 flex items-center gap-1">
-                      <i class="ph ph-users"></i> Housemate Shares
-                    </h4>
-                    <div class="bg-white rounded border divide-y">
-                      <div v-for="h in record.housemates" :key="h" class="p-3 flex justify-between items-center text-sm">
-                        <div class="flex items-center gap-2">
-                          <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
-                          <!-- Handle string name or object with name/amount -->
-                          <span class="text-gray-700 font-medium">{{ typeof h === 'string' ? h : h.name }}</span>
-                        </div>
-                        <div class="font-bold text-gray-800 bg-gray-50 px-2 py-1 rounded">
-                             QR {{ (typeof h === 'object' && h.amount) ? h.amount.toFixed(2) : record.sharePerPerson.toFixed(2) }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Actions -->
-                  <div class="flex justify-end gap-3 pt-2">
-                    <button @click="deleteRecord(record)" class="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-3 py-2 rounded hover:bg-red-50 transition">
-                      <i class="ph ph-trash"></i> Delete Record
-                    </button>
-                  </div>
-               </div>
-           </div>
-
-           <div v-if="!loading && history.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400">
-              <i class="ph ph-clock-counter-clockwise text-4xl mb-2 opacity-50"></i>
-              <p>No history yet.</p>
-           </div>
-        </div>
-
-        <!-- View: Settings (Housemates) -->
-        <div v-else-if="currentTab === 'settings'" class="space-y-6">
-           <div class="flex items-center gap-2 mb-4">
-             <button @click="currentTab = 'calculator'" class="p-1 hover:bg-gray-100 rounded-full">
-               <i class="ph ph-arrow-left text-xl"></i>
-             </button>
-             <h2 class="font-bold text-xl text-gray-800">Settings</h2>
-           </div>
-
-            <div class="bg-white rounded-xl border shadow-sm overflow-hidden p-4">
-                <h3 class="font-bold text-gray-700 mb-4">Manage Housemates</h3>
-                <div class="flex gap-2 mb-4">
-                    <input v-model="newHousemateName" @keyup.enter="addHousemate" placeholder="Enter name" class="flex-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <button @click="addHousemate" class="bg-indigo-600 text-white px-4 rounded hover:bg-indigo-700 font-bold">Add</button>
-                </div>
-
-                <div class="space-y-2">
-                  <div v-for="(h, idx) in housemates" :key="idx" class="p-3 bg-gray-50 rounded flex justify-between items-center border">
-                    <span class="font-medium text-gray-800">{{ h }}</span>
-                    <button @click="removeHousemate(idx)" class="text-red-400 hover:text-red-600">
-                      <i class="ph ph-trash text-lg"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="mt-4 pt-4 border-t flex justify-end">
-                     <button @click="saveHousemates" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 shadow shadow-green-200">
-                        Save Changes
-                     </button>
-                </div>
-             </div>
-        </div>
-
+      <div class="flex items-center justify-between mb-2 px-1">
+        <h2 class="text-xl font-bold text-gray-800" id="history-title">History Records</h2>
+        <button onclick="loadHistory()" class="text-indigo-600 p-2 hover:bg-indigo-50 rounded-full"><i class="ph ph-arrow-clockwise text-xl"></i></button>
       </div>
 
-      <!-- Bottom Action Bar (Only on Calculator) -->
-      <div v-if="currentTab === 'calculator'" class="bg-white p-4 border-t flex gap-4 fixed bottom-0 w-full max-w-md z-20">
-        <button @click="currentTab = 'history'" class="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2">
-          <i class="ph ph-clock-counter-clockwise"></i> History
-        </button>
-        <button @click="saveCalculation" class="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2">
-          <i class="ph ph-floppy-disk"></i> Record Calculation
-        </button>
+      <!-- SUB-VIEW: LIST -->
+      <div id="history-container" class="space-y-4"></div>
+
+      <!-- SUB-VIEW: ANALYTICS -->
+      <div id="history-analytics" class="hidden space-y-4">
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <div class="text-[10px] font-bold text-gray-400 uppercase">Total Spent</div>
+            <div class="text-xl font-bold text-gray-800 mt-1" id="stat-total">0 QR</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+             <div class="text-[10px] font-bold text-gray-400 uppercase">Avg / Month</div>
+             <div class="text-xl font-bold text-indigo-600 mt-1" id="stat-avg">0 QR</div>
+          </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+           <h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Trends</h3>
+           <div class="h-64">
+             <canvas id="expenseChart"></canvas>
+           </div>
+        </div>
       </div>
 
     </div>
 
-    <script>
-      const { createApp, ref, computed, onMounted } = Vue;
+    <!-- VIEW: SETTINGS -->
+    <div id="view-settings" class="view-section fade-in max-w-lg mx-auto hidden">
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h2 class="text-xl font-bold text-gray-800 mb-1">Housemates</h2>
+        <p class="text-sm text-gray-400 mb-6">Manage the list of people available for splitting.</p>
+        <div class="flex gap-2 mb-6">
+          <input type="text" id="new-housemate-name" placeholder="Name..." class="flex-1 p-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+          <button onclick="addHousemate()" class="bg-indigo-600 text-white w-12 rounded-xl hover:bg-indigo-700 transition flex items-center justify-center">
+            <i class="ph ph-plus text-xl"></i>
+          </button>
+        </div>
+        <ul id="settings-housemates-list" class="divide-y divide-gray-100 max-h-[50vh] overflow-y-auto pr-1"></ul>
+        <button onclick="saveHousematesToSheet()" class="mt-6 w-full py-3 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-semibold transition flex items-center justify-center gap-2">
+          <i class="ph ph-cloud-arrow-up text-lg"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </main>
 
-      createApp({
-        setup() {
-          const loading = ref(false);
-          const currentTab = ref('calculator');
+  <!-- Bottom Nav -->
+  <nav class="bg-white/90 backdrop-blur-md border-t border-gray-200 fixed bottom-0 w-full z-40 pb-safe">
+    <div class="flex justify-around items-center h-16 max-w-lg mx-auto">
+      <button onclick="switchView('calculator')" class="nav-btn group flex flex-col items-center justify-center w-full h-full text-indigo-600">
+        <div class="p-1 rounded-xl group-hover:bg-indigo-50 transition-colors">
+          <i class="ph ph-calculator text-2xl mb-0.5"></i>
+        </div>
+        <span class="text-[10px] font-medium">Split</span>
+      </button>
+      <button onclick="switchView('history')" class="nav-btn group flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-indigo-500">
+        <div class="p-1 rounded-xl group-hover:bg-indigo-50 transition-colors">
+          <i class="ph ph-clock-counter-clockwise text-2xl mb-0.5"></i>
+        </div>
+        <span class="text-[10px] font-medium">History</span>
+      </button>
+      <button onclick="switchView('settings')" class="nav-btn group flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-indigo-500">
+        <div class="p-1 rounded-xl group-hover:bg-indigo-50 transition-colors">
+          <i class="ph ph-users text-2xl mb-0.5"></i>
+        </div>
+        <span class="text-[10px] font-medium">People</span>
+      </button>
+    </div>
+  </nav>
 
-          // Data
-          const housemates = ref([]); // Array of strings
-          const history = ref([]);
+  <script>
+    // --- State Management ---
+    let housemates = [];
+    let historyData = [];
+    let currentDaysInMonth = 30;
+    let expenseChartInstance = null;
 
-          // Calculator State
-          const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
-          const amounts = ref({
-              ooredoo: null,
-              kahramaa: null,
-              other: null
-          });
+    // --- MOCK MODE (For Preview) ---
+    if (typeof google === 'undefined') {
+      console.warn("Mock Mode Active");
+      const createMockRunner = () => {
+        let successCb = () => {};
+        let failureCb = (e) => console.error(e);
+        const runner = {
+          withSuccessHandler: function(cb) { successCb = cb; return runner; },
+          withFailureHandler: function(cb) { failureCb = cb; return runner; },
+          getHousemates: function() {
+            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_mates')) || ['Ahmed', 'John', 'Sara']); } catch(e) { failureCb(e); } }, 400);
+          },
+          saveHousemates: function(l) {
+            setTimeout(() => { try { localStorage.setItem('k_mates', JSON.stringify(l)); successCb('Housemates list saved successfully!'); } catch(e) { failureCb(e); } }, 400);
+          },
+          getHistory: function() {
+            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_hist')) || []); } catch(e) { failureCb(e); } }, 400);
+          },
+          saveBill: function(d) {
+            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist')) || []; h.unshift(d); localStorage.setItem('k_hist', JSON.stringify(h)); successCb('Bill saved successfully!'); } catch(e) { failureCb(e); } }, 400);
+          },
+          deleteHistoryItem: function(dateIso, month) {
+            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist')) || []; const newH = h.filter(item => !(item.date === dateIso && item.month === month)); localStorage.setItem('k_hist', JSON.stringify(newH)); successCb('Record deleted successfully!'); } catch(e) { failureCb(e); } }, 400);
+          }
+        };
+        return runner;
+      };
+      window.google = { script: { run: createMockRunner() } };
+    }
 
-          // Settings State
-          const newHousemateName = ref("");
+    // --- Initialization ---
+    window.onload = function() {
+      const today = new Date();
+      const monthStr = today.toISOString().slice(0, 7);
+      document.getElementById('billing-month').value = monthStr;
+      updateDaysInMonth();
+      document.getElementById('billing-month').addEventListener('change', () => {
+        updateDaysInMonth();
+        document.querySelectorAll('.days-input').forEach(inp => { if(inp.dataset.defaulted === "true") inp.value = currentDaysInMonth; });
+        calculate();
+      });
+      document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+      loadData();
+    };
 
-          // History View
-          const expandedRecord = ref(null);
+    function updateDaysInMonth() {
+      const val = document.getElementById('billing-month').value;
+      if(val) {
+        const [y, m] = val.split('-');
+        currentDaysInMonth = new Date(y, m, 0).getDate();
+        document.getElementById('days-in-month-label').innerText = `Max: ${currentDaysInMonth} Days`;
+      }
+    }
 
-          // Computed
-          const totalAmount = computed(() => {
-            return (amounts.value.ooredoo || 0) + (amounts.value.kahramaa || 0) + (amounts.value.other || 0);
-          });
+    function switchView(view) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`view-${view}`).classList.remove('hidden');
+      document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('text-indigo-600'); btn.classList.add('text-gray-400'); });
+      const index = ['calculator', 'history', 'settings'].indexOf(view);
+      document.querySelectorAll('.nav-btn')[index].classList.remove('text-gray-400');
+      document.querySelectorAll('.nav-btn')[index].classList.add('text-indigo-600');
+      if(view === 'history') loadHistory();
+    }
 
-          const currentSharePerPerson = computed(() => {
-             if (housemates.value.length === 0) return 0;
-             return totalAmount.value / housemates.value.length;
-          });
+    // --- History Tab Logic ---
+    function toggleHistoryTab(tab) {
+      const recordsBtn = document.getElementById('tab-records');
+      const analyticsBtn = document.getElementById('tab-analytics');
+      const containerRecords = document.getElementById('history-container');
+      const containerAnalytics = document.getElementById('history-analytics');
+      const title = document.getElementById('history-title');
 
-          // API Wrapper
-          const runScript = (name, args = []) => {
-            return new Promise((resolve, reject) => {
-              google.script.run
-                .withSuccessHandler(resolve)
-                .withFailureHandler(reject)
-                [name](...args);
-            });
-          };
+      if (tab === 'records') {
+        recordsBtn.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-600 transition-all bg-white shadow-sm text-indigo-600";
+        analyticsBtn.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all";
+        containerRecords.classList.remove('hidden');
+        containerAnalytics.classList.add('hidden');
+        title.innerText = "History Records";
+      } else {
+        analyticsBtn.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-600 transition-all bg-white shadow-sm text-indigo-600";
+        recordsBtn.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all";
+        containerAnalytics.classList.remove('hidden');
+        containerRecords.classList.add('hidden');
+        title.innerText = "Analytics & Report";
+        renderAnalytics();
+      }
+    }
 
-          const fetchData = async () => {
-            loading.value = true;
-            try {
-              // Fetch Housemates
-              const hm = await runScript('getHousemates');
-              housemates.value = hm;
+    // --- UI HELPERS: Modals ---
+    function showNotification(title, msg) {
+      document.getElementById('modal-notif-title').innerText = title;
+      document.getElementById('modal-notif-msg').innerText = msg;
+      document.getElementById('modal-notification').classList.remove('hidden');
+    }
 
-              // Fetch History
-              const hist = await runScript('getHistory');
-              history.value = hist;
+    function showConfirm(msg, onYesCallback) {
+      document.getElementById('modal-confirm-msg').innerText = msg;
+      document.getElementById('modal-confirm').classList.remove('hidden');
+      const btn = document.getElementById('modal-confirm-btn');
+      // Remove old listeners
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
 
-            } catch (e) {
-              console.error(e);
-              // For demo purposes if script fails (e.g. dev mode without backend)
-              // housemates.value = ['Alice', 'Bob'];
-            } finally {
-              loading.value = false;
-            }
-          };
+      newBtn.addEventListener('click', () => {
+        closeModal('modal-confirm');
+        onYesCallback();
+      });
+    }
 
-          // Actions
-          const saveHousemates = async () => {
-             loading.value = true;
-             try {
-                 await runScript('saveHousemates', [housemates.value]);
-                 alert('Housemates saved!');
-             } catch(e) {
-                 alert('Error: ' + e.message);
-             } finally {
-                 loading.value = false;
-             }
-          };
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
 
-          const saveCalculation = async () => {
-            if (!selectedMonth.value || totalAmount.value <= 0) return alert('Please enter bill details.');
-            if (housemates.value.length === 0) return alert('No housemates to split with!');
+    // --- Data Loaders ---
+    function loadData() {
+      document.getElementById('loader').classList.remove('hidden');
+      google.script.run
+        .withSuccessHandler(data => {
+          housemates = data || [];
+          renderSettingsList();
+          renderCalculatorList();
+          document.getElementById('loader').classList.add('hidden');
+          switchView('calculator');
+        })
+        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error: " + error); })
+        .getHousemates();
+    }
 
-            loading.value = true;
-            try {
-              // Prepare payload
-              // Store housemates as objects with calculated amount for future proofing
-              const housemateData = housemates.value.map(h => ({
-                  name: h,
-                  amount: currentSharePerPerson.value
-              }));
+    function loadHistory() {
+      document.getElementById('loader').classList.remove('hidden');
+      google.script.run
+        .withSuccessHandler(data => {
+          historyData = data || [];
+          // Sort data by month descending for records (newest first)
+          historyData.sort((a, b) => b.month.localeCompare(a.month));
 
-              const payload = {
-                  month: selectedMonth.value,
-                  kahramaa: amounts.value.kahramaa || 0,
-                  ooredoo: amounts.value.ooredoo || 0,
-                  other: amounts.value.other || 0,
-                  total: totalAmount.value,
-                  sharePerPerson: currentSharePerPerson.value,
-                  housemates: housemateData
-              };
+          renderHistory();
+          // If analytics is currently viewable, update it too
+          if(!document.getElementById('history-analytics').classList.contains('hidden')) {
+            renderAnalytics();
+          }
+          document.getElementById('loader').classList.add('hidden');
+        })
+        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error: " + error); })
+        .getHistory();
+    }
 
-              await runScript('saveBill', [payload]);
+    // --- Deletion Logic ---
+    function confirmDeleteEntry(dateIso, month, event) {
+      event.stopPropagation();
+      showConfirm("Are you sure you want to delete this history record?", () => {
+        document.getElementById('loader').classList.remove('hidden');
+        google.script.run
+          .withSuccessHandler(res => {
+            document.getElementById('loader').classList.add('hidden');
+            showNotification('Deleted', res);
+            loadHistory();
+          })
+          .withFailureHandler(error => {
+            document.getElementById('loader').classList.add('hidden');
+            showNotification('Error', error);
+          })
+          .deleteHistoryItem(dateIso, month);
+      });
+    }
 
-              // Reset
-              amounts.value.kahramaa = null;
-              amounts.value.ooredoo = null;
-              amounts.value.other = null;
+    // --- Calculator Logic ---
+    function renderCalculatorList() {
+      const container = document.getElementById('calc-housemates-list');
+      container.innerHTML = '';
+      if (housemates.length === 0) { container.innerHTML = '<div class="text-center p-4 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">No housemates yet. Go to Settings.</div>'; return; }
+      housemates.forEach(mate => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 transition-all hover:border-indigo-200';
+        div.innerHTML = `
+          <div class="flex items-center h-full"><input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 cursor-pointer" onchange="toggleMate(this)"></div>
+          <div class="flex-1"><div class="font-bold text-gray-700 text-sm leading-none mb-1">${mate}</div><div class="text-[10px] text-gray-400 font-medium tracking-wide">DAYS STAYED</div></div>
+          <div class="flex items-center gap-2">
+            <input type="number" value="${currentDaysInMonth}" max="31" min="0" data-defaulted="true" class="days-input w-14 bg-gray-50 border border-gray-200 rounded-lg p-2 text-center text-sm font-bold text-gray-700 focus:border-indigo-500 outline-none" oninput="this.dataset.defaulted='false'; calculate()">
+            <div class="text-right w-20"><div class="share-display text-lg font-bold text-indigo-600">0.00</div><div class="text-[10px] text-gray-400">QR</div></div>
+          </div>`;
+        container.appendChild(div);
+      });
+      calculate();
+    }
 
-              alert('Calculation saved!');
+    function toggleMate(cb) {
+      const row = cb.closest('div').parentElement;
+      if(cb.checked) { row.classList.remove('opacity-50', 'grayscale'); row.querySelector('input[type="number"]').disabled = false; }
+      else { row.classList.add('opacity-50', 'grayscale'); row.querySelector('input[type="number"]').disabled = true; }
+      calculate();
+    }
 
-              // Refresh History
-              const hist = await runScript('getHistory');
-              history.value = hist;
+    function calculate() {
+      const k = parseFloat(document.getElementById('cost-kahramaa').value) || 0;
+      const o = parseFloat(document.getElementById('cost-ooredoo').value) || 0;
+      const oth = parseFloat(document.getElementById('cost-other').value) || 0;
+      const totalBill = k + o + oth;
+      document.getElementById('display-total').innerText = totalBill.toFixed(2) + ' QR';
 
-              currentTab.value = 'history';
-
-            } catch (e) {
-              alert(e.message);
-            } finally {
-              loading.value = false;
-            }
-          };
-
-          const deleteRecord = async (record) => {
-             if(!confirm('Delete this record?')) return;
-             loading.value = true;
-             try {
-                 await runScript('deleteHistoryItem', [record.date, record.month]);
-                 // Refresh
-                 const hist = await runScript('getHistory');
-                 history.value = hist;
-             } catch(e) {
-                 alert(e.message);
-             } finally {
-                 loading.value = false;
-             }
-          };
-
-          // Local Housemate List Management
-          const addHousemate = () => {
-              if(newHousemateName.value.trim()) {
-                  housemates.value.push(newHousemateName.value.trim());
-                  newHousemateName.value = "";
-              }
-          };
-
-          const removeHousemate = (idx) => {
-              housemates.value.splice(idx, 1);
-          };
-
-          // Formatting
-          const formatMonthShort = (ym) => {
-             if(!ym) return '';
-             const [y, m] = ym.split('-');
-             const d = new Date(y, m-1, 1);
-             return d.toLocaleDateString('en-US', { month: 'short' });
-          };
-
-          const formatMonthLong = (ym) => {
-             if(!ym) return '';
-             const [y, m] = ym.split('-');
-             const d = new Date(y, m-1, 1);
-             return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          };
-
-          const formatDate = (iso) => {
-              if(!iso) return '';
-              return new Date(iso).toLocaleDateString();
-          };
-
-          const toggleRecord = (idx) => {
-            expandedRecord.value = expandedRecord.value === idx ? null : idx;
-          };
-
-          const openHousemateModal = () => {
-              currentTab.value = 'settings';
-          };
-
-          onMounted(() => {
-            fetchData();
-          });
-
-          return {
-            currentTab, loading,
-            selectedMonth, amounts, totalAmount, currentSharePerPerson,
-            housemates, history,
-            newHousemateName,
-            expandedRecord, toggleRecord,
-            saveHousemates, saveCalculation, deleteRecord,
-            addHousemate, removeHousemate, openHousemateModal,
-            formatMonthShort, formatMonthLong, formatDate
-          };
+      const rows = document.getElementById('calc-housemates-list').children;
+      let totalUserDays = 0;
+      let activeMates = [];
+      for(let row of rows) {
+        const cb = row.querySelector('input[type="checkbox"]');
+        if(cb && cb.checked) {
+          let days = parseFloat(row.querySelector('.days-input').value) || 0;
+          if(days > currentDaysInMonth) days = currentDaysInMonth;
+          totalUserDays += days;
+          activeMates.push({ row, days });
+        } else {
+          if(row.querySelector('.share-display')) row.querySelector('.share-display').innerText = '0.00';
         }
-      }).mount('#app');
-    </script>
-  </body>
+      }
+      const costPerDay = totalUserDays > 0 ? (totalBill / totalUserDays) : 0;
+      activeMates.forEach(mate => { mate.row.querySelector('.share-display').innerText = (mate.days * costPerDay).toFixed(2); });
+    }
+
+    function saveBill() {
+      const k = parseFloat(document.getElementById('cost-kahramaa').value) || 0;
+      const o = parseFloat(document.getElementById('cost-ooredoo').value) || 0;
+      const oth = parseFloat(document.getElementById('cost-other').value) || 0;
+      const total = k + o + oth;
+      if(total <= 0) { showNotification("Oops", "Please enter valid expenses."); return; }
+
+      const rows = document.getElementById('calc-housemates-list').children;
+      let involved = [];
+      for(let row of rows) {
+        if(row.querySelector('input[type="checkbox"]').checked) {
+          involved.push({
+            name: row.querySelector('.font-bold').innerText,
+            days: row.querySelector('.days-input').value,
+            share: row.querySelector('.share-display').innerText
+          });
+        }
+      }
+      if(involved.length === 0) { showNotification("Oops", "Select at least one housemate."); return; }
+
+      const payload = {
+        month: document.getElementById('billing-month').value,
+        kahramaa: k, ooredoo: o, other: oth, total: total,
+        sharePerPerson: (total / involved.length).toFixed(2),
+        housemates: involved
+      };
+
+      document.getElementById('loader').classList.remove('hidden');
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById('loader').classList.add('hidden');
+          document.getElementById('cost-kahramaa').value = '';
+          document.getElementById('cost-ooredoo').value = '';
+          document.getElementById('cost-other').value = '';
+          calculate();
+          loadHistory();
+          showNotification("Saved!", res);
+        })
+        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); showNotification("Error", error); })
+        .saveBill(payload);
+    }
+
+    // --- History Renderer ---
+    function renderHistory() {
+      const container = document.getElementById('history-container');
+      container.innerHTML = '';
+      if(!historyData || historyData.length === 0) { container.innerHTML = '<p class="text-center text-gray-400 mt-10">No history found.</p>'; return; }
+
+      historyData.forEach(item => {
+        const mates = (item.housemates || []).map(m => (typeof m === 'string' ? { name: m, days: '?', share: '?' } : m));
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden';
+        card.innerHTML = `
+          <div class="p-4 cursor-pointer hover:bg-gray-50 transition" onclick="this.nextElementSibling.classList.toggle('hidden')">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-gray-800 text-lg">${item.month}</span>
+              <div class="flex items-center gap-3">
+                <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">${parseFloat(item.total).toFixed(2)}</span>
+                <button onclick="confirmDeleteEntry('${item.date}', '${item.month}', event)" class="text-gray-300 hover:text-red-500 transition p-1 rounded-full hover:bg-red-50"><i class="ph ph-trash text-lg"></i></button>
+              </div>
+            </div>
+            <div class="flex gap-3 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-blue-500"></div> K: ${item.kahramaa}</span>
+              <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-red-500"></div> O: ${item.ooredoo}</span>
+              <span>Other: ${item.other}</span>
+            </div>
+          </div>
+          <div class="hidden bg-gray-50 border-t border-gray-100 p-3">
+            <table class="w-full text-sm">
+              <thead class="text-xs text-gray-400 uppercase text-left"><tr><th class="pb-2 pl-2">Name</th><th class="pb-2 text-center">Days</th><th class="pb-2 text-right pr-2">Share</th></tr></thead>
+              <tbody class="divide-y divide-gray-200">
+                ${mates.map(m => `<tr><td class="py-2 pl-2 font-medium text-gray-700">${m.name}</td><td class="py-2 text-center text-gray-500">${m.days}</td><td class="py-2 text-right pr-2 font-bold text-gray-800">${parseFloat(m.share).toFixed(2)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        container.appendChild(card);
+      });
+    }
+
+    // --- Analytics Logic ---
+    function renderAnalytics() {
+      if(!historyData || historyData.length === 0) return;
+
+      // 1. Calculate Stats
+      let total = 0;
+      historyData.forEach(d => total += parseFloat(d.total || 0));
+      const avg = total / historyData.length;
+
+      document.getElementById('stat-total').innerText = total.toFixed(2) + " QR";
+      document.getElementById('stat-avg').innerText = avg.toFixed(2) + " QR";
+
+      // 2. Prepare Chart Data
+      // Sort ascending by month for chart
+      const chartData = [...historyData].sort((a, b) => a.month.localeCompare(b.month));
+      // Limit to last 6 months for readability
+      const recentData = chartData.slice(-6);
+
+      const labels = recentData.map(d => d.month);
+      const kData = recentData.map(d => d.kahramaa);
+      const oData = recentData.map(d => d.ooredoo);
+      const othData = recentData.map(d => d.other);
+
+      // 3. Render Chart
+      const ctx = document.getElementById('expenseChart').getContext('2d');
+
+      if(expenseChartInstance) expenseChartInstance.destroy();
+
+      expenseChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Kahramaa', data: kData, backgroundColor: '#3b82f6', borderRadius: 4 }, // blue-500
+            { label: 'Ooredoo', data: oData, backgroundColor: '#ef4444', borderRadius: 4 }, // red-500
+            { label: 'Other', data: othData, backgroundColor: '#9ca3af', borderRadius: 4 } // gray-400
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, grid: { color: '#f3f4f6' } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } }
+          }
+        }
+      });
+    }
+
+    // --- Settings Renderer ---
+    function renderSettingsList() {
+      const list = document.getElementById('settings-housemates-list');
+      list.innerHTML = '';
+      housemates.forEach((m, i) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center py-3 px-2 group hover:bg-gray-50 rounded-lg';
+        li.innerHTML = `
+          <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">${m.substring(0,2).toUpperCase()}</div><span class="font-medium text-gray-700">${m}</span></div>
+          <button class="text-gray-300 hover:text-red-500 transition"><i class="ph ph-trash text-lg"></i></button>`;
+        // Add listener properly
+        li.querySelector('button').addEventListener('click', () => confirmRemoveHousemate(i));
+        list.appendChild(li);
+      });
+    }
+
+    function addHousemate() {
+      const val = document.getElementById('new-housemate-name').value.trim();
+      if(val) {
+        housemates.push(val);
+        document.getElementById('new-housemate-name').value = '';
+        renderSettingsList();
+      }
+    }
+
+    function confirmRemoveHousemate(index) {
+      showConfirm("Remove this housemate from the list?", () => {
+        housemates.splice(index, 1);
+        renderSettingsList();
+      });
+    }
+
+    function saveHousematesToSheet() {
+      document.getElementById('loader').classList.remove('hidden');
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById('loader').classList.add('hidden');
+          showNotification("Saved!", res);
+          renderCalculatorList();
+        })
+        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); showNotification("Error", error); })
+        .saveHousemates(housemates);
+    }
+  </script>
+</body>
 </html>

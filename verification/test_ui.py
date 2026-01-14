@@ -51,28 +51,32 @@ def test_bill_splitter():
         page.reload()
 
         try:
-            # Wait for main content to appear (FairShare title)
-            page.wait_for_selector("text=FairShare")
+            # Wait for header
+            page.wait_for_selector("text=Bill Splitter")
 
-            # Verify inputs exist (Ooredoo, Kahramaa, Others)
-            expect(page.locator("label", has_text="Ooredoo (Internet)")).to_be_visible()
+            # Fill inputs
+            # Kahramaa
+            page.locator("#cost-kahramaa").fill("50")
+            # Ooredoo
+            page.locator("#cost-ooredoo").fill("100")
 
-            # Fill Ooredoo amount
-            page.locator("input[placeholder='0']").first.fill("100")
+            # Verify Total (150) - display-total text contains "150.00"
+            expect(page.locator("#display-total")).to_contain_text("150.00")
 
-            # Wait for reactivity (Vue updates DOM)
-            # Total should be 100
-            expect(page.locator("text=QR 100.00")).to_be_visible()
-
-            # Wait for housemates to load and display (Alice and Bob)
+            # Wait for housemates (Alice and Bob)
             page.wait_for_selector("text=Alice", timeout=5000)
 
-            # Verify amounts (50 each)
-            # "TO PAY" is QR 50.00
-            expect(page.locator("text=QR 50.00").first).to_be_visible()
+            # Verify split calculation
+            # Total 150 / 2 = 75 per person
+            # The share display is inside .share-display class
+            # We have 2 rows.
+
+            # Select first row's share
+            first_share = page.locator(".share-display").first
+            expect(first_share).to_have_text("75.00")
 
             # Take screenshot
-            page.screenshot(path="verification/bill_splitter_simplified.png")
+            page.screenshot(path="verification/bill_splitter_vanilla.png")
             print("Verification successful, screenshot saved.")
 
         except Exception as e:
