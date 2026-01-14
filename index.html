@@ -90,20 +90,10 @@
           <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Billing Period</label>
           <input type="month" id="billing-month" class="w-full bg-transparent font-bold text-gray-700 text-lg outline-none focus:text-indigo-600 transition-colors cursor-pointer">
         </div>
-        <div class="p-4 grid grid-cols-3 gap-3">
-          <div class="space-y-1">
-            <label class="text-[10px] font-bold text-blue-600 uppercase">Kahramaa</label>
-            <input type="number" id="cost-kahramaa" placeholder="0" class="cost-input w-full bg-blue-50/50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all">
-          </div>
-          <div class="space-y-1">
-            <label class="text-[10px] font-bold text-red-600 uppercase">Ooredoo</label>
-            <input type="number" id="cost-ooredoo" placeholder="0" class="cost-input w-full bg-red-50/50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-red-100 outline-none transition-all">
-          </div>
-          <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-500 uppercase">Other</label>
-            <input type="number" id="cost-other" placeholder="0" class="cost-input w-full bg-gray-50 p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
-          </div>
-        </div>
+
+        <!-- Dynamic Inputs -->
+        <div class="p-4 grid grid-cols-3 gap-3" id="calculator-inputs-container"></div>
+
         <div class="bg-gray-900 text-white p-3 flex justify-between items-center px-5">
           <span class="text-xs font-medium text-gray-400">Total Bill</span>
           <span class="font-mono text-xl font-bold tracking-tight" id="display-total">0.00 <span class="text-sm font-normal text-gray-500">QR</span></span>
@@ -173,7 +163,9 @@
     </div>
 
     <!-- VIEW: SETTINGS -->
-    <div id="view-settings" class="view-section fade-in max-w-lg mx-auto hidden">
+    <div id="view-settings" class="view-section fade-in max-w-lg mx-auto hidden space-y-5">
+
+      <!-- Housemates Settings -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <h2 class="text-xl font-bold text-gray-800 mb-1">Housemates</h2>
         <p class="text-sm text-gray-400 mb-6">Manage the list of people available for splitting.</p>
@@ -188,6 +180,24 @@
           <i class="ph ph-cloud-arrow-up text-lg"></i> Save Changes
         </button>
       </div>
+
+      <!-- Bill Types Settings -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h2 class="text-xl font-bold text-gray-800 mb-1">Bill Types</h2>
+        <p class="text-sm text-gray-400 mb-6">Customize the expense categories.</p>
+        <div class="flex gap-2 mb-6">
+          <input type="text" id="new-bill-name" placeholder="Expense Name..." class="flex-1 p-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+          <input type="color" id="new-bill-color" value="#6366f1" class="h-12 w-12 rounded-xl border-none cursor-pointer bg-transparent">
+          <button onclick="addBillType()" class="bg-indigo-600 text-white w-12 rounded-xl hover:bg-indigo-700 transition flex items-center justify-center">
+            <i class="ph ph-plus text-xl"></i>
+          </button>
+        </div>
+        <ul id="settings-bills-list" class="divide-y divide-gray-100 max-h-[30vh] overflow-y-auto pr-1"></ul>
+        <button onclick="saveBillTypesToSheet()" class="mt-6 w-full py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold transition flex items-center justify-center gap-2">
+          <i class="ph ph-cloud-arrow-up text-lg"></i> Save Changes
+        </button>
+      </div>
+
     </div>
   </main>
 
@@ -208,9 +218,9 @@
       </button>
       <button onclick="switchView('settings')" class="nav-btn group flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-indigo-500">
         <div class="p-1 rounded-xl group-hover:bg-indigo-50 transition-colors">
-          <i class="ph ph-users text-2xl mb-0.5"></i>
+          <i class="ph ph-gear text-2xl mb-0.5"></i>
         </div>
-        <span class="text-[10px] font-medium">People</span>
+        <span class="text-[10px] font-medium">Settings</span>
       </button>
     </div>
   </nav>
@@ -218,6 +228,7 @@
   <script>
     // --- State Management ---
     let housemates = [];
+    let billTypes = [];
     let historyData = [];
     let currentDaysInMonth = 30;
     let expenseChartInstance = null;
@@ -237,14 +248,20 @@
           saveHousemates: function(l) {
             setTimeout(() => { try { localStorage.setItem('k_mates', JSON.stringify(l)); successCb('Housemates list saved successfully!'); } catch(e) { failureCb(e); } }, 400);
           },
+          getBillTypes: function() {
+            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_bills')) || [{name: 'Kahramaa', color: '#3b82f6'}, {name: 'Ooredoo', color: '#ef4444'}, {name: 'Other', color: '#9ca3af'}]); } catch(e) { failureCb(e); } }, 400);
+          },
+          saveBillTypes: function(t) {
+            setTimeout(() => { try { localStorage.setItem('k_bills', JSON.stringify(t)); successCb('Bill types saved successfully!'); } catch(e) { failureCb(e); } }, 400);
+          },
           getHistory: function() {
-            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_hist')) || []); } catch(e) { failureCb(e); } }, 400);
+            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_hist_v2')) || []); } catch(e) { failureCb(e); } }, 400);
           },
           saveBill: function(d) {
-            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist')) || []; h.unshift(d); localStorage.setItem('k_hist', JSON.stringify(h)); successCb('Bill saved successfully!'); } catch(e) { failureCb(e); } }, 400);
+            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist_v2')) || []; h.unshift(d); localStorage.setItem('k_hist_v2', JSON.stringify(h)); successCb('Bill saved successfully!'); } catch(e) { failureCb(e); } }, 400);
           },
           deleteHistoryItem: function(dateIso, month) {
-            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist')) || []; const newH = h.filter(item => !(item.date === dateIso && item.month === month)); localStorage.setItem('k_hist', JSON.stringify(newH)); successCb('Record deleted successfully!'); } catch(e) { failureCb(e); } }, 400);
+            setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist_v2')) || []; const newH = h.filter(item => !(item.date === dateIso && item.month === month)); localStorage.setItem('k_hist_v2', JSON.stringify(newH)); successCb('Record deleted successfully!'); } catch(e) { failureCb(e); } }, 400);
           }
         };
         return runner;
@@ -263,7 +280,8 @@
         document.querySelectorAll('.days-input').forEach(inp => { if(inp.dataset.defaulted === "true") inp.value = currentDaysInMonth; });
         calculate();
       });
-      document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+
+      // Init Load
       loadData();
     };
 
@@ -338,15 +356,28 @@
     // --- Data Loaders ---
     function loadData() {
       document.getElementById('loader').classList.remove('hidden');
+
+      // Load Housemates
       google.script.run
         .withSuccessHandler(data => {
           housemates = data || [];
           renderSettingsList();
           renderCalculatorList();
-          document.getElementById('loader').classList.add('hidden');
-          switchView('calculator');
+
+          // Load Bill Types after Housemates
+          google.script.run
+            .withSuccessHandler(types => {
+                billTypes = types || [];
+                renderSettingsBillsList();
+                renderCalculatorInputs();
+
+                document.getElementById('loader').classList.add('hidden');
+                switchView('calculator');
+            })
+            .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error bills: " + error); })
+            .getBillTypes();
         })
-        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error: " + error); })
+        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error mates: " + error); })
         .getHousemates();
     }
 
@@ -389,6 +420,38 @@
     }
 
     // --- Calculator Logic ---
+    function renderCalculatorInputs() {
+        const container = document.getElementById('calculator-inputs-container');
+        container.innerHTML = '';
+
+        billTypes.forEach((bill, index) => {
+            const div = document.createElement('div');
+            div.className = 'space-y-1';
+
+            // Safe rendering
+            const label = document.createElement('label');
+            label.className = "text-[10px] font-bold uppercase";
+            label.style.color = bill.color;
+            label.textContent = bill.name;
+            div.appendChild(label);
+
+            const input = document.createElement('input');
+            input.type = "number";
+            input.id = `cost-bill-${index}`;
+            input.dataset.index = index;
+            input.placeholder = "0";
+            input.className = "cost-input w-full p-2 rounded-lg text-center font-bold text-gray-700 focus:ring-2 outline-none transition-all";
+            input.style.backgroundColor = `${bill.color}15`;
+            input.style.setProperty('--tw-ring-color', `${bill.color}30`);
+
+            div.appendChild(input);
+            container.appendChild(div);
+        });
+
+        // Re-attach listeners
+        document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+    }
+
     function renderCalculatorList() {
       const container = document.getElementById('calc-housemates-list');
       container.innerHTML = '';
@@ -396,13 +459,33 @@
       housemates.forEach(mate => {
         const div = document.createElement('div');
         div.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 transition-all hover:border-indigo-200';
-        div.innerHTML = `
-          <div class="flex items-center h-full"><input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 cursor-pointer" onchange="toggleMate(this)"></div>
-          <div class="flex-1"><div class="font-bold text-gray-700 text-sm leading-none mb-1">${mate}</div><div class="text-[10px] text-gray-400 font-medium tracking-wide">DAYS STAYED</div></div>
-          <div class="flex items-center gap-2">
+
+        // Use DOM methods to safely insert name
+        const checkDiv = document.createElement('div');
+        checkDiv.className = "flex items-center h-full";
+        checkDiv.innerHTML = '<input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 cursor-pointer" onchange="toggleMate(this)">';
+        div.appendChild(checkDiv);
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = "flex-1";
+        const nameText = document.createElement('div');
+        nameText.className = "font-bold text-gray-700 text-sm leading-none mb-1";
+        nameText.textContent = mate; // Safe
+        nameDiv.appendChild(nameText);
+        const subText = document.createElement('div');
+        subText.className = "text-[10px] text-gray-400 font-medium tracking-wide";
+        subText.textContent = "DAYS STAYED";
+        nameDiv.appendChild(subText);
+        div.appendChild(nameDiv);
+
+        const inputsDiv = document.createElement('div');
+        inputsDiv.className = "flex items-center gap-2";
+        inputsDiv.innerHTML = `
             <input type="number" value="${currentDaysInMonth}" max="31" min="0" data-defaulted="true" class="days-input w-14 bg-gray-50 border border-gray-200 rounded-lg p-2 text-center text-sm font-bold text-gray-700 focus:border-indigo-500 outline-none" oninput="this.dataset.defaulted='false'; calculate()">
             <div class="text-right w-20"><div class="share-display text-lg font-bold text-indigo-600">0.00</div><div class="text-[10px] text-gray-400">QR</div></div>
-          </div>`;
+        `;
+        div.appendChild(inputsDiv);
+
         container.appendChild(div);
       });
       calculate();
@@ -416,10 +499,13 @@
     }
 
     function calculate() {
-      const k = parseFloat(document.getElementById('cost-kahramaa').value) || 0;
-      const o = parseFloat(document.getElementById('cost-ooredoo').value) || 0;
-      const oth = parseFloat(document.getElementById('cost-other').value) || 0;
-      const totalBill = k + o + oth;
+      // Sum up all dynamic inputs
+      let totalBill = 0;
+      billTypes.forEach((bill, index) => {
+          const val = parseFloat(document.getElementById(`cost-bill-${index}`).value) || 0;
+          totalBill += val;
+      });
+
       document.getElementById('display-total').innerText = totalBill.toFixed(2) + ' QR';
 
       const rows = document.getElementById('calc-housemates-list').children;
@@ -441,10 +527,17 @@
     }
 
     function saveBill() {
-      const k = parseFloat(document.getElementById('cost-kahramaa').value) || 0;
-      const o = parseFloat(document.getElementById('cost-ooredoo').value) || 0;
-      const oth = parseFloat(document.getElementById('cost-other').value) || 0;
-      const total = k + o + oth;
+      // Gather inputs
+      let total = 0;
+      let billDetails = [];
+      let hasError = false;
+
+      billTypes.forEach((bill, index) => {
+          const val = parseFloat(document.getElementById(`cost-bill-${index}`).value) || 0;
+          total += val;
+          billDetails.push({ name: bill.name, amount: val, color: bill.color });
+      });
+
       if(total <= 0) { showNotification("Oops", "Please enter valid expenses."); return; }
 
       const rows = document.getElementById('calc-housemates-list').children;
@@ -462,18 +555,19 @@
 
       const payload = {
         month: document.getElementById('billing-month').value,
-        kahramaa: k, ooredoo: o, other: oth, total: total,
+        total: total,
         sharePerPerson: (total / involved.length).toFixed(2),
-        housemates: involved
+        housemates: involved,
+        billDetails: billDetails
       };
 
       document.getElementById('loader').classList.remove('hidden');
       google.script.run
         .withSuccessHandler(res => {
           document.getElementById('loader').classList.add('hidden');
-          document.getElementById('cost-kahramaa').value = '';
-          document.getElementById('cost-ooredoo').value = '';
-          document.getElementById('cost-other').value = '';
+          // Clear inputs
+          billTypes.forEach((_, i) => document.getElementById(`cost-bill-${i}`).value = '');
+
           calculate();
           loadHistory();
           showNotification("Saved!", res);
@@ -490,6 +584,16 @@
 
       historyData.forEach(item => {
         const mates = (item.housemates || []).map(m => (typeof m === 'string' ? { name: m, days: '?', share: '?' } : m));
+        const details = item.billDetails || [];
+
+        // Render dots for details
+        const dotsHtml = details.map(d => {
+            // Use saved color or fallback
+            const color = d.color || '#9ca3af';
+            // If legacy data (no color), try to map from name? No, just gray.
+            return `<span class="flex items-center gap-1 text-[10px] bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100"><div class="w-2 h-2 rounded-full" style="background-color: ${color}"></div> ${d.name}: ${d.amount}</span>`;
+        }).join('');
+
         const card = document.createElement('div');
         card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden';
         card.innerHTML = `
@@ -501,10 +605,8 @@
                 <button onclick="confirmDeleteEntry('${item.date}', '${item.month}', event)" class="text-gray-300 hover:text-red-500 transition p-1 rounded-full hover:bg-red-50"><i class="ph ph-trash text-lg"></i></button>
               </div>
             </div>
-            <div class="flex gap-3 text-xs text-gray-500">
-              <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-blue-500"></div> K: ${item.kahramaa}</span>
-              <span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-red-500"></div> O: ${item.ooredoo}</span>
-              <span>Other: ${item.other}</span>
+            <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+              ${dotsHtml}
             </div>
           </div>
           <div class="hidden bg-gray-50 border-t border-gray-100 p-3">
@@ -534,13 +636,36 @@
       // 2. Prepare Chart Data
       // Sort ascending by month for chart
       const chartData = [...historyData].sort((a, b) => a.month.localeCompare(b.month));
-      // Limit to last 6 months for readability
       const recentData = chartData.slice(-6);
-
       const labels = recentData.map(d => d.month);
-      const kData = recentData.map(d => d.kahramaa);
-      const oData = recentData.map(d => d.ooredoo);
-      const othData = recentData.map(d => d.other);
+
+      // We need to aggregate unique bill types from history to form datasets
+      // Because history might contain bills that are no longer in 'billTypes' list.
+      const allTypeNames = new Set();
+      recentData.forEach(d => {
+         (d.billDetails || []).forEach(b => allTypeNames.add(b.name));
+      });
+
+      const datasets = Array.from(allTypeNames).map(name => {
+         // Try to find color from recent data (first occurrence)
+         let color = '#9ca3af';
+         for(let d of recentData) {
+             const found = (d.billDetails || []).find(b => b.name === name);
+             if(found && found.color) { color = found.color; break; }
+         }
+
+         const data = recentData.map(d => {
+             const found = (d.billDetails || []).find(b => b.name === name);
+             return found ? found.amount : 0;
+         });
+
+         return {
+             label: name,
+             data: data,
+             backgroundColor: color,
+             borderRadius: 4
+         };
+      });
 
       // 3. Render Chart
       const ctx = document.getElementById('expenseChart').getContext('2d');
@@ -551,11 +676,7 @@
         type: 'bar',
         data: {
           labels: labels,
-          datasets: [
-            { label: 'Kahramaa', data: kData, backgroundColor: '#3b82f6', borderRadius: 4 }, // blue-500
-            { label: 'Ooredoo', data: oData, backgroundColor: '#ef4444', borderRadius: 4 }, // red-500
-            { label: 'Other', data: othData, backgroundColor: '#9ca3af', borderRadius: 4 } // gray-400
-          ]
+          datasets: datasets
         },
         options: {
           responsive: true,
@@ -578,13 +699,55 @@
       housemates.forEach((m, i) => {
         const li = document.createElement('li');
         li.className = 'flex justify-between items-center py-3 px-2 group hover:bg-gray-50 rounded-lg';
-        li.innerHTML = `
-          <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">${m.substring(0,2).toUpperCase()}</div><span class="font-medium text-gray-700">${m}</span></div>
-          <button class="text-gray-300 hover:text-red-500 transition"><i class="ph ph-trash text-lg"></i></button>`;
-        // Add listener properly
-        li.querySelector('button').addEventListener('click', () => confirmRemoveHousemate(i));
+
+        // Use textContent for user input to prevent XSS
+        const nameDiv = document.createElement('div');
+        nameDiv.className = "flex items-center gap-3";
+        nameDiv.innerHTML = `<div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">${m.substring(0,2).toUpperCase()}</div>`;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = "font-medium text-gray-700";
+        nameSpan.textContent = m;
+        nameDiv.appendChild(nameSpan);
+
+        li.appendChild(nameDiv);
+
+        const btn = document.createElement('button');
+        btn.className = "text-gray-300 hover:text-red-500 transition";
+        btn.innerHTML = '<i class="ph ph-trash text-lg"></i>';
+        btn.addEventListener('click', () => confirmRemoveHousemate(i));
+        li.appendChild(btn);
+
         list.appendChild(li);
       });
+    }
+
+    function renderSettingsBillsList() {
+        const list = document.getElementById('settings-bills-list');
+        list.innerHTML = '';
+        billTypes.forEach((b, i) => {
+            const li = document.createElement('li');
+            li.className = 'flex justify-between items-center py-3 px-2 group hover:bg-gray-50 rounded-lg';
+
+            // Safe rendering
+            const infoDiv = document.createElement('div');
+            infoDiv.className = "flex items-center gap-3";
+            infoDiv.innerHTML = `<div class="w-6 h-6 rounded-md shadow-sm" style="background-color: ${b.color}"></div>`;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = "font-medium text-gray-700";
+            nameSpan.textContent = b.name;
+            infoDiv.appendChild(nameSpan);
+
+            li.appendChild(infoDiv);
+
+            const btn = document.createElement('button');
+            btn.className = "text-gray-300 hover:text-red-500 transition";
+            btn.innerHTML = '<i class="ph ph-trash text-lg"></i>';
+            btn.addEventListener('click', () => confirmRemoveBillType(i));
+            li.appendChild(btn);
+
+            list.appendChild(li);
+        });
     }
 
     function addHousemate() {
@@ -596,11 +759,30 @@
       }
     }
 
+    function addBillType() {
+        const name = document.getElementById('new-bill-name').value.trim();
+        const color = document.getElementById('new-bill-color').value;
+        if(name) {
+            billTypes.push({ name, color });
+            document.getElementById('new-bill-name').value = '';
+            renderSettingsBillsList();
+            renderCalculatorInputs(); // Update calc view immediately
+        }
+    }
+
     function confirmRemoveHousemate(index) {
       showConfirm("Remove this housemate from the list?", () => {
         housemates.splice(index, 1);
         renderSettingsList();
       });
+    }
+
+    function confirmRemoveBillType(index) {
+        showConfirm("Remove this bill type?", () => {
+           billTypes.splice(index, 1);
+           renderSettingsBillsList();
+           renderCalculatorInputs();
+        });
     }
 
     function saveHousematesToSheet() {
@@ -613,6 +795,17 @@
         })
         .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); showNotification("Error", error); })
         .saveHousemates(housemates);
+    }
+
+    function saveBillTypesToSheet() {
+        document.getElementById('loader').classList.remove('hidden');
+        google.script.run
+            .withSuccessHandler(res => {
+                document.getElementById('loader').classList.add('hidden');
+                showNotification("Saved!", res);
+            })
+            .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); showNotification("Error", error); })
+            .saveBillTypes(billTypes);
     }
   </script>
 </body>
