@@ -82,6 +82,30 @@
       </div>
     </div>
 
+    <!-- SHARE MODAL -->
+    <div id="modal-share" class="fixed inset-0 bg-black/60 z-[70] hidden flex items-center justify-center backdrop-blur-sm fade-in">
+      <div class="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 shadow-2xl scale-in text-center">
+        <div class="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
+          <i class="ph ph-share-network text-3xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-gray-800 mb-2">Share Bill</h3>
+        <p class="text-gray-500 text-sm mb-6">Choose how you want to send the bill details.</p>
+
+        <div class="space-y-3">
+          <a id="share-whatsapp-btn" href="#" target="_blank" class="block w-full bg-[#25D366] text-white py-3 rounded-xl font-bold hover:bg-[#128C7E] transition flex items-center justify-center gap-2">
+            <i class="ph ph-whatsapp-logo text-xl"></i> WhatsApp
+          </a>
+          <a id="share-email-btn" href="#" class="block w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2">
+            <i class="ph ph-envelope-simple text-xl"></i> Email
+          </a>
+        </div>
+
+        <button onclick="closeModal('modal-share')" class="mt-4 text-sm text-gray-400 font-medium hover:text-gray-600 transition">
+          Cancel
+        </button>
+      </div>
+    </div>
+
     <!-- VIEW: CALCULATOR -->
     <div id="view-calculator" class="view-section fade-in max-w-lg mx-auto space-y-5 hidden">
       <!-- Date & Bills Card -->
@@ -431,6 +455,47 @@
         .getHistory();
     }
 
+    // --- Sharing Logic ---
+    function openShareModal(item, event) {
+        event.stopPropagation();
+        const text = generateBillText(item);
+
+        // WhatsApp
+        const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        document.getElementById('share-whatsapp-btn').href = waLink;
+
+        // Email
+        const subject = `FairShare Bill - ${item.month}`;
+        const mailLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+        document.getElementById('share-email-btn').href = mailLink;
+
+        document.getElementById('modal-share').classList.remove('hidden');
+    }
+
+    function generateBillText(item) {
+        const total = parseFloat(item.total).toFixed(2);
+        const perPerson = parseFloat(item.sharePerPerson).toFixed(2);
+        const count = item.housemateCount || (item.housemates || []).length;
+
+        let text = `🧾 *FairShare Bill - ${item.month}*\n\n`;
+        text += `💰 *Total:* ${total} QR\n`;
+        text += `👥 *Per Person:* ${perPerson} QR (Split by ${count})\n\n`;
+
+        text += `*Breakdown:*\n`;
+        (item.billDetails || []).forEach(b => {
+            text += `• ${b.name}: ${parseFloat(b.amount).toFixed(2)}\n`;
+        });
+
+        text += `\n*Shares:*\n`;
+        (item.housemates || []).forEach(m => {
+            const name = typeof m === 'string' ? m : m.name;
+            const share = typeof m === 'string' ? '?' : parseFloat(m.share).toFixed(2);
+            text += `• ${name}: ${share}\n`;
+        });
+
+        return text;
+    }
+
     // --- Deletion Logic ---
     function confirmDeleteEntry(dateIso, month, event) {
       event.stopPropagation();
@@ -633,6 +698,7 @@
               <span class="font-bold text-gray-800 text-lg">${item.month}</span>
               <div class="flex items-center gap-3">
                 <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">${parseFloat(item.total).toFixed(2)}</span>
+                <button onclick="openShareModal(${JSON.stringify(item).replace(/"/g, '&quot;')}, event)" class="text-gray-300 hover:text-indigo-500 transition p-1 rounded-full hover:bg-indigo-50"><i class="ph ph-share-network text-lg"></i></button>
                 <button onclick="confirmDeleteEntry('${item.date}', '${item.month}', event)" class="text-gray-300 hover:text-red-500 transition p-1 rounded-full hover:bg-red-50"><i class="ph ph-trash text-lg"></i></button>
               </div>
             </div>
