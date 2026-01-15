@@ -420,7 +420,17 @@
           renderCalculatorList();
 
           // Load Bill Types after Housemates
-          google.script.run
+          loadBillTypes();
+        })
+        .withFailureHandler(error => {
+            document.getElementById('loader').classList.add('hidden');
+            alert("Error loading housemates: " + error);
+        })
+        .getHousemates();
+    }
+
+    function loadBillTypes() {
+        google.script.run
             .withSuccessHandler(types => {
                 billTypes = types || [];
                 renderSettingsBillsList();
@@ -429,11 +439,21 @@
                 document.getElementById('loader').classList.add('hidden');
                 switchView('calculator');
             })
-            .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error bills: " + error); })
+            .withFailureHandler(error => {
+                console.error("Error loading bills:", error);
+                // Fallback to defaults if server fails
+                billTypes = [
+                    {name: 'Kahramaa', color: '#3b82f6'},
+                    {name: 'Ooredoo', color: '#ef4444'},
+                    {name: 'Other', color: '#9ca3af'}
+                ];
+                renderSettingsBillsList();
+                renderCalculatorInputs();
+                document.getElementById('loader').classList.add('hidden');
+                switchView('calculator');
+                showNotification("Warning", "Could not load custom bills. Using defaults.");
+            })
             .getBillTypes();
-        })
-        .withFailureHandler(error => { document.getElementById('loader').classList.add('hidden'); alert("Error mates: " + error); })
-        .getHousemates();
     }
 
     function loadHistory() {
