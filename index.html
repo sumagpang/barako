@@ -255,7 +255,38 @@
             setTimeout(() => { try { localStorage.setItem('k_bills', JSON.stringify(t)); successCb('Bill types saved successfully!'); } catch(e) { failureCb(e); } }, 400);
           },
           getHistory: function() {
-            setTimeout(() => { try { successCb(JSON.parse(localStorage.getItem('k_hist_v2')) || []); } catch(e) { failureCb(e); } }, 400);
+            setTimeout(() => {
+                try {
+                    const h1 = JSON.parse(localStorage.getItem('k_hist')) || [];
+                    const h2 = JSON.parse(localStorage.getItem('k_hist_v2')) || [];
+                    // Merge logic simulation?
+                    // Actually, k_hist stores full objects already formatted by old frontend?
+                    // No, k_hist stores whatever saveBill saved.
+                    // Old saveBill saved objects {date, month, kahramaa, ooredoo, other, total, sharePerPerson, housemateCount, housemates}
+                    // New getHistory expects unified objects.
+                    // Let's just return combined.
+                    // But we need to ensure structure matches what frontend expects.
+                    // Legacy items in k_hist already have flat kahramaa/ooredoo properties.
+                    // New items have billDetails.
+                    // Frontend 'renderHistory' supports both?
+                    // Let's check renderHistory: it uses `item.billDetails || []`.
+                    // So legacy items from k_hist (which don't have billDetails) will show empty dots.
+                    // We should migrate them on the fly for mock mode.
+                    const h1Adapted = h1.map(item => {
+                        if(item.billDetails) return item;
+                        return {
+                            ...item,
+                            billDetails: [
+                                {name: 'Kahramaa', amount: item.kahramaa},
+                                {name: 'Ooredoo', amount: item.ooredoo},
+                                {name: 'Other', amount: item.other}
+                            ]
+                        };
+                    });
+
+                    successCb([...h2, ...h1Adapted]);
+                } catch(e) { failureCb(e); }
+            }, 400);
           },
           saveBill: function(d) {
             setTimeout(() => { try { let h = JSON.parse(localStorage.getItem('k_hist_v2')) || []; h.unshift(d); localStorage.setItem('k_hist_v2', JSON.stringify(h)); successCb('Bill saved successfully!'); } catch(e) { failureCb(e); } }, 400);

@@ -63,12 +63,6 @@ function saveBillTypes(types) {
     sheet.appendRow(["Key", "Value"]);
   }
 
-  // We want to update the BILL_TYPES row or create it
-  // Simple approach: Clear and rewrite all settings (for now only BILL_TYPES)
-  // Or scan for Key.
-  // Given simplicity, let's just use the second row for BILL_TYPES always for now.
-  // Better: find row by key.
-
   const data = sheet.getDataRange().getValues();
   let rowIndex = -1;
 
@@ -221,29 +215,25 @@ function getHistory() {
   // 1. Process Legacy "History"
   const sheetLegacy = ss.getSheetByName("History");
   if (sheetLegacy) {
-     history = history.concat(processHistorySheet(sheetLegacy, true));
+     history = history.concat(processHistorySheet(sheetLegacy));
   }
 
   // 2. Process New "History_v2"
   const sheetV2 = ss.getSheetByName("History_v2");
   if (sheetV2) {
-     history = history.concat(processHistorySheet(sheetV2, false));
+     history = history.concat(processHistorySheet(sheetV2));
   }
 
   return history.reverse(); // Newest first
 }
 
-function processHistorySheet(sheet, forceLegacyMode) {
+function processHistorySheet(sheet) {
   const dataRange = sheet.getDataRange();
   const values = dataRange.getValues();
 
   if (values.length < 2) return [];
 
-  const headers = values[0];
-  // Determine schema if not forced
-  // Legacy has "Kahramaa" at index 2
-  const isOldSchema = forceLegacyMode || (headers.length > 2 && headers[2] === "Kahramaa");
-
+  // Remove header
   const data = values.slice(1);
 
   return data.map(row => {
@@ -258,27 +248,14 @@ function processHistorySheet(sheet, forceLegacyMode) {
         return [];
     };
 
-    if (isOldSchema) {
-        const k = Number(row[2]) || 0;
-        const o = Number(row[3]) || 0;
-        const oth = Number(row[4]) || 0;
-        billDetails = [
-            {name: 'Kahramaa', amount: k},
-            {name: 'Ooredoo', amount: o},
-            {name: 'Other', amount: oth}
-        ];
-        housemates = parseJSON(row[8]);
+    // Robust Detection Logic
+    // Old Schema: row[5] is Total (Number)
+    // New Schema: row[5] is Housemates JSON (String starting with '[')
+    const col5 = row[5];
+    const isNewSchema = (typeof col5 === 'string' && col5.trim().startsWith('['));
 
-        return {
-          date: formatDate(row[0]),
-          month: formatMonth(row[1]),
-          total: Number(row[5]) || 0,
-          sharePerPerson: Number(row[6]) || 0,
-          housemateCount: Number(row[7]) || 0,
-          housemates: housemates,
-          billDetails: billDetails
-        };
-    } else {
+    if (isNewSchema) {
+        // New Schema: Date(0), Month(1), Total(2), Share(3), Count(4), HousematesJSON(5), BillsJSON(6)
         housemates = parseJSON(row[5]);
         billDetails = parseJSON(row[6]);
 
@@ -288,6 +265,30 @@ function processHistorySheet(sheet, forceLegacyMode) {
           total: Number(row[2]) || 0,
           sharePerPerson: Number(row[3]) || 0,
           housemateCount: Number(row[4]) || 0,
+          housemates: housemates,
+          billDetails: billDetails
+        };
+    } else {
+        // Legacy Schema: Date(0), Month(1), K(2), O(3), Other(4), Total(5), Share(6), Count(7), JSON(8)
+        const k = Number(row[2]) || 0;
+        const o = Number(row[3]) || 0;
+        const oth = Number(row[4]) || 0;
+
+        billDetails = [
+            {name: 'Kahramaa', amount: k},
+            {name: 'Ooredoo', amount: o},
+            {name: 'Other', amount: oth}
+        ];
+
+        // Handle case where row might be short
+        housemates = (row.length > 8) ? parseJSON(row[8]) : [];
+
+        return {
+          date: formatDate(row[0]),
+          month: formatMonth(row[1]),
+          total: Number(row[5]) || 0,
+          sharePerPerson: Number(row[6]) || 0,
+          housemateCount: Number(row[7]) || 0,
           housemates: housemates,
           billDetails: billDetails
         };
