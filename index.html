@@ -326,18 +326,36 @@
 
     // --- Initialization ---
     window.onload = function() {
-      const today = new Date();
-      const monthStr = today.toISOString().slice(0, 7);
-      document.getElementById('billing-month').value = monthStr;
-      updateDaysInMonth();
-      document.getElementById('billing-month').addEventListener('change', () => {
-        updateDaysInMonth();
-        document.querySelectorAll('.days-input').forEach(inp => { if(inp.dataset.defaulted === "true") inp.value = currentDaysInMonth; });
-        calculate();
-      });
+      // Safety timeout for loader
+      setTimeout(() => {
+          const loader = document.getElementById('loader');
+          if (loader && !loader.classList.contains('hidden')) {
+              console.warn("Loader timed out. Forcing hide.");
+              loader.classList.add('hidden');
+              showNotification("Connection Info", "Loading took longer than expected. Some features may be offline.");
+          }
+      }, 8000);
 
-      // Init Load
-      loadData();
+      try {
+          const today = new Date();
+          const monthStr = today.toISOString().slice(0, 7);
+          document.getElementById('billing-month').value = monthStr;
+          updateDaysInMonth();
+          document.getElementById('billing-month').addEventListener('change', () => {
+            updateDaysInMonth();
+            document.querySelectorAll('.days-input').forEach(inp => { if(inp.dataset.defaulted === "true") inp.value = currentDaysInMonth; });
+            calculate();
+          });
+
+          document.querySelectorAll('.cost-input').forEach(i => i.addEventListener('input', calculate));
+
+          // Init Load
+          loadData();
+      } catch (e) {
+          console.error("Initialization error:", e);
+          document.getElementById('loader').classList.add('hidden');
+          alert("App initialization failed: " + e.message);
+      }
     };
 
     function updateDaysInMonth() {
@@ -415,16 +433,25 @@
       // Load Housemates
       google.script.run
         .withSuccessHandler(data => {
-          housemates = data || [];
-          renderSettingsList();
-          renderCalculatorList();
+          try {
+              housemates = data || [];
+              renderSettingsList();
+              renderCalculatorList();
 
-          // Load Bill Types after Housemates
-          loadBillTypes();
+              // Load Bill Types after Housemates
+              loadBillTypes();
+          } catch(e) {
+              console.error("Error in loadData success:", e);
+              // Try to load bills anyway to unlock UI
+              loadBillTypes();
+          }
         })
         .withFailureHandler(error => {
+            console.error("Failed to get housemates", error);
             document.getElementById('loader').classList.add('hidden');
-            alert("Error loading housemates: " + error);
+            // Attempt to load bills even if housemates fail, so user can at least see Settings
+            loadBillTypes();
+            showNotification("Data Error", "Could not load housemates. Please check internet.");
         })
         .getHousemates();
     }
