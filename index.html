@@ -427,60 +427,59 @@
     }
 
     // --- Data Loaders ---
+    let activeLoaders = 0;
+
+    function checkLoader() {
+        activeLoaders--;
+        if (activeLoaders <= 0) {
+            document.getElementById('loader').classList.add('hidden');
+            switchView('calculator');
+            // Recalculate once everything is loaded to ensure totals are correct
+            calculate();
+        }
+    }
+
     function loadData() {
       document.getElementById('loader').classList.remove('hidden');
+      activeLoaders = 2; // Waiting for 2 requests
 
-      // Load Housemates
+      // 1. Load Housemates
       google.script.run
         .withSuccessHandler(data => {
-          try {
-              housemates = data || [];
-              renderSettingsList();
-              renderCalculatorList();
-
-              // Load Bill Types after Housemates
-              loadBillTypes();
-          } catch(e) {
-              console.error("Error in loadData success:", e);
-              // Try to load bills anyway to unlock UI
-              loadBillTypes();
-          }
+          housemates = data || [];
+          renderSettingsList();
+          renderCalculatorList();
+          checkLoader();
         })
         .withFailureHandler(error => {
             console.error("Failed to get housemates", error);
-            document.getElementById('loader').classList.add('hidden');
-            // Attempt to load bills even if housemates fail, so user can at least see Settings
-            loadBillTypes();
-            showNotification("Data Error", "Could not load housemates. Please check internet.");
+            showNotification("Data Error", "Could not load housemates.");
+            checkLoader();
         })
         .getHousemates();
-    }
 
-    function loadBillTypes() {
-        google.script.run
-            .withSuccessHandler(types => {
-                billTypes = types || [];
-                renderSettingsBillsList();
-                renderCalculatorInputs();
-
-                document.getElementById('loader').classList.add('hidden');
-                switchView('calculator');
-            })
-            .withFailureHandler(error => {
-                console.error("Error loading bills:", error);
-                // Fallback to defaults if server fails
-                billTypes = [
-                    {name: 'Kahramaa', color: '#3b82f6'},
-                    {name: 'Ooredoo', color: '#ef4444'},
-                    {name: 'Other', color: '#9ca3af'}
-                ];
-                renderSettingsBillsList();
-                renderCalculatorInputs();
-                document.getElementById('loader').classList.add('hidden');
-                switchView('calculator');
-                showNotification("Warning", "Could not load custom bills. Using defaults.");
-            })
-            .getBillTypes();
+      // 2. Load Bill Types
+      google.script.run
+        .withSuccessHandler(types => {
+            billTypes = types || [];
+            renderSettingsBillsList();
+            renderCalculatorInputs();
+            checkLoader();
+        })
+        .withFailureHandler(error => {
+            console.error("Error loading bills:", error);
+            // Fallback to defaults
+            billTypes = [
+                {name: 'Kahramaa', color: '#3b82f6'},
+                {name: 'Ooredoo', color: '#ef4444'},
+                {name: 'Other', color: '#9ca3af'}
+            ];
+            renderSettingsBillsList();
+            renderCalculatorInputs();
+            showNotification("Warning", "Using default bill types.");
+            checkLoader();
+        })
+        .getBillTypes();
     }
 
     function loadHistory() {
