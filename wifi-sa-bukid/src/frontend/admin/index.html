@@ -8,6 +8,15 @@
   </head>
   <body class="bg-gray-100 font-sans leading-normal tracking-normal">
 
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded shadow-lg">
+            <h2 class="text-2xl mb-4">Admin Login</h2>
+            <input type="password" id="admin-password-input" class="border p-2 w-full mb-4" placeholder="Password">
+            <button onclick="attemptLogin()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Login</button>
+        </div>
+    </div>
+
     <div class="flex flex-col md:flex-row">
       <!-- Sidebar -->
       <div class="bg-gray-800 shadow-xl h-16 fixed bottom-0 md:relative md:h-screen z-10 w-full md:w-48 content-center">
@@ -33,6 +42,11 @@
                 <i class="fas fa-bullhorn pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Announce</span>
               </a>
             </li>
+            <li class="mr-3 flex-1">
+                <a href="#" onclick="showSection('settings')" class="block py-1 md:py-3 pl-1 align-middle text-white no-underline hover:text-white border-b-2 border-gray-800 hover:border-gray-500">
+                  <i class="fas fa-cogs pr-0 md:pr-3"></i><span class="pb-1 md:pb-0 text-xs md:text-base text-gray-400 md:text-gray-200 block md:inline-block">Settings</span>
+                </a>
+              </li>
           </ul>
         </div>
       </div>
@@ -47,8 +61,11 @@
         </div>
 
         <!-- Dashboard Section -->
-        <div id="dashboard" class="p-6 section">
+        <div id="dashboard" class="p-6 section hidden">
           <h2 class="text-xl font-bold mb-4">Overview</h2>
+          <div class="mb-4">
+              <input type="month" id="filter-month" onchange="loadDashboard()" class="border p-2 rounded">
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-lg p-6 shadow">
               <h3 class="text-gray-500 text-sm">Total Sales</h3>
@@ -92,17 +109,15 @@
           </div>
         </div>
 
-        <!-- Plans & Announcements (Simplified placeholders) -->
-        <div id="plans" class="p-6 section hidden">
-          <h2 class="text-xl font-bold mb-4">Manage Plans</h2>
-          <p>Plan editing form goes here (Implementation note: Requires saving to Plans sheet).</p>
-        </div>
+        <div id="plans" class="p-6 section hidden"></div>
 
         <div id="announcements" class="p-6 section hidden">
           <h2 class="text-xl font-bold mb-4">Announcements</h2>
           <textarea class="w-full p-2 border rounded" placeholder="Enter new announcement"></textarea>
           <button class="mt-2 bg-blue-500 text-white px-4 py-2 rounded">Post</button>
         </div>
+
+        <div id="settings" class="p-6 section hidden"></div>
 
       </div>
     </div>

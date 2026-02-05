@@ -3,23 +3,22 @@ function doGet(e) {
   var action = e.parameter.action;
 
   if (page == 'admin') {
-    return HtmlService.createTemplateFromFile('src/frontend/admin/index')
+    return HtmlService.createTemplateFromFile('index') // Simplified name
       .evaluate()
       .setTitle('WiFi sa Bukid - Admin')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
-  // Mikrotik Sync Endpoints
+  // Public Endpoint: Kick List (Router Only)
   if (action == 'getKickList') {
     var users = getUsersToKick();
     return ContentService.createTextOutput(users.join(","));
   }
 
+  // Public Endpoint: New Users (Router Only)
   if (action == 'getNewUsers') {
     var users = getNewUsersSync();
-    // Format: mobile,passcode,limit-uptime
-    // Map planId to time limit
     var csv = users.map(function(u) {
        var limit = getPlanDuration(u.planId);
        return u.mobile + "," + u.passcode + "," + limit;
@@ -27,18 +26,18 @@ function doGet(e) {
     return ContentService.createTextOutput(csv);
   }
 
-  // Default response for unspecified Get
+  // Default response
   return ContentService.createTextOutput("WiFi sa Bukid API Active");
 }
 
 function doPost(e) {
   var action = e.parameter.action;
   var payload = e.postData ? JSON.parse(e.postData.contents) : {};
-
   var result = {};
 
   try {
     switch (action) {
+      // Public Actions
       case 'getPlans':
         result = { status: 'success', data: getPlans() };
         break;
@@ -50,7 +49,6 @@ function doPost(e) {
       case 'createPayment':
         var amount = payload.amount;
         var mobile = payload.mobile;
-        var planId = payload.planId;
         var redirectUrl = "http://hotspot.mikrotik.com/login?status=paid";
         var source = PaymongoService.createSource(amount, "PHP", redirectUrl);
         result = { status: 'success', data: source };
@@ -58,47 +56,74 @@ function doPost(e) {
 
       case 'checkPayment':
         var sourceId = payload.sourceId;
+        var planId = payload.planId;
+        var mobile = payload.mobile;
+
         var sourceData = PaymongoService.retrieveSource(sourceId);
+
         if (sourceData.data.attributes.status === 'chargeable') {
-          var passcode = Math.floor(1000 + Math.random() * 9000).toString();
-          var mobile = payload.mobile;
-          var planId = payload.planId;
+          // CAPTURE PAYMENT
+          var plans = getPlans();
+          var plan = plans.find(function(p){ return p.id === planId });
+          var amount = plan ? plan.price : 10;
 
-          saveUser({
-            mobile: mobile,
-            passcode: passcode,
-            planId: planId,
-            expiry: calculateExpiry(planId),
-            status: "ACTIVE",
-            synced: false // Mark for sync
-          });
+          var payment = PaymongoService.createPayment(sourceId, amount, "Plan " + planId + " - " + mobile);
 
-          SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
+          if(payment.data.attributes.status === 'paid') {
+            var passcode = Math.floor(1000 + Math.random() * 9000).toString();
 
-          result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
+            saveUser({
+              mobile: mobile,
+              passcode: passcode,
+              planId: planId,
+              expiry: calculateExpiry(planId),
+              status: "ACTIVE",
+              synced: false
+            });
+
+            saveTransaction({
+               refId: payment.data.id,
+               mobile: mobile,
+               planId: planId,
+               amount: amount,
+               status: 'PAID'
+            });
+
+            SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
+
+            result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
+          } else {
+             result = { status: 'error', message: 'Payment capture failed' };
+          }
         } else {
           result = { status: 'success', paid: false };
         }
         break;
 
-      case 'login':
-        var users = getUsers();
-        var valid = users.find(function(u) {
-          return u.mobile == payload.mobile && u.passcode == payload.passcode;
-        });
-        result = { status: 'success', valid: !!valid, user: valid };
+      // Admin Actions (Protected)
+      case 'adminLogin':
+        if (checkAdminPassword(payload.password)) {
+          result = { status: 'success', token: "VALID_SESSION" }; // Simplified session
+        } else {
+          result = { status: 'error', message: 'Invalid Password' };
+        }
         break;
 
-      // Admin Actions
       case 'savePlan':
-        // payload: { id, name, price... }
-        savePlan(payload);
+        verifyAdmin(payload.token);
+        savePlan(payload.plan);
         result = { status: 'success' };
         break;
 
       case 'saveAnnouncement':
-        // payload: { message }
+        verifyAdmin(payload.token);
         saveAnnouncement(payload.message);
+        result = { status: 'success' };
+        break;
+
+      case 'updateSettings':
+        verifyAdmin(payload.token);
+        saveSettings(payload.settings); // { adminPassword: ... }
         result = { status: 'success' };
         break;
 
@@ -111,6 +136,15 @@ function doPost(e) {
 
   return ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function verifyAdmin(token) {
+  // In a real app, use a proper session token or HMAC
+  // Here we trust the client provided a "VALID_SESSION" token if they passed login
+  // Ideally, passing the password again or a derived token is better.
+  if (token !== "VALID_SESSION") {
+    throw "Unauthorized";
+  }
 }
 
 function calculateExpiry(planId) {
@@ -126,7 +160,7 @@ function calculateExpiry(planId) {
 function getPlanDuration(planId) {
   var plans = getPlans();
   var plan = plans.find(function(p) { return p.id === planId; });
-  return plan ? (plan.durationMinutes + "m") : "1h"; // Format for Mikrotik: 1h, 30m, etc.
+  return plan ? (plan.durationMinutes + "m") : "1h";
 }
 
 function include(filename) {

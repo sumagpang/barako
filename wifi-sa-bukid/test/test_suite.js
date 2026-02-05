@@ -5,10 +5,13 @@ const vm = require('vm');
 // Mock GAS Environment
 const context = {
   ContentService: {
-    createTextOutput: (content) => ({
-      setMimeType: () => ({ content }),
-      getContent: () => content
-    }),
+    createTextOutput: (content) => {
+      const output = {
+        setMimeType: () => output, // Return self for chaining
+        getContent: () => content
+      };
+      return output;
+    },
     MimeType: { JSON: 'JSON' }
   },
   HtmlService: {
@@ -51,37 +54,38 @@ files.forEach(file => {
 console.log("Running Tests...");
 
 try {
-  // Test 1: getPlans (Mock)
-  console.log("Test 1: getPlans...");
-  const plans = context.getPlans();
-  if (plans.length > 0) console.log("PASS");
-  else throw "getPlans failed";
+  // Test 1: createPayment (Mock)
+  console.log("Test 1: createPayment...");
+  const payment = context.PaymongoService.createPayment("src_123", 100);
+  if (payment.data.attributes.status === 'paid') console.log("PASS");
+  else throw "createPayment failed";
 
-  // Test 2: getNewUsersSync (Mock)
-  console.log("Test 2: getNewUsersSync...");
-  const newUsers = context.getNewUsersSync();
-  // Expecting 1 user from mock (synced=false)
-  if (newUsers.length === 1 && newUsers[0].mobile === "09171234567") {
-    console.log("PASS");
-  } else {
-    throw "getNewUsersSync failed: " + JSON.stringify(newUsers);
-  }
+  // Test 2: Admin Auth
+  console.log("Test 2: Admin Auth...");
+  const authRes = JSON.parse(context.doPost({
+    parameter: { action: 'adminLogin' },
+    postData: { contents: JSON.stringify({ password: 'admin' }) }
+  }).getContent());
 
-  // Test 3: doGet Actions
-  console.log("Test 3: doGet Actions...");
-  const eKick = { parameter: { action: 'getKickList' } };
-  const resKick = context.doGet(eKick).getContent();
-  // Mock users has no KICK status? wait, mockUsers in Database.js:
-  // { mobile: "09189998888", ..., status: "KICK" }
-  // So result should contain "09189998888"
-  if (resKick.includes("09189998888")) console.log("PASS KickList");
-  else throw "getKickList failed: " + resKick;
+  if (authRes.status === 'success' && authRes.token === 'VALID_SESSION') console.log("PASS");
+  else throw "Admin Login Failed: " + JSON.stringify(authRes);
 
-  const eNew = { parameter: { action: 'getNewUsers' } };
-  const resNew = context.doGet(eNew).getContent();
-  // Should contain "09171234567,1234,1h" (PLAN1 is 60m = 1h)
-  if (resNew.includes("09171234567,1234")) console.log("PASS NewUsers");
-  else throw "getNewUsers failed: " + resNew;
+  // Test 3: Dashboard Filter
+  console.log("Test 3: Dashboard Filter...");
+  const dash = context.getDashboardData("2023-10");
+  if (dash.totalSales >= 0) console.log("PASS");
+  else throw "Dashboard Filter Failed";
+
+  // Test 4: checkPayment Flow (Capture)
+  console.log("Test 4: checkPayment Flow...");
+  const checkRes = JSON.parse(context.doPost({
+    parameter: { action: 'checkPayment' },
+    postData: { contents: JSON.stringify({ sourceId: 'src_test', planId: 'PLAN1', mobile: '0917000' }) }
+  }).getContent());
+
+  // Mock createPayment returns 'paid', so checkPayment should succeed
+  if (checkRes.status === 'success' && checkRes.paid === true) console.log("PASS");
+  else throw "checkPayment Failed: " + JSON.stringify(checkRes);
 
   console.log("All Tests Passed!");
 

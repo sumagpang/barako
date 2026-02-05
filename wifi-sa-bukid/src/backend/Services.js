@@ -43,6 +43,36 @@ var PaymongoService = {
 
     var response = UrlFetchApp.fetch(url, options);
     return JSON.parse(response.getContentText());
+  },
+
+  createPayment: function(sourceId, amount, description) {
+    if (typeof UrlFetchApp === 'undefined') return mockCreatePayment(sourceId, amount);
+
+    var keys = getApiKeys();
+    var url = "https://api.paymongo.com/v1/payments";
+    var options = {
+      method: "post",
+      headers: {
+        "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":"),
+        "Content-Type": "application/json"
+      },
+      payload: JSON.stringify({
+        data: {
+          attributes: {
+            amount: amount * 100,
+            currency: "PHP",
+            description: description || "WiFi Payment",
+            source: {
+              id: sourceId,
+              type: "source"
+            }
+          }
+        }
+      })
+    };
+
+    var response = UrlFetchApp.fetch(url, options);
+    return JSON.parse(response.getContentText());
   }
 };
 
@@ -98,7 +128,19 @@ function mockRetrieveSource(id) {
     data: {
       id: id,
       attributes: {
-        status: "chargeable" // Simulating success for testing
+        status: "chargeable"
+      }
+    }
+  };
+}
+
+function mockCreatePayment(sourceId, amount) {
+  console.log("Mock Payment Capture:", sourceId, amount);
+  return {
+    data: {
+      id: "pay_" + sourceId,
+      attributes: {
+        status: "paid"
       }
     }
   };

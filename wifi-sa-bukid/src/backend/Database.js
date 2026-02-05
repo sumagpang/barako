@@ -7,6 +7,48 @@ function getDbConnection() {
   return SpreadsheetApp.openById(SS_ID);
 }
 
+// === Settings ===
+function getSettings() {
+  var ss = getDbConnection();
+  if (!ss) return { adminPassword: "admin" }; // Default
+
+  var sheet = ss.getSheetByName("Settings");
+  if (!sheet) {
+    // Auto-init Settings if missing
+    sheet = ss.insertSheet("Settings");
+    sheet.appendRow(["Key", "Value"]);
+    sheet.appendRow(["adminPassword", "admin123"]);
+    return { adminPassword: "admin123" };
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var settings = {};
+  for(var i=1; i<data.length; i++) {
+    settings[data[i][0]] = data[i][1];
+  }
+  return settings;
+}
+
+function saveSettings(newSettings) {
+  var ss = getDbConnection();
+  if (!ss) return;
+
+  var sheet = ss.getSheetByName("Settings");
+  // Simple overwrite for this demo key
+  var data = sheet.getDataRange().getValues();
+  for(var i=1; i<data.length; i++) {
+    if(data[i][0] === 'adminPassword' && newSettings.adminPassword) {
+      sheet.getRange(i+1, 2).setValue(newSettings.adminPassword);
+    }
+  }
+}
+
+function checkAdminPassword(input) {
+  var settings = getSettings();
+  return String(input) === String(settings.adminPassword);
+}
+
+// === Users ===
 function getUsers() {
   var ss = getDbConnection();
   if (!ss) return mockUsers();
@@ -31,9 +73,7 @@ function getUsers() {
 
 function getUsersToKick() {
   var users = getUsers();
-  // Filter for status = KICK
-  return users.filter(function(u) { return u.status === 'KICK'; }).map(function(u) { return u.mobile; }); // Returning mobile or MAC? Mikrotik uses MAC or User. If user, mobile.
-  // Code.js joined them.
+  return users.filter(function(u) { return u.status === 'KICK'; }).map(function(u) { return u.mobile; });
 }
 
 function getNewUsersSync() {
@@ -44,17 +84,14 @@ function getNewUsersSync() {
   var data = sheet.getDataRange().getValues();
   var newUsers = [];
 
-  // Start from row 2 (index 1)
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    // Check if synced is falsy and status is ACTIVE
     if (!row[6] && row[5] === 'ACTIVE') {
       newUsers.push({
         mobile: row[0],
         passcode: row[1],
         planId: row[3]
       });
-      // Mark as synced immediately (Optimistic sync)
       sheet.getRange(i + 1, 7).setValue(true);
     }
   }
@@ -73,28 +110,17 @@ function saveUser(user) {
     user.planId,
     user.expiry,
     "ACTIVE",
-    false // Synced
+    false
   ]);
 }
 
+// === Plans ===
 function savePlan(plan) {
-  var ss = getDbConnection();
-  if (!ss) return; // Mock do nothing
-
-  var sheet = ss.getSheetByName("Plans");
-  // Check if exists, update; else append.
-  // Simple append for now or overwrite if ID matches?
-  // Let's just append for this demo scope
-  sheet.appendRow([plan.id, plan.name, plan.price, plan.durationMinutes, plan.speedLimit]);
-}
-
-function saveAnnouncement(message) {
   var ss = getDbConnection();
   if (!ss) return;
 
-  var sheet = ss.getSheetByName("Announcements");
-  // Deactivate all others?
-  sheet.appendRow([message, true]);
+  var sheet = ss.getSheetByName("Plans");
+  sheet.appendRow([plan.id, plan.name, plan.price, plan.durationMinutes, plan.speedLimit]);
 }
 
 function getPlans() {
@@ -117,6 +143,29 @@ function getPlans() {
   });
 }
 
+// === Announcements ===
+function saveAnnouncement(message) {
+  var ss = getDbConnection();
+  if (!ss) return;
+
+  var sheet = ss.getSheetByName("Announcements");
+  sheet.appendRow([message, true]);
+}
+
+function getAnnouncements() {
+  var ss = getDbConnection();
+  if (!ss) return mockAnnouncements();
+
+  var sheet = ss.getSheetByName("Announcements");
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  data.shift();
+
+  return data.filter(function(row) { return row[1] === true; })
+             .map(function(row) { return row[0]; });
+}
+
+// === Transactions ===
 function saveTransaction(tx) {
   var ss = getDbConnection();
   if (!ss) return mockSaveTransaction(tx);
@@ -132,17 +181,25 @@ function saveTransaction(tx) {
   ]);
 }
 
-function getAnnouncements() {
+function getTransactions() {
   var ss = getDbConnection();
-  if (!ss) return mockAnnouncements();
+  if (!ss) return [];
 
-  var sheet = ss.getSheetByName("Announcements");
+  var sheet = ss.getSheetByName("Transactions");
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
   data.shift();
 
-  return data.filter(function(row) { return row[1] === true; })
-             .map(function(row) { return row[0]; });
+  return data.map(function(row) {
+    return {
+      refId: row[0],
+      mobile: row[1],
+      planId: row[2],
+      amount: row[3],
+      status: row[4],
+      date: new Date(row[5])
+    };
+  });
 }
 
 // Mock Data Providers

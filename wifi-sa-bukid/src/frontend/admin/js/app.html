@@ -1,26 +1,39 @@
 <script>
-  // Admin Password Protection (Simple)
-  const ADMIN_PASS = "admin123"; // In prod, verify with backend or Settings sheet
-
-  function checkAuth() {
-    let input = prompt("Enter Admin Password:");
-    if(input !== ADMIN_PASS) {
-      alert("Invalid Password");
-      document.body.innerHTML = "<h1 class='text-center mt-10'>Access Denied</h1>";
-      throw "Access Denied";
-    }
-  }
+  let SESSION_TOKEN = null;
 
   function showSection(id) {
+    if (!SESSION_TOKEN) {
+      document.getElementById('login-modal').classList.remove('hidden');
+      return;
+    }
+
     document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
     if (id === 'dashboard') loadDashboard();
     if (id === 'users') loadUsers();
     if (id === 'plans') loadPlans();
+    if (id === 'settings') loadSettings();
+  }
+
+  function attemptLogin() {
+    const pass = document.getElementById('admin-password-input').value;
+    google.script.run.withSuccessHandler(res => {
+      if(res.status === 'success') {
+        SESSION_TOKEN = res.token;
+        document.getElementById('login-modal').classList.add('hidden');
+        showSection('dashboard');
+      } else {
+        alert("Invalid Password");
+      }
+    }).doPost({
+      parameter: { action: 'adminLogin' },
+      postData: { contents: JSON.stringify({ password: pass }) }
+    });
   }
 
   function loadDashboard() {
-    google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleError).getDashboardData();
+    const month = document.getElementById('filter-month').value; // Optional filter input
+    google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleError).getDashboardData(month);
   }
 
   function renderDashboard(data) {
@@ -68,9 +81,7 @@
     }
   }
 
-  // Plans Logic
   function loadPlans() {
-    // Fill the Plans section HTML dynamically if not present
     const container = document.getElementById('plans');
     container.innerHTML = `
       <h2 class="text-xl font-bold mb-4">Manage Plans</h2>
@@ -95,21 +106,15 @@
       speedLimit: document.getElementById('plan-speed').value
     };
 
-    // Using a POST style request or google.script.run?
-    // Code.js doPost handles 'savePlan' but google.script.run calls backend functions directly.
-    // I should expose savePlan in Code.js as a direct function if I use google.script.run.
-    // Ah, Code.js doesn't expose savePlan as a global function (it's in Database.js but usually helper).
-    // I need to add a wrapper in Code.js or assume savePlan is global.
-    // Wait, google.script.run can only call functions in Code.js (or global scope).
-    // savePlan is in Database.js. It IS in global scope.
-
     google.script.run.withSuccessHandler(() => {
       alert("Plan Saved!");
-    }).savePlan(plan);
+    }).doPost({
+       parameter: { action: 'savePlan' },
+       postData: { contents: JSON.stringify({ token: SESSION_TOKEN, plan: plan }) }
+    });
   }
 
   // Announcement Logic
-  // Hook up the button in index.html
   document.addEventListener('click', function(e) {
     if(e.target.innerText === 'Post' && e.target.parentElement.id === 'announcements') {
       const textarea = e.target.previousElementSibling;
@@ -117,18 +122,45 @@
       google.script.run.withSuccessHandler(() => {
         alert("Announcement Posted!");
         textarea.value = "";
-      }).saveAnnouncement(message);
+      }).doPost({
+         parameter: { action: 'saveAnnouncement' },
+         postData: { contents: JSON.stringify({ token: SESSION_TOKEN, message: message }) }
+      });
     }
   });
+
+  // Settings Logic
+  function loadSettings() {
+    const container = document.getElementById('settings'); // Ensure this exists in HTML
+    container.innerHTML = `
+       <h2 class="text-xl font-bold mb-4">Settings</h2>
+       <div class="bg-white p-4 rounded shadow">
+         <h3 class="font-bold mb-2">Change Admin Password</h3>
+         <input id="new-admin-pass" type="password" placeholder="New Password" class="border p-2 mr-2">
+         <button onclick="saveSettings()" class="bg-green-500 text-white px-4 py-2 rounded">Update</button>
+       </div>
+    `;
+  }
+
+  function saveSettings() {
+    const newPass = document.getElementById('new-admin-pass').value;
+    if(!newPass) return;
+
+    google.script.run.withSuccessHandler(() => {
+      alert("Settings Updated");
+    }).doPost({
+       parameter: { action: 'updateSettings' },
+       postData: { contents: JSON.stringify({ token: SESSION_TOKEN, settings: { adminPassword: newPass } }) }
+    });
+  }
 
   function handleError(e) {
     console.error(e);
     alert("An error occurred: " + e.message);
   }
 
-  // Initial Load
   window.onload = function() {
-    checkAuth();
-    loadDashboard();
+    // Show login modal initially
+    document.getElementById('login-modal').classList.remove('hidden');
   };
 </script>

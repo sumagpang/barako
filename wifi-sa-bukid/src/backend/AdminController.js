@@ -1,23 +1,31 @@
 function getDashboardData(filterMonth) {
   var users = getUsers();
-  // Transactions aren't fully implemented in Database.js mocks perfectly yet, so we'll mock aggregation
-  // In a real app, we'd read Transactions sheet.
+  var transactions = getTransactions(); // Now implemented in Database.js
 
   var totalSales = 0;
   var planCounts = {};
   var topUsersMap = {};
 
-  // Mock logic for aggregation
-  users.forEach(function(u) {
-    if (!planCounts[u.planId]) planCounts[u.planId] = 0;
-    planCounts[u.planId]++;
+  // Filter by month (YYYY-MM)
+  if (filterMonth) {
+    transactions = transactions.filter(function(tx) {
+      var d = new Date(tx.date);
+      var m = d.getFullYear() + "-" + ("0" + (d.getMonth()+1)).slice(-2);
+      return m === filterMonth;
+    });
+  }
 
-    // Assume flat rate for calculation if transaction missing
-    var price = (u.planId === 'PLAN1') ? 10 : 50;
-    totalSales += price;
+  // Aggregate Transactions
+  transactions.forEach(function(tx) {
+    if (tx.status === 'PAID') {
+      totalSales += tx.amount;
 
-    if (!topUsersMap[u.mobile]) topUsersMap[u.mobile] = 0;
-    topUsersMap[u.mobile] += price;
+      if (!topUsersMap[tx.mobile]) topUsersMap[tx.mobile] = 0;
+      topUsersMap[tx.mobile] += tx.amount;
+
+      if (!planCounts[tx.planId]) planCounts[tx.planId] = 0;
+      planCounts[tx.planId]++;
+    }
   });
 
   var topUsers = Object.keys(topUsersMap).map(function(k) {
@@ -30,7 +38,7 @@ function getDashboardData(filterMonth) {
     planCounts: planCounts,
     topUsers: topUsers,
     activeUsers: users.filter(function(u) { return u.status === 'ACTIVE'; }),
-    traffic: { download: "100GB", upload: "50GB" } // Mocked as GAS can't see RouterOS traffic directly
+    traffic: { download: "100GB", upload: "50GB" }
   };
 }
 
@@ -43,7 +51,7 @@ function kickUser(mobile) {
 
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] == mobile) {
-      sheet.getRange(i + 1, 6).setValue("KICK"); // Set status to KICK
+      sheet.getRange(i + 1, 6).setValue("KICK");
       return true;
     }
   }
