@@ -1,0 +1,134 @@
+<script>
+  // Admin Password Protection (Simple)
+  const ADMIN_PASS = "admin123"; // In prod, verify with backend or Settings sheet
+
+  function checkAuth() {
+    let input = prompt("Enter Admin Password:");
+    if(input !== ADMIN_PASS) {
+      alert("Invalid Password");
+      document.body.innerHTML = "<h1 class='text-center mt-10'>Access Denied</h1>";
+      throw "Access Denied";
+    }
+  }
+
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    if (id === 'dashboard') loadDashboard();
+    if (id === 'users') loadUsers();
+    if (id === 'plans') loadPlans();
+  }
+
+  function loadDashboard() {
+    google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleError).getDashboardData();
+  }
+
+  function renderDashboard(data) {
+    document.getElementById('total-sales').textContent = "₱" + data.totalSales;
+    document.getElementById('active-users-count').textContent = data.activeUsersCount;
+    document.getElementById('total-traffic').textContent = data.traffic.download + " / " + data.traffic.upload;
+
+    const topUsersList = document.getElementById('top-users-list');
+    topUsersList.innerHTML = '';
+    data.topUsers.forEach(user => {
+      const li = document.createElement('li');
+      li.className = "py-4 flex justify-between";
+      li.innerHTML = `<span>${user.mobile}</span> <span class="font-bold">₱${user.total}</span>`;
+      topUsersList.appendChild(li);
+    });
+  }
+
+  function loadUsers() {
+    google.script.run.withSuccessHandler(renderUsersTable).getDashboardData();
+  }
+
+  function renderUsersTable(data) {
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = '';
+    data.activeUsers.forEach(user => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${user.mobile}</td>
+        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${user.planId}</td>
+        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm"><span class="bg-green-200 text-green-900 rounded-full px-2 py-1">${user.status}</span></td>
+        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+          <button onclick="disconnectUser('${user.mobile}')" class="text-red-600 hover:text-red-900">Disconnect</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function disconnectUser(mobile) {
+    if(confirm("Are you sure you want to disconnect " + mobile + "?")) {
+      google.script.run.withSuccessHandler(() => {
+        alert("User scheduled for disconnection.");
+        loadUsers();
+      }).kickUser(mobile);
+    }
+  }
+
+  // Plans Logic
+  function loadPlans() {
+    // Fill the Plans section HTML dynamically if not present
+    const container = document.getElementById('plans');
+    container.innerHTML = `
+      <h2 class="text-xl font-bold mb-4">Manage Plans</h2>
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h3 class="font-bold">Add/Update Plan</h3>
+        <input id="plan-id" placeholder="ID (e.g. PLAN1)" class="border p-2 mr-2">
+        <input id="plan-name" placeholder="Name" class="border p-2 mr-2">
+        <input id="plan-price" placeholder="Price" type="number" class="border p-2 mr-2">
+        <input id="plan-dur" placeholder="Minutes" type="number" class="border p-2 mr-2">
+        <input id="plan-speed" placeholder="Speed (5M/5M)" class="border p-2 mr-2">
+        <button onclick="savePlan()" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+      </div>
+    `;
+  }
+
+  function savePlan() {
+    const plan = {
+      id: document.getElementById('plan-id').value,
+      name: document.getElementById('plan-name').value,
+      price: document.getElementById('plan-price').value,
+      durationMinutes: document.getElementById('plan-dur').value,
+      speedLimit: document.getElementById('plan-speed').value
+    };
+
+    // Using a POST style request or google.script.run?
+    // Code.js doPost handles 'savePlan' but google.script.run calls backend functions directly.
+    // I should expose savePlan in Code.js as a direct function if I use google.script.run.
+    // Ah, Code.js doesn't expose savePlan as a global function (it's in Database.js but usually helper).
+    // I need to add a wrapper in Code.js or assume savePlan is global.
+    // Wait, google.script.run can only call functions in Code.js (or global scope).
+    // savePlan is in Database.js. It IS in global scope.
+
+    google.script.run.withSuccessHandler(() => {
+      alert("Plan Saved!");
+    }).savePlan(plan);
+  }
+
+  // Announcement Logic
+  // Hook up the button in index.html
+  document.addEventListener('click', function(e) {
+    if(e.target.innerText === 'Post' && e.target.parentElement.id === 'announcements') {
+      const textarea = e.target.previousElementSibling;
+      const message = textarea.value;
+      google.script.run.withSuccessHandler(() => {
+        alert("Announcement Posted!");
+        textarea.value = "";
+      }).saveAnnouncement(message);
+    }
+  });
+
+  function handleError(e) {
+    console.error(e);
+    alert("An error occurred: " + e.message);
+  }
+
+  // Initial Load
+  window.onload = function() {
+    checkAuth();
+    loadDashboard();
+  };
+</script>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi sa Bukid - Login</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; }
+        .container { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .marquee { background: #ffeb3b; color: #333; padding: 10px; white-space: nowrap; overflow: hidden; box-sizing: border-box; }
+        .marquee span { display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #ccc; }
+        .plan-card { border: 1px solid #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px; cursor: pointer; }
+        .plan-card.selected { border-color: #007bff; background: #e7f1ff; }
+        .hidden { display: none; }
+        .error { color: red; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<!-- Marquee -->
+<div class="marquee"><span id="announcement-text">Welcome to WiFi sa Bukid! High speed internet available.</span></div>
+
+<div class="container">
+    <h2 style="text-align: center;">WiFi sa Bukid</h2>
+
+    <!-- Login Form (Standard Mikrotik) -->
+    <form name="login" action="$(link-login-only)" method="post" id="login-form">
+        <input type="hidden" name="dst" value="$(link-orig)" />
+        <input type="hidden" name="popup" value="true" />
+
+        <h3>Login</h3>
+        <input type="text" name="username" id="login-username" placeholder="Mobile Number" required />
+        <input type="password" name="password" id="login-password" placeholder="Passcode" required />
+        <button type="submit">Connect</button>
+        <div class="error">$(if error)$(error)$(endif)</div>
+    </form>
+
+    <hr style="margin: 20px 0;">
+
+    <!-- Buy Plan Section -->
+    <h3>Buy Promo</h3>
+    <div id="loading-plans">Loading plans...</div>
+    <div id="plans-container"></div>
+
+    <div id="purchase-form" class="hidden">
+        <p>Selected: <span id="selected-plan-name" style="font-weight:bold;"></span></p>
+        <input type="text" id="buy-mobile" placeholder="Enter Mobile Number for Passcode" />
+        <button onclick="initiatePayment()" id="pay-btn">Pay with GCash/GrabPay</button>
+    </div>
+</div>
+
+<div id="payment-modal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);color:white;text-align:center;padding-top:100px;">
+    <h3>Payment Processing</h3>
+    <p>Please complete payment in the new tab.</p>
+    <p>We are checking your status...</p>
+    <div id="spinner" style="font-size: 2em;">&#8635;</div>
+    <button onclick="cancelPayment()" style="width: auto; background: #555;">Cancel</button>
+</div>
+
+<script>
+    // REPLACE THIS WITH YOUR DEPLOYED WEB APP URL
+    const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+    let selectedPlan = null;
+    let paymentCheckInterval = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchPlans();
+        fetchAnnouncements();
+    });
+
+    function fetchPlans() {
+        fetch(API_URL + "?action=getPlans", { method: "POST" })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success') {
+                const container = document.getElementById('plans-container');
+                container.innerHTML = '';
+                document.getElementById('loading-plans').style.display = 'none';
+
+                res.data.forEach(plan => {
+                    const div = document.createElement('div');
+                    div.className = 'plan-card';
+                    div.innerHTML = `<b>${plan.name}</b> - ₱${plan.price} <br><small>${plan.durationMinutes/60} Hours | Speed: ${plan.speedLimit}</small>`;
+                    div.onclick = () => selectPlan(div, plan);
+                    container.appendChild(div);
+                });
+            }
+        })
+        .catch(err => console.error("Error fetching plans", err));
+    }
+
+    function fetchAnnouncements() {
+        fetch(API_URL + "?action=getAnnouncements", { method: "POST" })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success' && res.data.length > 0) {
+                document.getElementById('announcement-text').innerText = res.data.join(" | ");
+            }
+        });
+    }
+
+    function selectPlan(el, plan) {
+        document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedPlan = plan;
+        document.getElementById('selected-plan-name').innerText = plan.name;
+        document.getElementById('purchase-form').classList.remove('hidden');
+    }
+
+    function initiatePayment() {
+        const mobile = document.getElementById('buy-mobile').value;
+        if(!mobile || !selectedPlan) { alert("Please enter mobile and select plan"); return; }
+
+        document.getElementById('pay-btn').disabled = true;
+        document.getElementById('pay-btn').innerText = "Generating Link...";
+
+        fetch(API_URL + "?action=createPayment", {
+            method: "POST",
+            body: JSON.stringify({ amount: selectedPlan.price, mobile: mobile, planId: selectedPlan.id })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success') {
+                const checkoutUrl = res.data.data.attributes.redirect.checkout_url;
+                const sourceId = res.data.data.id;
+
+                // Open payment in new window
+                window.open(checkoutUrl, '_blank');
+
+                // Start polling
+                showPaymentModal(sourceId, mobile, selectedPlan.id);
+            } else {
+                alert("Error creating payment: " + res.message);
+                document.getElementById('pay-btn').disabled = false;
+            }
+        });
+    }
+
+    function showPaymentModal(sourceId, mobile, planId) {
+        document.getElementById('payment-modal').classList.remove('hidden');
+        paymentCheckInterval = setInterval(() => {
+            checkPaymentStatus(sourceId, mobile, planId);
+        }, 3000);
+    }
+
+    function checkPaymentStatus(sourceId, mobile, planId) {
+        fetch(API_URL + "?action=checkPayment", {
+            method: "POST",
+            body: JSON.stringify({ sourceId: sourceId, mobile: mobile, planId: planId })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.paid) {
+                clearInterval(paymentCheckInterval);
+                document.getElementById('payment-modal').innerHTML = `<h3>Success!</h3><p>Passcode: <b>${res.passcode}</b></p><p>Logging you in...</p>`;
+
+                // Auto Login
+                document.getElementById('login-username').value = mobile;
+                document.getElementById('login-password').value = res.passcode;
+                document.getElementById('login-form').submit();
+            }
+        });
+    }
+
+    function cancelPayment() {
+        clearInterval(paymentCheckInterval);
+        document.getElementById('payment-modal').classList.add('hidden');
+        document.getElementById('pay-btn').disabled = false;
+        document.getElementById('pay-btn').innerText = "Pay with GCash/GrabPay";
+    }
+</script>
+
+</body>
+</html>

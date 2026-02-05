@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi sa Bukid - Status</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-row { display: flex; justify-content: space-between; margin: 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        button { width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        .extend-btn { background: #28a745; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Connected</h2>
+    <p>Welcome, <b>$(username)</b></p>
+
+    <div class="stat-row">
+        <span>IP Address:</span>
+        <span>$(ip)</span>
+    </div>
+    <div class="stat-row">
+        <span>MAC Address:</span>
+        <span>$(mac)</span>
+    </div>
+    <div class="stat-row">
+        <span>Upload:</span>
+        <span>$(bytes-in-nice)</span>
+    </div>
+    <div class="stat-row">
+        <span>Download:</span>
+        <span>$(bytes-out-nice)</span>
+    </div>
+    <div class="stat-row">
+        <span>Time Left:</span>
+        <span>$(session-time-left)</span>
+    </div>
+
+    <form action="$(link-logout)" name="logout" onSubmit="return openLogout()">
+        <button type="button" class="extend-btn" onclick="window.location.href='$(link-login-only)'">Extend Time / Buy Promo</button>
+        <button type="submit">Logout</button>
+    </form>
+</div>
+
+<script>
+    // Refresh status every 60 seconds
+    setInterval(function(){
+        window.location.reload();
+    }, 60000);
+</script>
+
+</body>
+</html>
