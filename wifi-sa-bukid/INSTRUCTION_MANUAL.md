@@ -136,7 +136,8 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   **Important:** In `Database.gs`, find `var SS_ID = "YOUR_SPREADSHEET_ID_HERE";` and replace it with your actual Spreadsheet ID.
 5.  Create HTML files for the Admin Portal:
     *   Create `index.html` and paste content from `src/frontend/admin/index.html`.
-    *   Create `src/frontend/admin/js/app.html` (name it `src/frontend/admin/js/app` in Apps Script, or adjust the include call in Code.gs if you prefer flat naming. The provided code assumes the path `src/frontend/admin/js/app`). *Tip: Apps Script doesn't support real folders, just slashes in names.*
+    *   Create `app-js.html` (Enter `app-js` as the file name). Paste content from `src/frontend/admin/app-js.html`.
+    *   *Note: In Apps Script, do not add folders. Just create the files in the root.*
 
 6.  **Set Script Properties (Secrets):**
     *   In the Apps Script Editor, go to **Project Settings** (Gear icon).
