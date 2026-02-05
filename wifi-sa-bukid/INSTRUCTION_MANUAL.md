@@ -206,6 +206,12 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 ## Troubleshooting
 
+*   **Hotspot Server is Red:**
+    *   This usually means the Hotspot is **Invalid** or **Not Running**.
+    *   Check **IP > Hotspot > Servers**. If the row is Red:
+        1.  Ensure the **Interface** assigned (e.g., `bridge-LAN`) is active and running (has an `R` flag in Interfaces list).
+        2.  If using a Bridge, ensure at least one port (ether2-5) is connected to a device (PC or Access Point) and active. If no device is plugged in, the Bridge goes down, and the Hotspot stops.
+        3.  Check **IP > Addresses** to ensure `10.0.0.1/24` is assigned to `bridge-LAN` (the same interface as the Hotspot).
 *   **Payment Stuck:** Ensure Paymongo Webhooks or Polling is working. The login page polls `checkPayment` every 3 seconds.
 *   **Users not connecting after payment:**
     *   Check Mikrotik Logs (`/log print`). Look for "script error" or "fetch" errors.
