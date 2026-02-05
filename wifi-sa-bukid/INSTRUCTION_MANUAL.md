@@ -8,8 +8,94 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 *   **Google Account:** For Google Sheets and Apps Script.
 *   **Paymongo Account:** For accepting payments (GCash/GrabPay). Get your Public and Secret keys.
 *   **Semaphore Account:** For sending SMS passcodes. Get your API Key.
+*   **Software:** WinBox (Windows/Wine) to manage Mikrotik.
 
-## 2. Google Sheets Setup (Database)
+---
+
+## 2. Mikrotik hEX S Initial Configuration (From Scratch)
+
+**Goal:** Configure the router from a blank slate to have Internet access on port 1 (WAN) and a Bridge LAN on ports 2-5, ready for the Hotspot.
+
+### Step 2.1: Factory Reset (No Default Configuration)
+1.  Connect your PC to **Port 2** of the Mikrotik.
+2.  Open **WinBox**. It should detect the router via MAC address in the "Neighbors" tab. Click the MAC address and connect (User: `admin`, Password: empty).
+3.  Go to **System** > **Reset Configuration**.
+4.  Check **No Default Configuration**.
+5.  Check **Do Not Backup**.
+6.  Click **Reset Configuration** and confirm with **Yes**.
+7.  The router will reboot. You will be disconnected.
+8.  Wait ~30 seconds, then reconnect via WinBox using the MAC address again.
+
+### Step 2.2: Basic Interface Setup
+1.  Go to **Interfaces**.
+2.  Double-click `ether1`. Rename it to `ether1-WAN`. Click OK.
+3.  Double-click `ether2`. Rename it to `ether2-LAN`. Click OK.
+    *   (Optional: Rename ether3-5 if desired, but not strictly necessary).
+
+### Step 2.3: WAN Setup (Internet Source)
+*If your ISP provides IP automatically (DHCP):*
+1.  Go to **IP** > **DHCP Client**.
+2.  Click **+**.
+3.  Interface: `ether1-WAN`.
+4.  Check **Use Peer DNS** and **Use Peer NTP**.
+5.  Add Default Route: **yes**.
+6.  Click **OK**. Wait until Status becomes `bound`.
+
+*If you need a Static IP (e.g., from main ISP router):*
+1.  Go to **IP** > **Addresses**.
+2.  Click **+**.
+3.  Address: `192.168.1.50/24` (Example IP from your ISP modem).
+4.  Interface: `ether1-WAN`.
+5.  Go to **IP** > **Routes**.
+6.  Click **+**.
+7.  Gateway: `192.168.1.1` (Your ISP modem IP).
+
+### Step 2.4: LAN Bridge Setup
+1.  Go to **Bridge**.
+2.  Tab **Bridge**: Click **+**. Name: `bridge-LAN`. Click **OK**.
+3.  Tab **Ports**:
+    *   Click **+**. Interface: `ether2-LAN`. Bridge: `bridge-LAN`. Click **OK**.
+    *   Click **+**. Interface: `ether3`. Bridge: `bridge-LAN`. Click **OK**.
+    *   Click **+**. Interface: `ether4`. Bridge: `bridge-LAN`. Click **OK**.
+    *   Click **+**. Interface: `ether5`. Bridge: `bridge-LAN`. Click **OK**.
+
+### Step 2.5: LAN IP Address
+1.  Go to **IP** > **Addresses**.
+2.  Click **+**.
+3.  Address: `10.0.0.1/24`.
+4.  Interface: `bridge-LAN`.
+5.  Click **OK**.
+
+### Step 2.6: DNS & NAT
+1.  Go to **IP** > **DNS**.
+2.  Servers: `8.8.8.8`, `8.8.4.4`.
+3.  Check **Allow Remote Requests**.
+4.  Click **OK**.
+5.  Go to **IP** > **Firewall** > **NAT**.
+6.  Click **+**.
+    *   **Chain:** `srcnat`.
+    *   **Out. Interface:** `ether1-WAN`.
+    *   **Action:** `masquerade`.
+7.  Click **OK**.
+
+*(At this point, your router has internet. Verify by opening Terminal and pinging google.com)*
+
+### Step 2.7: Hotspot Setup Wizard
+1.  Go to **IP** > **Hotspot**.
+2.  Click **Hotspot Setup** button.
+3.  **Hotspot Interface:** `bridge-LAN`. Click **Next**.
+4.  **Local Address of Network:** `10.0.0.1/24` (Default). **Masquerade Network:** Checked. Click **Next**.
+5.  **Address Pool of Network:** `10.0.0.2-10.0.0.254` (Default). Click **Next**.
+6.  **Select Certificate:** `none`. Click **Next**.
+7.  **IP Address of SMTP Server:** `0.0.0.0` (Default). Click **Next**.
+8.  **DNS Servers:** `8.8.8.8`, `8.8.4.4`. Click **Next**.
+9.  **DNS Name:** `hotspot.mikrotik.com` (Or your preferred local domain). Click **Next**.
+10. **Name of Local Hotspot User:** `admin` (Create a temp admin). **Password:** (Set a password). Click **Next**.
+11. Setup completed successfully.
+
+---
+
+## 3. Google Sheets Setup (Database)
 
 1.  Create a new Google Sheet.
 2.  Rename the Sheet to `WiFi Database`.
@@ -35,7 +121,9 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 4.  Copy the **Spreadsheet ID** from the URL (the long string between `/d/` and `/edit`). You will need this later.
 
-## 3. Google Apps Script Setup (Backend)
+---
+
+## 4. Google Apps Script Setup (Backend)
 
 1.  Open your Google Sheet.
 2.  Go to **Extensions** > **Apps Script**.
@@ -67,20 +155,25 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Click **Deploy**.
     *   **Copy the Web App URL** (ends in `/exec`).
 
-## 4. Frontend & Hotspot Setup
+---
+
+## 5. Frontend & Hotspot Setup
 
 1.  **Update Login Page:**
     *   Open `src/hotspot/login.html`.
     *   Find `const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";`
-    *   Replace the URL with your **Web App URL** from Step 3.
+    *   Replace the URL with your **Web App URL** from Step 4.
 
 2.  **Upload to Mikrotik:**
-    *   Connect to your Mikrotik using WinBox or WebFig.
+    *   Connect to your Mikrotik using WinBox.
     *   Go to **Files**.
-    *   Locate your Hotspot directory (usually `flash/hotspot` or just `hotspot`).
-    *   Upload the modified `login.html`, plus `status.html` and `logout.html` from `src/hotspot/` to this directory, overwriting existing files.
+    *   Locate your Hotspot directory (usually `hotspot` or `flash/hotspot`).
+    *   Select `login.html`, `status.html`, `logout.html` from the `src/hotspot/` folder on your PC.
+    *   Drag and drop them into the Mikrotik Files window, inside the hotspot folder, overwriting existing files.
 
-## 5. Mikrotik Configuration (RouterOS)
+---
+
+## 6. Mikrotik Configuration Script (Automation)
 
 1.  **Open the Setup Script:**
     *   Open `mikrotik_setup.rsc`.
@@ -96,9 +189,11 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Check **System > Scripts**. You should see `SyncUsersParams` and `KickUsersParams`.
     *   Check **System > Scheduler**. You should see schedules running every 1m and 5m.
 
-## 6. Testing
+---
 
-1.  Connect a mobile phone to the WiFi hotspot.
+## 7. Testing
+
+1.  Connect a mobile phone to the WiFi hotspot (e.g., connect to `bridge-LAN` via an Access Point connected to Port 2, or if testing via ethernet). *Note: hEX S does not have built-in WiFi. You need an Access Point connected to Port 2-5.*
 2.  The captive portal should open.
 3.  Select a Plan and click "Pay".
 4.  Complete the payment (in Test Mode if configured).
@@ -116,3 +211,5 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Check Mikrotik Logs (`/log print`). Look for "script error" or "fetch" errors.
     *   Ensure the Mikrotik has internet access to reach Google Servers.
     *   Check if `getNewUsers` endpoint on your Script is returning data.
+*   **Walled Garden issues:**
+    *   If the payment page doesn't load, ensure `paymongo.com` and `mag1.shopper-exchange.com` (and other Paymongo domains) are in Walled Garden.
