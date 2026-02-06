@@ -50,8 +50,16 @@ function doPost(e) {
         var amount = payload.amount;
         var mobile = payload.mobile;
         var planId = payload.planId;
+        var mac = payload.mac; // Capture MAC from payload
         var redirectUrl = "http://hotspot.mikrotik.com/login"; // Redirect back to login
         var description = "WiFi Plan " + planId + " - " + mobile;
+
+        // Store MAC temporarily? No, retrieve checkout session doesn't return custom metadata easily without expansion.
+        // We will pass it in metadata if needed, or rely on client sending it again?
+        // Better: We need to save the MAC when payment completes.
+        // BUT checkPayment receives sourceId/planId/mobile from client. We should trust client to send MAC again in checkPayment?
+        // Or store it in metadata. Paymongo supports metadata.
+        // Let's keep it simple: Client sends MAC in createPayment (for future logging?) and MUST send it in checkPayment to save it.
 
         var session = PaymongoService.createCheckoutSession(amount, description, redirectUrl);
         result = { status: 'success', data: session };
@@ -61,6 +69,7 @@ function doPost(e) {
         var sourceId = payload.sourceId; // This is now sessionId
         var planId = payload.planId;
         var mobile = payload.mobile;
+        var mac = payload.mac; // Client must send this
 
         var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
 
@@ -72,6 +81,7 @@ function doPost(e) {
               mobile: mobile,
               passcode: passcode,
               planId: planId,
+              mac: mac, // Save MAC
               expiry: calculateExpiry(planId),
               status: "ACTIVE",
               synced: false

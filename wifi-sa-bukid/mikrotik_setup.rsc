@@ -1,5 +1,5 @@
 # WiFi sa Bukid - Mikrotik Setup Script (Updated)
-# 1. Update the GAS_URL variable below with your Google Apps Script Deployment URL
+# 1. Update the variable below with your Google Apps Script Deployment URL
 # 2. Copy and paste this into Mikrotik Terminal
 
 :global GASURL "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
@@ -15,6 +15,11 @@ add dst-host=*googleapis.com comment="Google Fonts"
 add dst-host=*gstatic.com comment="Google Static"
 add dst-host=*semaphore.co comment="Semaphore SMS"
 
+# Allow CDNs for UI
+add dst-host=*cdn.tailwindcss.com comment="Tailwind CSS"
+add dst-host=*cdnjs.cloudflare.com comment="Cloudflare CDN"
+add dst-host=*images.unsplash.com comment="Unsplash Images"
+
 # ==========================================
 # Hotspot Profile Setup (Fix "Challenge Response" Error)
 # Use HTTP PAP instead of CHAP to support simple HTML forms
@@ -24,90 +29,68 @@ set [find name=default] login-by=http-pap,mac-cookie
 set [find name=hsprof1] login-by=http-pap,mac-cookie
 
 # ==========================================
-# Sync Users Script (Add New Users)
-# Fetches new users from GAS and adds them to Hotspot
-# Format: mobile,passcode,limit
+# Create Sync Scripts with Dynamic URL
 # ==========================================
+
+# 1. Sync Users Script
+/system script remove [find name="SyncUsersParams"]
 /system script
-add name="SyncUsersParams" source={
-    :local url ($GASURL . "?action=getNewUsers")
-    /tool fetch url=$url mode=https keep-result=yes dst-path="newusers.txt" check-certificate=no
-    :local content [/file get newusers.txt contents]
+add name="SyncUsersParams" source=( \
+    ":local url (\"" . $GASURL . "?action=getNewUsers\")\r\n" . \
+    "/tool fetch url=\$url mode=https keep-result=yes dst-path=\"newusers.txt\" check-certificate=no\r\n" . \
+    ":local content [/file get newusers.txt contents]\r\n" . \
+    ":if ([:len \$content] > 3) do={\r\n" . \
+    "    :local users \$content\r\n" . \
+    "    :local len [:len \$users]\r\n" . \
+    "    :local start 0\r\n" . \
+    "    :local end 0\r\n" . \
+    "    :do {\r\n" . \
+    "        :set end [:find \$users \"\\n\" \$start]\r\n" . \
+    "        :if ([:typeof \$end] = \"nil\") do={ :set end \$len }\r\n" . \
+    "        :local line [:pick \$users \$start \$end]\r\n" . \
+    "        :if ([:pick \$line ([:len \$line]-1)] = \"\\r\") do={ :set line [:pick \$line 0 ([:len \$line]-1)] }\r\n" . \
+    "        :if ([:len \$line] > 0) do={\r\n" . \
+    "            :local c1 [:find \$line \",\"]\r\n" . \
+    "            :local c2 [:find \$line \",\" (\$c1 + 1)]\r\n" . \
+    "            :if ([:typeof \$c1] != \"nil\" && [:typeof \$c2] != \"nil\") do={\r\n" . \
+    "                :local u [:pick \$line 0 \$c1]\r\n" . \
+    "                :local p [:pick \$line (\$c1 + 1) \$c2]\r\n" . \
+    "                :local l [:pick \$line (\$c2 + 1) [:len \$line]]\r\n" . \
+    "                :if ([:len [/ip hotspot user find name=\$u]] = 0) do={\r\n" . \
+    "                    /ip hotspot user add name=\$u password=\$p limit-uptime=\$l profile=default\r\n" . \
+    "                    :log info (\"Added user: \" . \$u)\r\n" . \
+    "                }\r\n" . \
+    "            }\r\n" . \
+    "        }\r\n" . \
+    "        :set start (\$end + 1)\r\n" . \
+    "    } while (\$start < \$len)\r\n" . \
+    "}" \
+)
 
-    # Check if content is not empty
-    :if ([:len $content] > 3) do={
-        # Basic parsing: split by newline (if multiple users)
-        # Note: RouterOS string parsing is limited.
-        # This loop handles one user per line, or just one user if no newline logic.
-
-        # For simplicity, we assume single line or implement a basic tokenizer
-        # "mobile,pass,limit"
-
-        :local users $content
-
-        # Loop over lines (Pseudo-code for RouterOS v6/v7 compat)
-        # In v7, use :toarray and split. In v6, complex loops.
-        # We will assume each line is separated by newline \n or \r\n
-
-        :local len [:len $users]
-        :local start 0
-        :local end 0
-
-        :do {
-            :set end [:find $users "\n" $start]
-            :if ([:typeof $end] = "nil") do={ :set end $len }
-
-            :local line [:pick $users $start $end]
-            # Clean carriage return
-            :if ([:pick $line ([:len $line]-1)] = "\r") do={ :set line [:pick $line 0 ([:len $line]-1)] }
-
-            :if ([:len $line] > 0) do={
-                # Parse Comma
-                :local c1 [:find $line ","]
-                :local c2 [:find $line "," ($c1 + 1)]
-
-                :if ([:typeof $c1] != "nil" && [:typeof $c2] != "nil") do={
-                    :local u [:pick $line 0 $c1]
-                    :local p [:pick $line ($c1 + 1) $c2]
-                    :local l [:pick $line ($c2 + 1) [:len $line]]
-
-                    # Add User if not exists
-                    :if ([:len [/ip hotspot user find name=$u]] = 0) do={
-                        /ip hotspot user add name=$u password=$p limit-uptime=$l profile=default
-                        :log info ("Added user: " . $u)
-                    }
-                }
-            }
-            :set start ($end + 1)
-        } while ($start < $len)
-    }
-}
-
-# ==========================================
-# Disconnect User Script (Kick)
-# ==========================================
+# 2. Kick Users Script
+/system script remove [find name="KickUsersParams"]
 /system script
-add name="KickUsersParams" source={
-    :local url ($GASURL . "?action=getKickList")
-    /tool fetch url=$url mode=https keep-result=yes dst-path="kicklist.txt" check-certificate=no
-    :local content [/file get kicklist.txt contents]
-
-    :if ([:len $content] > 0) do={
-        :local activeUsers [/ip hotspot active find]
-        :foreach u in=$activeUsers do={
-            :local user [:pick [/ip hotspot active get $u user] 0 15]
-            # Check if user (mobile) is in content
-            :if ([:find $content $user] >= 0) do={
-                /ip hotspot active remove $u
-                :log info ("Kicked user: " . $user)
-            }
-        }
-    }
-}
+add name="KickUsersParams" source=( \
+    ":local url (\"" . $GASURL . "?action=getKickList\")\r\n" . \
+    "/tool fetch url=\$url mode=https keep-result=yes dst-path=\"kicklist.txt\" check-certificate=no\r\n" . \
+    ":local content [/file get kicklist.txt contents]\r\n" . \
+    ":if ([:len \$content] > 0) do={\r\n" . \
+    "    :local activeUsers [/ip hotspot active find]\r\n" . \
+    "    :foreach u in=\$activeUsers do={\r\n" . \
+    "        :local user [:pick [/ip hotspot active get \$u user] 0 15]\r\n" . \
+    "        :if ([:find \$content \$user] >= 0) do={\r\n" . \
+    "            /ip hotspot active remove \$u\r\n" . \
+    "            :log info (\"Kicked user: \" . \$user)\r\n" . \
+    "        }\r\n" . \
+    "    }\r\n" . \
+    "}" \
+)
 
 # ==========================================
 # Schedulers
 # ==========================================
+/system scheduler remove [find name="SyncUsersSchedule"]
+/system scheduler remove [find name="KickUsersSchedule"]
 /system scheduler
 add name="SyncUsersSchedule" interval=1m on-event="SyncUsersParams"
 add name="KickUsersSchedule" interval=5m on-event="KickUsersParams"

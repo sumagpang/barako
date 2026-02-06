@@ -92,6 +92,9 @@
                     <input type="text" id="buy-mobile" placeholder="Enter Mobile Number"
                         class="w-full pl-10 pr-3 py-2 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
                 </div>
+                <!-- Hidden MAC Field: Populated by Mikrotik variable -->
+                <input type="hidden" id="user-mac" value="$(mac)">
+
                 <p class="text-xs text-gray-500 mb-3 text-center">
                     <i class="fas fa-lock mr-1"></i> Secure Payment: GCash, Maya, GrabPay, Card
                 </p>
@@ -182,6 +185,8 @@
 
     function initiatePayment() {
         const mobile = document.getElementById('buy-mobile').value;
+        const mac = document.getElementById('user-mac').value; // Capture MAC
+
         if(!mobile || !selectedPlan) { alert("Please enter mobile and select plan"); return; }
 
         const btn = document.getElementById('pay-btn');
@@ -191,7 +196,12 @@
 
         fetch(API_URL + "?action=createPayment", {
             method: "POST",
-            body: JSON.stringify({ amount: selectedPlan.price, mobile: mobile, planId: selectedPlan.id })
+            body: JSON.stringify({
+                amount: selectedPlan.price,
+                mobile: mobile,
+                planId: selectedPlan.id,
+                mac: mac // Send MAC to backend
+            })
         })
         .then(res => res.json())
         .then(res => {

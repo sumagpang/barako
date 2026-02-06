@@ -21,8 +21,8 @@ var PaymongoService = {
                 quantity: 1
               }
             ],
-            // GCash default, others selectable. Removed QRPh, DOB, BillEase. ShopeePay excluded (unsupported by API).
-            payment_method_types: ["gcash", "paymaya", "grab_pay", "card"],
+            // Added shopeepay as requested, keeping GCash default (first)
+            payment_method_types: ["gcash", "paymaya", "grab_pay", "shopeepay", "card"],
             success_url: redirectUrl,
             cancel_url: redirectUrl,
             description: description
