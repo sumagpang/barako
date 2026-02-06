@@ -93,6 +93,15 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 10. **Name of Local Hotspot User:** `admin` (Create a temp admin). **Password:** (Set a password). Click **Next**.
 11. Setup completed successfully.
 
+### Step 2.8: Configure Login Method
+1.  Go to **IP > Hotspot > Server Profiles**.
+2.  Double-click the profile name (e.g., `hsprof1` or `default`).
+3.  Go to the **Login** tab.
+4.  **Uncheck** `HTTP CHAP` and `Cookie`.
+5.  **Check** `HTTP PAP` and `MAC Cookie` (optional).
+    *   *Why?* The custom login page uses a simple form. If CHAP is on, Mikrotik expects an MD5 challenge response, which causes errors like "browser did not send challenge response" if the JS script is missing.
+6.  Click **OK**.
+
 ---
 
 ## 3. Google Sheets Setup (Database)
@@ -187,6 +196,7 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 3.  **Verify:**
     *   Check **IP > Hotspot > Walled Garden**. You should see entries for Paymongo and Google.
+    *   Check **IP > Hotspot > Server Profiles > Login**. Ensure `HTTP PAP` is checked.
     *   Check **System > Scripts**. You should see `SyncUsersParams` and `KickUsersParams`.
     *   Check **System > Scheduler**. You should see schedules running every 1m and 5m.
 
@@ -207,6 +217,9 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 ## Troubleshooting
 
+*   **Error: "web browser did not send challenge response":**
+    *   This means the Router is trying to use CHAP authentication, but the login page doesn't have the necessary MD5 script.
+    *   **Fix:** Go to **IP > Hotspot > Server Profiles**. Open your profile, go to the **Login** tab, uncheck **HTTP CHAP** and check **HTTP PAP**.
 *   **Hotspot Server is Red:**
     *   This usually means the Hotspot is **Invalid** or **Not Running**.
     *   Check **IP > Hotspot > Servers**. If the row is Red:

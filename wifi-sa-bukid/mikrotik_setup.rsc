@@ -16,6 +16,14 @@ add dst-host=*gstatic.com comment="Google Static"
 add dst-host=*semaphore.co comment="Semaphore SMS"
 
 # ==========================================
+# Hotspot Profile Setup (Fix "Challenge Response" Error)
+# Use HTTP PAP instead of CHAP to support simple HTML forms
+# ==========================================
+/ip hotspot profile
+set [find name=default] login-by=http-pap,mac-cookie
+set [find name=hsprof1] login-by=http-pap,mac-cookie
+
+# ==========================================
 # Sync Users Script (Add New Users)
 # Fetches new users from GAS and adds them to Hotspot
 # Format: mobile,passcode,limit
