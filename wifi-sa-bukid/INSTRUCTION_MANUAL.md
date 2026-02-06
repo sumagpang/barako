@@ -115,7 +115,7 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
     *   **Tab Name:** `Plans`
         *   Row 1: `ID`, `Name`, `Price`, `DurationMinutes`, `SpeedLimit`
-        *   *Example Data (Row 2):* `PLAN1`, `1 Hour`, `10`, `60`, `5M/5M`
+        *   *Example Data (Row 2):* `PLAN1`, `1 Hour`, `20`, `60`, `5M/5M`
 
     *   **Tab Name:** `Transactions`
         *   Row 1: `RefID`, `Mobile`, `PlanID`, `Amount`, `Status`, `Date`
@@ -156,7 +156,17 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
         *   `SEMAPHORE_API_KEY`: Your Semaphore API Key.
         *   `SEMAPHORE_SENDER_NAME`: (Optional) Your SMS Sender Name.
 
-7.  **Deploy as Web App:**
+7.  **Authorize the Script (Crucial Step):**
+    *   Before deploying, you must run a function to trigger the permission popup.
+    *   In the editor toolbar, select `doGet` from the dropdown.
+    *   Click **Run**.
+    *   A "Review Permissions" dialog will appear. Click **Review Permissions**.
+    *   Choose your Google Account.
+    *   If you see "Google hasn't verified this app", click **Advanced** -> **Go to (Script Name) (unsafe)**.
+    *   Click **Allow**.
+    *   This ensures the script can access your Sheets and external APIs (Paymongo).
+
+8.  **Deploy as Web App:**
     *   Click **Deploy** > **New deployment**.
     *   Select type: **Web app**.
     *   Description: `v1`.
@@ -198,7 +208,7 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Check **IP > Hotspot > Walled Garden**. You should see entries for Paymongo and Google.
     *   Check **IP > Hotspot > Server Profiles > Login**. Ensure `HTTP PAP` is checked.
     *   Check **System > Scripts**. You should see `SyncUsersParams` and `KickUsersParams`.
-    *   Check **System > Scheduler**. You should see schedules running every 1m and 5m.
+    *   Check **System > Scheduler**. You should see schedules running every 10s and 1m.
 
 ---
 
@@ -217,6 +227,10 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 ## Troubleshooting
 
+*   **Admin Page shows "createOAuthDialog":**
+    *   This happens if you are accessing the `/dev` URL or haven't authorized the script.
+    *   **Fix:** Ensure you are using the **Web App URL** ending in `/exec`.
+    *   **Fix:** In the Script Editor, manually Run the `doGet` function once to trigger the permission popup (Step 4.7).
 *   **Error: "web browser did not send challenge response":**
     *   This means the Router is trying to use CHAP authentication, but the login page doesn't have the necessary MD5 script.
     *   **Fix:** Go to **IP > Hotspot > Server Profiles**. Open your profile, go to the **Login** tab, uncheck **HTTP CHAP** and check **HTTP PAP**.
