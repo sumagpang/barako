@@ -17,6 +17,8 @@
         .plan-card.selected { border-color: #007bff; background: #e7f1ff; }
         .hidden { display: none; }
         .error { color: red; font-size: 0.9em; }
+        .admin-link { display: block; text-align: center; margin-top: 20px; font-size: 0.8em; color: #999; text-decoration: none; }
+        .admin-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -51,6 +53,9 @@
         <input type="text" id="buy-mobile" placeholder="Enter Mobile Number for Passcode" />
         <button onclick="initiatePayment()" id="pay-btn">Pay with GCash/GrabPay</button>
     </div>
+
+    <!-- Admin Link -->
+    <a href="#" id="admin-portal-link" class="admin-link">Admin Portal</a>
 </div>
 
 <div id="payment-modal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);color:white;text-align:center;padding-top:100px;">
@@ -70,6 +75,7 @@
     document.addEventListener("DOMContentLoaded", () => {
         fetchPlans();
         fetchAnnouncements();
+        document.getElementById('admin-portal-link').href = API_URL + "?page=admin";
     });
 
     function fetchPlans() {
