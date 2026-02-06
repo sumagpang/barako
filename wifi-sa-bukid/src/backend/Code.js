@@ -3,7 +3,7 @@ function doGet(e) {
   var action = e.parameter.action;
 
   if (page == 'admin') {
-    return HtmlService.createTemplateFromFile('index') // Simplified name
+    return HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setTitle('WiFi sa Bukid - Admin')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -49,27 +49,23 @@ function doPost(e) {
       case 'createPayment':
         var amount = payload.amount;
         var mobile = payload.mobile;
-        var redirectUrl = "http://hotspot.mikrotik.com/login?status=paid";
-        var source = PaymongoService.createSource(amount, "PHP", redirectUrl);
-        result = { status: 'success', data: source };
+        var planId = payload.planId;
+        var redirectUrl = "http://hotspot.mikrotik.com/login"; // Redirect back to login
+        var description = "WiFi Plan " + planId + " - " + mobile;
+
+        var session = PaymongoService.createCheckoutSession(amount, description, redirectUrl);
+        result = { status: 'success', data: session };
         break;
 
       case 'checkPayment':
-        var sourceId = payload.sourceId;
+        var sourceId = payload.sourceId; // This is now sessionId
         var planId = payload.planId;
         var mobile = payload.mobile;
 
-        var sourceData = PaymongoService.retrieveSource(sourceId);
+        var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
 
-        if (sourceData.data.attributes.status === 'chargeable') {
-          // CAPTURE PAYMENT
-          var plans = getPlans();
-          var plan = plans.find(function(p){ return p.id === planId });
-          var amount = plan ? plan.price : 10;
-
-          var payment = PaymongoService.createPayment(sourceId, amount, "Plan " + planId + " - " + mobile);
-
-          if(payment.data.attributes.status === 'paid') {
+        if (sessionData.data.attributes.payment_status === 'paid') {
+            // Payment Confirmed
             var passcode = Math.floor(1000 + Math.random() * 9000).toString();
 
             saveUser({
@@ -81,29 +77,36 @@ function doPost(e) {
               synced: false
             });
 
+            // Get actual payment ID if available, else use session ID
+            var refId = sourceId;
+            var amountPaid = sessionData.data.attributes.line_items[0].amount / 100;
+
             saveTransaction({
-               refId: payment.data.id,
+               refId: refId,
                mobile: mobile,
                planId: planId,
-               amount: amount,
+               amount: amountPaid,
                status: 'PAID'
             });
 
             SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
 
             result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
-          } else {
-             result = { status: 'error', message: 'Payment capture failed' };
-          }
         } else {
-          result = { status: 'success', paid: false };
+            result = { status: 'success', paid: false };
         }
         break;
 
       // Admin Actions (Protected)
       case 'adminLogin':
         if (checkAdminPassword(payload.password)) {
-          result = { status: 'success', token: "VALID_SESSION" }; // Simplified session
+          var token = Utilities.getUuid();
+
+          // Store token in Cache Service for 6 hours (21600 seconds)
+          var cache = CacheService.getScriptCache();
+          cache.put("ADMIN_SESSION_" + token, "TRUE", 21600);
+
+          result = { status: 'success', token: token };
         } else {
           result = { status: 'error', message: 'Invalid Password' };
         }
@@ -123,7 +126,7 @@ function doPost(e) {
 
       case 'updateSettings':
         verifyAdmin(payload.token);
-        saveSettings(payload.settings); // { adminPassword: ... }
+        saveSettings(payload.settings);
         result = { status: 'success' };
         break;
 
@@ -139,11 +142,13 @@ function doPost(e) {
 }
 
 function verifyAdmin(token) {
-  // In a real app, use a proper session token or HMAC
-  // Here we trust the client provided a "VALID_SESSION" token if they passed login
-  // Ideally, passing the password again or a derived token is better.
-  if (token !== "VALID_SESSION") {
-    throw "Unauthorized";
+  if (!token) throw "Unauthorized";
+
+  var cache = CacheService.getScriptCache();
+  var session = cache.get("ADMIN_SESSION_" + token);
+
+  if (session !== "TRUE") {
+    throw "Unauthorized - Session Expired";
   }
 }
 

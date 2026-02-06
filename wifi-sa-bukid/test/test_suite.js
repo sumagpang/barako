@@ -2,6 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+// Mock Cache
+const mockCache = new Map();
+
 // Mock GAS Environment
 const context = {
   ContentService: {
@@ -32,8 +35,15 @@ const context = {
       getProperties: () => ({})
     })
   },
+  CacheService: {
+    getScriptCache: () => ({
+      put: (key, value, time) => mockCache.set(key, value),
+      get: (key) => mockCache.get(key)
+    })
+  },
   Utilities: {
-    base64Encode: (str) => Buffer.from(str).toString('base64')
+    base64Encode: (str) => Buffer.from(str).toString('base64'),
+    getUuid: () => "mock-uuid-1234"
   },
   SpreadsheetApp: undefined,
   UrlFetchApp: undefined,
@@ -54,11 +64,11 @@ files.forEach(file => {
 console.log("Running Tests...");
 
 try {
-  // Test 1: createPayment (Mock)
-  console.log("Test 1: createPayment...");
-  const payment = context.PaymongoService.createPayment("src_123", 100);
-  if (payment.data.attributes.status === 'paid') console.log("PASS");
-  else throw "createPayment failed";
+  // Test 1: createCheckoutSession (Mock)
+  console.log("Test 1: createCheckoutSession...");
+  const session = context.PaymongoService.createCheckoutSession(100, "Test Plan", "http://redirect");
+  if (session.data.attributes.checkout_url) console.log("PASS");
+  else throw "createCheckoutSession failed";
 
   // Test 2: Admin Auth
   console.log("Test 2: Admin Auth...");
@@ -67,7 +77,17 @@ try {
     postData: { contents: JSON.stringify({ password: 'admin' }) }
   }).getContent());
 
-  if (authRes.status === 'success' && authRes.token === 'VALID_SESSION') console.log("PASS");
+  if (authRes.status === 'success' && authRes.token) {
+    // Validate Token
+    const verifyRes = JSON.parse(context.doPost({
+       parameter: { action: 'savePlan' },
+       postData: { contents: JSON.stringify({ token: authRes.token, plan: { id: 'TEST' } }) }
+    }).getContent());
+
+    if(verifyRes.status === 'success') console.log("PASS");
+    else throw "Token Verification Failed";
+
+  }
   else throw "Admin Login Failed: " + JSON.stringify(authRes);
 
   // Test 3: Dashboard Filter
@@ -76,14 +96,13 @@ try {
   if (dash.totalSales >= 0) console.log("PASS");
   else throw "Dashboard Filter Failed";
 
-  // Test 4: checkPayment Flow (Capture)
+  // Test 4: checkPayment Flow (Checkout Session)
   console.log("Test 4: checkPayment Flow...");
   const checkRes = JSON.parse(context.doPost({
     parameter: { action: 'checkPayment' },
-    postData: { contents: JSON.stringify({ sourceId: 'src_test', planId: 'PLAN1', mobile: '0917000' }) }
+    postData: { contents: JSON.stringify({ sourceId: 'cs_mock_123', planId: 'PLAN1', mobile: '0917000' }) }
   }).getContent());
 
-  // Mock createPayment returns 'paid', so checkPayment should succeed
   if (checkRes.status === 'success' && checkRes.paid === true) console.log("PASS");
   else throw "checkPayment Failed: " + JSON.stringify(checkRes);
 

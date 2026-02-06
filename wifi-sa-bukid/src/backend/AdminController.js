@@ -38,7 +38,7 @@ function getDashboardData(filterMonth) {
     planCounts: planCounts,
     topUsers: topUsers,
     activeUsers: users.filter(function(u) { return u.status === 'ACTIVE'; }),
-    traffic: { download: "100GB", upload: "50GB" }
+    traffic: { download: "N/A", upload: "N/A (Router Only)" }
   };
 }
 

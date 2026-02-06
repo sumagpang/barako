@@ -1,9 +1,9 @@
 var PaymongoService = {
-  createSource: function(amount, currency, redirectUrl) {
-    if (typeof UrlFetchApp === 'undefined') return mockCreateSource(amount);
+  createCheckoutSession: function(amount, description, redirectUrl) {
+    if (typeof UrlFetchApp === 'undefined') return mockCreateCheckoutSession(amount);
 
     var keys = getApiKeys();
-    var url = "https://api.paymongo.com/v1/sources";
+    var url = "https://api.paymongo.com/v1/checkout_sessions";
     var options = {
       method: "post",
       headers: {
@@ -13,13 +13,18 @@ var PaymongoService = {
       payload: JSON.stringify({
         data: {
           attributes: {
-            amount: amount * 100, // in centavos
-            type: "gcash",
-            currency: currency || "PHP",
-            redirect: {
-              success: redirectUrl,
-              failed: redirectUrl
-            }
+            line_items: [
+              {
+                amount: amount * 100, // centavos
+                currency: "PHP",
+                name: description,
+                quantity: 1
+              }
+            ],
+            payment_method_types: ["card", "gcash", "grab_pay", "paymaya", "dob", "qrph", "billease"],
+            success_url: redirectUrl,
+            cancel_url: redirectUrl,
+            description: description
           }
         }
       })
@@ -29,46 +34,16 @@ var PaymongoService = {
     return JSON.parse(response.getContentText());
   },
 
-  retrieveSource: function(id) {
-    if (typeof UrlFetchApp === 'undefined') return mockRetrieveSource(id);
+  retrieveCheckoutSession: function(id) {
+    if (typeof UrlFetchApp === 'undefined') return mockRetrieveCheckoutSession(id);
 
     var keys = getApiKeys();
-    var url = "https://api.paymongo.com/v1/sources/" + id;
+    var url = "https://api.paymongo.com/v1/checkout_sessions/" + id;
     var options = {
       method: "get",
       headers: {
         "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":")
       }
-    };
-
-    var response = UrlFetchApp.fetch(url, options);
-    return JSON.parse(response.getContentText());
-  },
-
-  createPayment: function(sourceId, amount, description) {
-    if (typeof UrlFetchApp === 'undefined') return mockCreatePayment(sourceId, amount);
-
-    var keys = getApiKeys();
-    var url = "https://api.paymongo.com/v1/payments";
-    var options = {
-      method: "post",
-      headers: {
-        "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":"),
-        "Content-Type": "application/json"
-      },
-      payload: JSON.stringify({
-        data: {
-          attributes: {
-            amount: amount * 100,
-            currency: "PHP",
-            description: description || "WiFi Payment",
-            source: {
-              id: sourceId,
-              type: "source"
-            }
-          }
-        }
-      })
     };
 
     var response = UrlFetchApp.fetch(url, options);
@@ -110,37 +85,32 @@ function getApiKeys() {
 }
 
 // Mocks
-function mockCreateSource(amount) {
-  console.log("Mock Paymongo Create Source:", amount);
+function mockCreateCheckoutSession(amount) {
+  console.log("Mock Paymongo Create Checkout Session:", amount);
   return {
     data: {
-      id: "src_mock_" + new Date().getTime(),
+      id: "cs_mock_" + new Date().getTime(),
       attributes: {
-        status: "pending",
-        redirect: { checkout_url: "#mock_checkout" }
+        checkout_url: "#mock_checkout_url",
+        payment_status: "unpaid"
       }
     }
   };
 }
 
-function mockRetrieveSource(id) {
+function mockRetrieveCheckoutSession(id) {
+  // Simulate successful payment for testing
   return {
     data: {
       id: id,
       attributes: {
-        status: "chargeable"
-      }
-    }
-  };
-}
-
-function mockCreatePayment(sourceId, amount) {
-  console.log("Mock Payment Capture:", sourceId, amount);
-  return {
-    data: {
-      id: "pay_" + sourceId,
-      attributes: {
-        status: "paid"
+        payment_status: "paid",
+        line_items: [
+           { amount: 1000, currency: "PHP" }
+        ],
+        payments: [
+           { id: "pay_mock_123", attributes: { amount: 1000, status: "paid" } }
+        ]
       }
     }
   };

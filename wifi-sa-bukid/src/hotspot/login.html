@@ -51,7 +51,7 @@
     <div id="purchase-form" class="hidden">
         <p>Selected: <span id="selected-plan-name" style="font-weight:bold;"></span></p>
         <input type="text" id="buy-mobile" placeholder="Enter Mobile Number for Passcode" />
-        <button onclick="initiatePayment()" id="pay-btn">Pay with GCash/GrabPay</button>
+        <button onclick="initiatePayment()" id="pay-btn">Pay (GCash/Maya/Cards/Bank)</button>
     </div>
 
     <!-- Admin Link -->
@@ -131,7 +131,7 @@
         .then(res => res.json())
         .then(res => {
             if(res.status === 'success') {
-                const checkoutUrl = res.data.data.attributes.redirect.checkout_url;
+                const checkoutUrl = res.data.data.attributes.checkout_url;
                 const sourceId = res.data.data.id;
 
                 // Open payment in new window
@@ -176,7 +176,7 @@
         clearInterval(paymentCheckInterval);
         document.getElementById('payment-modal').classList.add('hidden');
         document.getElementById('pay-btn').disabled = false;
-        document.getElementById('pay-btn').innerText = "Pay with GCash/GrabPay";
+        document.getElementById('pay-btn').innerText = "Pay (GCash/Maya/Cards/Bank)";
     }
 </script>
 

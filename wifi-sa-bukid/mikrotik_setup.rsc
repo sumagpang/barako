@@ -31,7 +31,7 @@ set [find name=hsprof1] login-by=http-pap,mac-cookie
 /system script
 add name="SyncUsersParams" source={
     :local url ($GASURL . "?action=getNewUsers")
-    /tool fetch url=$url mode=https keep-result=yes dst-path="newusers.txt"
+    /tool fetch url=$url mode=https keep-result=yes dst-path="newusers.txt" check-certificate=no
     :local content [/file get newusers.txt contents]
 
     # Check if content is not empty
@@ -89,7 +89,7 @@ add name="SyncUsersParams" source={
 /system script
 add name="KickUsersParams" source={
     :local url ($GASURL . "?action=getKickList")
-    /tool fetch url=$url mode=https keep-result=yes dst-path="kicklist.txt"
+    /tool fetch url=$url mode=https keep-result=yes dst-path="kicklist.txt" check-certificate=no
     :local content [/file get kicklist.txt contents]
 
     :if ([:len $content] > 0) do={
