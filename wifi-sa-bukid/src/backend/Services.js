@@ -21,8 +21,8 @@ var PaymongoService = {
                 quantity: 1
               }
             ],
-            // Ordered list: GCash first as default preference if UI supports ordering
-            payment_method_types: ["gcash", "card", "paymaya", "grab_pay", "dob", "qrph", "billease"],
+            // GCash default, others selectable. Removed QRPh, DOB, BillEase. ShopeePay excluded (unsupported by API).
+            payment_method_types: ["gcash", "paymaya", "grab_pay", "card"],
             success_url: redirectUrl,
             cancel_url: redirectUrl,
             description: description
