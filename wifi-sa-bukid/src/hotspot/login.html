@@ -3,71 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WiFi sa Bukid - Login</title>
+    <title>WiFi sa Bukid - Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; }
-        .container { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .marquee { background: #ffeb3b; color: #333; padding: 10px; white-space: nowrap; overflow: hidden; box-sizing: border-box; }
-        .marquee span { display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite; }
-        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
-        button:disabled { background: #ccc; }
-        .plan-card { border: 1px solid #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px; cursor: pointer; }
-        .plan-card.selected { border-color: #007bff; background: #e7f1ff; }
-        .hidden { display: none; }
-        .error { color: red; font-size: 0.9em; }
-        .admin-link { display: block; text-align: center; margin-top: 20px; font-size: 0.8em; color: #999; text-decoration: none; }
-        .admin-link:hover { text-decoration: underline; }
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .marquee-container {
+            background: rgba(16, 185, 129, 0.9); /* Green-500 */
+        }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
     </style>
 </head>
-<body>
+<body class="font-sans antialiased text-gray-900 min-h-screen flex flex-col">
 
-<!-- Marquee -->
-<div class="marquee"><span id="announcement-text">Welcome to WiFi sa Bukid! High speed internet available.</span></div>
-
-<div class="container">
-    <h2 style="text-align: center;">WiFi sa Bukid</h2>
-
-    <!-- Login Form (Standard Mikrotik) -->
-    <form name="login" action="$(link-login-only)" method="post" id="login-form">
-        <input type="hidden" name="dst" value="$(link-orig)" />
-        <input type="hidden" name="popup" value="true" />
-
-        <h3>Login</h3>
-        <input type="text" name="username" id="login-username" placeholder="Mobile Number" required />
-        <input type="password" name="password" id="login-password" placeholder="Passcode" required />
-        <button type="submit">Connect</button>
-        <div class="error">$(if error)$(error)$(endif)</div>
-    </form>
-
-    <hr style="margin: 20px 0;">
-
-    <!-- Buy Plan Section -->
-    <h3>Buy Promo</h3>
-    <div id="loading-plans">Loading plans...</div>
-    <div id="plans-container"></div>
-
-    <div id="purchase-form" class="hidden">
-        <p>Selected: <span id="selected-plan-name" style="font-weight:bold;"></span></p>
-        <input type="text" id="buy-mobile" placeholder="Enter Mobile Number for Passcode" />
-        <p class="text-sm text-gray-500 mb-2" style="font-size: 0.85em; color: #666;">
-            Payment: GCash (Default), Maya, GrabPay, Cards
-        </p>
-        <button onclick="initiatePayment()" id="pay-btn">Pay Now</button>
+    <!-- Marquee -->
+    <div class="marquee-container text-white py-2 overflow-hidden shadow-md fixed top-0 w-full z-50">
+        <div id="announcement-text" class="animate-marquee font-semibold tracking-wide">
+            Welcome to WiFi sa Bukid! Experience fast and reliable internet in the heart of nature.
+        </div>
     </div>
 
-    <!-- Admin Link -->
-    <a href="#" id="admin-portal-link" class="admin-link">Admin Portal</a>
-</div>
+    <div class="flex-grow flex items-center justify-center p-4 mt-10">
+        <div class="glass-panel w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 md:p-8 transform transition-all duration-300 hover:scale-[1.01]">
 
-<div id="payment-modal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);color:white;text-align:center;padding-top:100px;">
-    <h3>Payment Processing</h3>
-    <p>Please complete payment in the new tab.</p>
-    <p>We are checking your status...</p>
-    <div id="spinner" style="font-size: 2em;">&#8635;</div>
-    <button onclick="cancelPayment()" style="width: auto; background: #555;">Cancel</button>
-</div>
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4 shadow-inner">
+                    <i class="fas fa-wifi text-3xl"></i>
+                </div>
+                <h1 class="text-3xl font-extrabold text-green-800 tracking-tight">WiFi sa Bukid</h1>
+                <p class="text-gray-500 text-sm mt-1">Connect to Nature, Connect to the World</p>
+            </div>
+
+            <!-- Login Form -->
+            <form name="login" action="$(link-login-only)" method="post" id="login-form" class="space-y-4">
+                <input type="hidden" name="dst" value="$(link-orig)" />
+                <input type="hidden" name="popup" value="true" />
+
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-phone"></i></span>
+                    <input type="text" name="username" id="login-username" placeholder="Mobile Number" required
+                        class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 text-lg" />
+                </div>
+
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-key"></i></span>
+                    <input type="password" name="password" id="login-password" placeholder="Passcode" required
+                        class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-gray-50 text-lg" />
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-green-500 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl hover:from-green-700 hover:to-green-600 transform hover:-translate-y-0.5 transition-all duration-200">
+                    CONNECT NOW
+                </button>
+                <div class="text-red-500 text-center text-sm font-semibold mt-2 min-h-[20px]">$(if error)$(error)$(endif)</div>
+            </form>
+
+            <div class="relative flex py-5 items-center">
+                <div class="flex-grow border-t border-gray-300"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-widest">Or Buy a Promo</span>
+                <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <!-- Promo Section -->
+            <div id="loading-plans" class="text-center text-gray-500 py-4 animate-pulse">
+                <i class="fas fa-spinner fa-spin mr-2"></i> Loading Promos...
+            </div>
+
+            <div id="plans-container" class="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-green-200"></div>
+
+            <!-- Purchase Form -->
+            <div id="purchase-form" class="hidden mt-6 bg-green-50 p-4 rounded-xl border border-green-100 animate-fade-in-up">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-green-800 text-sm uppercase">Selected Promo</h3>
+                    <span id="selected-plan-name" class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full font-bold"></span>
+                </div>
+                <div class="relative mb-3">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-green-500"><i class="fas fa-mobile-alt"></i></span>
+                    <input type="text" id="buy-mobile" placeholder="Enter Mobile Number"
+                        class="w-full pl-10 pr-3 py-2 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                </div>
+                <p class="text-xs text-gray-500 mb-3 text-center">
+                    <i class="fas fa-lock mr-1"></i> Secure Payment: GCash, Maya, GrabPay, Card
+                </p>
+                <button onclick="initiatePayment()" id="pay-btn" class="w-full bg-gray-900 text-white font-bold py-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    Proceed to Payment
+                </button>
+            </div>
+
+            <div class="mt-8 text-center">
+                <a href="#" id="admin-portal-link" class="text-xs text-gray-400 hover:text-green-600 transition-colors">Admin Portal Access</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4 backdrop-filter backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl transform scale-100 transition-transform">
+            <div class="mb-4 text-green-500 text-5xl">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Processing Payment</h3>
+            <p class="text-gray-600 mb-6">Please complete the transaction in the new tab. We are waiting for confirmation...</p>
+            <button onclick="cancelPayment()" class="text-gray-400 hover:text-gray-600 font-semibold text-sm underline">Cancel Transaction</button>
+        </div>
+    </div>
 
 <script>
     // REPLACE THIS WITH YOUR DEPLOYED WEB APP URL
@@ -92,8 +141,14 @@
 
                 res.data.forEach(plan => {
                     const div = document.createElement('div');
-                    div.className = 'plan-card';
-                    div.innerHTML = `<b>${plan.name}</b> - ₱${plan.price} <br><small>${plan.durationMinutes/60} Hours | Speed: ${plan.speedLimit}</small>`;
+                    div.className = 'group p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all duration-200 flex justify-between items-center';
+                    div.innerHTML = `
+                        <div>
+                            <div class="font-bold text-gray-800 group-hover:text-green-700">${plan.name}</div>
+                            <div class="text-xs text-gray-500"><i class="fas fa-clock mr-1"></i>${plan.durationMinutes/60} Hours &bull; <i class="fas fa-tachometer-alt mr-1"></i>${plan.speedLimit}</div>
+                        </div>
+                        <div class="text-green-600 font-black text-lg">₱${plan.price}</div>
+                    `;
                     div.onclick = () => selectPlan(div, plan);
                     container.appendChild(div);
                 });
@@ -113,8 +168,13 @@
     }
 
     function selectPlan(el, plan) {
-        document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-        el.classList.add('selected');
+        document.querySelectorAll('#plans-container > div').forEach(c => {
+            c.classList.remove('border-green-500', 'bg-green-50', 'ring-2', 'ring-green-200');
+            c.classList.add('border-gray-200');
+        });
+        el.classList.remove('border-gray-200');
+        el.classList.add('border-green-500', 'bg-green-50', 'ring-2', 'ring-green-200');
+
         selectedPlan = plan;
         document.getElementById('selected-plan-name').innerText = plan.name;
         document.getElementById('purchase-form').classList.remove('hidden');
@@ -124,8 +184,10 @@
         const mobile = document.getElementById('buy-mobile').value;
         if(!mobile || !selectedPlan) { alert("Please enter mobile and select plan"); return; }
 
-        document.getElementById('pay-btn').disabled = true;
-        document.getElementById('pay-btn').innerText = "Generating Link...";
+        const btn = document.getElementById('pay-btn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Link...';
 
         fetch(API_URL + "?action=createPayment", {
             method: "POST",
@@ -136,15 +198,12 @@
             if(res.status === 'success') {
                 const checkoutUrl = res.data.data.attributes.checkout_url;
                 const sourceId = res.data.data.id;
-
-                // Open payment in new window
                 window.open(checkoutUrl, '_blank');
-
-                // Start polling
                 showPaymentModal(sourceId, mobile, selectedPlan.id);
             } else {
                 alert("Error creating payment: " + res.message);
-                document.getElementById('pay-btn').disabled = false;
+                btn.disabled = false;
+                btn.innerText = originalText;
             }
         });
     }
@@ -165,12 +224,17 @@
         .then(res => {
             if(res.paid) {
                 clearInterval(paymentCheckInterval);
-                document.getElementById('payment-modal').innerHTML = `<h3>Success!</h3><p>Passcode: <b>${res.passcode}</b></p><p>Logging you in...</p>`;
+                const modal = document.getElementById('payment-modal').querySelector('div');
+                modal.innerHTML = `
+                    <div class="mb-4 text-green-500 text-5xl animate-bounce"><i class="fas fa-check-circle"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Success!</h3>
+                    <p class="text-gray-600 mb-4">Passcode: <span class="font-mono font-bold bg-gray-100 p-1 rounded text-lg select-all">${res.passcode}</span></p>
+                    <p class="text-sm text-green-600 font-semibold"><i class="fas fa-wifi"></i> Logging you in...</p>
+                `;
 
-                // Auto Login
                 document.getElementById('login-username').value = mobile;
                 document.getElementById('login-password').value = res.passcode;
-                document.getElementById('login-form').submit();
+                setTimeout(() => document.getElementById('login-form').submit(), 1500);
             }
         });
     }
@@ -178,10 +242,10 @@
     function cancelPayment() {
         clearInterval(paymentCheckInterval);
         document.getElementById('payment-modal').classList.add('hidden');
-        document.getElementById('pay-btn').disabled = false;
-        document.getElementById('pay-btn').innerText = "Pay Now";
+        const btn = document.getElementById('pay-btn');
+        btn.disabled = false;
+        btn.innerText = "Proceed to Payment";
     }
 </script>
-
 </body>
 </html>
