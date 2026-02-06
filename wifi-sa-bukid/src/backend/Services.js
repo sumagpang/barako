@@ -21,7 +21,8 @@ var PaymongoService = {
                 quantity: 1
               }
             ],
-            payment_method_types: ["card", "gcash", "grab_pay", "paymaya", "dob", "qrph", "billease"],
+            // Ordered list: GCash first as default preference if UI supports ordering
+            payment_method_types: ["gcash", "card", "paymaya", "grab_pay", "dob", "qrph", "billease"],
             success_url: redirectUrl,
             cancel_url: redirectUrl,
             description: description

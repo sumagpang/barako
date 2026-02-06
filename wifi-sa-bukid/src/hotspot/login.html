@@ -51,7 +51,10 @@
     <div id="purchase-form" class="hidden">
         <p>Selected: <span id="selected-plan-name" style="font-weight:bold;"></span></p>
         <input type="text" id="buy-mobile" placeholder="Enter Mobile Number for Passcode" />
-        <button onclick="initiatePayment()" id="pay-btn">Pay (GCash/Maya/Cards/Bank)</button>
+        <p class="text-sm text-gray-500 mb-2" style="font-size: 0.85em; color: #666;">
+            Payment: GCash (Default), Maya, GrabPay, ShopeePay*, Cards, etc.
+        </p>
+        <button onclick="initiatePayment()" id="pay-btn">Pay Now</button>
     </div>
 
     <!-- Admin Link -->
@@ -176,7 +179,7 @@
         clearInterval(paymentCheckInterval);
         document.getElementById('payment-modal').classList.add('hidden');
         document.getElementById('pay-btn').disabled = false;
-        document.getElementById('pay-btn').innerText = "Pay (GCash/Maya/Cards/Bank)";
+        document.getElementById('pay-btn').innerText = "Pay Now";
     }
 </script>
 
