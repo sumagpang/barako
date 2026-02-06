@@ -78,9 +78,6 @@ function getUsers() {
 
 function getUsersToKick() {
   var users = getUsers();
-  // Logic: Group by mobile, find if LATEST entry is KICK or ACTIVE.
-  // If a user has multiple entries, we honor the status of the most recent one (by date/order).
-  // Assuming appendRow means last is latest.
 
   var userStatusMap = {}; // mobile -> status
 
@@ -239,7 +236,8 @@ function mockSaveUser(user) {
 
 function mockPlans() {
   return [
-    { id: "PLAN1", name: "1 Hour", price: 10, durationMinutes: 60, speedLimit: "5M/5M" },
+    // Updated Plan Prices to 20/50 PHP to strictly meet typical Paymongo minimums
+    { id: "PLAN1", name: "1 Hour", price: 20, durationMinutes: 60, speedLimit: "5M/5M" },
     { id: "PLAN2", name: "1 Day", price: 50, durationMinutes: 1440, speedLimit: "10M/10M" }
   ];
 }

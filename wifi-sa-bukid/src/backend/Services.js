@@ -10,19 +10,21 @@ var PaymongoService = {
         "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":"),
         "Content-Type": "application/json"
       },
+      muteHttpExceptions: true, // IMPORTANT: Inspect errors
       payload: JSON.stringify({
         data: {
           attributes: {
             line_items: [
               {
-                amount: amount * 100, // centavos
+                amount: Math.round(amount * 100), // ensure integer centavos
                 currency: "PHP",
                 name: description,
                 quantity: 1
               }
             ],
-            // Added shopeepay as requested, keeping GCash default (first)
-            payment_method_types: ["gcash", "paymaya", "grab_pay", "shopeepay", "card"],
+            // Removed shopeepay to avoid potential 500 errors if unsupported.
+            // Stick to core supported methods.
+            payment_method_types: ["gcash", "paymaya", "grab_pay", "card"],
             success_url: redirectUrl,
             cancel_url: redirectUrl,
             description: description
@@ -32,7 +34,18 @@ var PaymongoService = {
     };
 
     var response = UrlFetchApp.fetch(url, options);
-    return JSON.parse(response.getContentText());
+    var code = response.getResponseCode();
+    var content = response.getContentText();
+    var json = JSON.parse(content);
+
+    if (code >= 400) {
+      // Log error details for debugging (visible in user's execution transcript)
+      console.error("Paymongo Error " + code + ": " + JSON.stringify(json));
+      var detail = (json.errors && json.errors[0] && json.errors[0].detail) ? json.errors[0].detail : "Unknown Error";
+      throw "Paymongo Error: " + detail;
+    }
+
+    return json;
   },
 
   retrieveCheckoutSession: function(id) {
@@ -44,10 +57,14 @@ var PaymongoService = {
       method: "get",
       headers: {
         "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":")
-      }
+      },
+      muteHttpExceptions: true
     };
 
     var response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() >= 400) {
+       throw "Paymongo Retrieve Error: " + response.getContentText();
+    }
     return JSON.parse(response.getContentText());
   }
 };
