@@ -33,8 +33,19 @@ function doGet(e) {
 function doPost(e) {
   var action = e.parameter.action;
   var payload = e.postData ? JSON.parse(e.postData.contents) : {};
-  var result = {};
 
+  var result = executeAction(action, payload);
+
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function rpc(action, payload) {
+  return executeAction(action, payload || {});
+}
+
+function executeAction(action, payload) {
+  var result = {};
   try {
     switch (action) {
       // Public Actions
@@ -50,44 +61,35 @@ function doPost(e) {
         var amount = payload.amount;
         var mobile = payload.mobile;
         var planId = payload.planId;
-        var mac = payload.mac; // Capture MAC from payload
-        var redirectUrl = "http://hotspot.mikrotik.com/login"; // Redirect back to login
+        var mac = payload.mac;
+        var redirectUrl = "http://hotspot.mikrotik.com/login";
         var description = "WiFi Plan " + planId + " - " + mobile;
-
-        // Store MAC temporarily? No, retrieve checkout session doesn't return custom metadata easily without expansion.
-        // We will pass it in metadata if needed, or rely on client sending it again?
-        // Better: We need to save the MAC when payment completes.
-        // BUT checkPayment receives sourceId/planId/mobile from client. We should trust client to send MAC again in checkPayment?
-        // Or store it in metadata. Paymongo supports metadata.
-        // Let's keep it simple: Client sends MAC in createPayment (for future logging?) and MUST send it in checkPayment to save it.
 
         var session = PaymongoService.createCheckoutSession(amount, description, redirectUrl);
         result = { status: 'success', data: session };
         break;
 
       case 'checkPayment':
-        var sourceId = payload.sourceId; // This is now sessionId
+        var sourceId = payload.sourceId;
         var planId = payload.planId;
         var mobile = payload.mobile;
-        var mac = payload.mac; // Client must send this
+        var mac = payload.mac;
 
         var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
 
         if (sessionData.data.attributes.payment_status === 'paid') {
-            // Payment Confirmed
             var passcode = Math.floor(1000 + Math.random() * 9000).toString();
 
             saveUser({
               mobile: mobile,
               passcode: passcode,
               planId: planId,
-              mac: mac, // Save MAC
+              mac: mac,
               expiry: calculateExpiry(planId),
               status: "ACTIVE",
               synced: false
             });
 
-            // Get actual payment ID if available, else use session ID
             var refId = sourceId;
             var amountPaid = sessionData.data.attributes.line_items[0].amount / 100;
 
@@ -111,11 +113,8 @@ function doPost(e) {
       case 'adminLogin':
         if (checkAdminPassword(payload.password)) {
           var token = Utilities.getUuid();
-
-          // Store token in Cache Service for 6 hours (21600 seconds)
           var cache = CacheService.getScriptCache();
           cache.put("ADMIN_SESSION_" + token, "TRUE", 21600);
-
           result = { status: 'success', token: token };
         } else {
           result = { status: 'error', message: 'Invalid Password' };
@@ -146,9 +145,7 @@ function doPost(e) {
   } catch (err) {
     result = { status: 'error', message: err.toString() };
   }
-
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+  return result;
 }
 
 function verifyAdmin(token) {

@@ -17,6 +17,7 @@
 
   function attemptLogin() {
     const pass = document.getElementById('admin-password-input').value;
+    // Use rpc instead of doPost
     google.script.run.withSuccessHandler(res => {
       if(res.status === 'success') {
         SESSION_TOKEN = res.token;
@@ -25,14 +26,11 @@
       } else {
         alert("Invalid Password");
       }
-    }).doPost({
-      parameter: { action: 'adminLogin' },
-      postData: { contents: JSON.stringify({ password: pass }) }
-    });
+    }).rpc('adminLogin', { password: pass });
   }
 
   function loadDashboard() {
-    const month = document.getElementById('filter-month').value; // Optional filter input
+    const month = document.getElementById('filter-month').value;
     google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleError).getDashboardData(month);
   }
 
@@ -46,7 +44,17 @@
     data.topUsers.forEach(user => {
       const li = document.createElement('li');
       li.className = "py-4 flex justify-between";
-      li.innerHTML = `<span>${user.mobile}</span> <span class="font-bold">₱${user.total}</span>`;
+
+      // Safe rendering
+      const mobileSpan = document.createElement('span');
+      mobileSpan.textContent = user.mobile;
+
+      const totalSpan = document.createElement('span');
+      totalSpan.className = "font-bold";
+      totalSpan.textContent = "₱" + user.total;
+
+      li.appendChild(mobileSpan);
+      li.appendChild(totalSpan);
       topUsersList.appendChild(li);
     });
   }
@@ -60,14 +68,38 @@
     tbody.innerHTML = '';
     data.activeUsers.forEach(user => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${user.mobile}</td>
-        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${user.planId}</td>
-        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm"><span class="bg-green-200 text-green-900 rounded-full px-2 py-1">${user.status}</span></td>
-        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-          <button onclick="disconnectUser('${user.mobile}')" class="text-red-600 hover:text-red-900">Disconnect</button>
-        </td>
-      `;
+
+      // Cell 1: Mobile
+      const tdMobile = document.createElement('td');
+      tdMobile.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
+      tdMobile.textContent = user.mobile;
+      tr.appendChild(tdMobile);
+
+      // Cell 2: Plan
+      const tdPlan = document.createElement('td');
+      tdPlan.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
+      tdPlan.textContent = user.planId;
+      tr.appendChild(tdPlan);
+
+      // Cell 3: Status
+      const tdStatus = document.createElement('td');
+      tdStatus.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
+      const spanStatus = document.createElement('span');
+      spanStatus.className = "bg-green-200 text-green-900 rounded-full px-2 py-1";
+      spanStatus.textContent = user.status;
+      tdStatus.appendChild(spanStatus);
+      tr.appendChild(tdStatus);
+
+      // Cell 4: Action
+      const tdAction = document.createElement('td');
+      tdAction.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
+      const btn = document.createElement('button');
+      btn.className = "text-red-600 hover:text-red-900";
+      btn.textContent = "Disconnect";
+      btn.onclick = function() { disconnectUser(user.mobile); };
+      tdAction.appendChild(btn);
+      tr.appendChild(tdAction);
+
       tbody.appendChild(tr);
     });
   }
@@ -108,10 +140,7 @@
 
     google.script.run.withSuccessHandler(() => {
       alert("Plan Saved!");
-    }).doPost({
-       parameter: { action: 'savePlan' },
-       postData: { contents: JSON.stringify({ token: SESSION_TOKEN, plan: plan }) }
-    });
+    }).rpc('savePlan', { token: SESSION_TOKEN, plan: plan });
   }
 
   // Announcement Logic
@@ -122,16 +151,13 @@
       google.script.run.withSuccessHandler(() => {
         alert("Announcement Posted!");
         textarea.value = "";
-      }).doPost({
-         parameter: { action: 'saveAnnouncement' },
-         postData: { contents: JSON.stringify({ token: SESSION_TOKEN, message: message }) }
-      });
+      }).rpc('saveAnnouncement', { token: SESSION_TOKEN, message: message });
     }
   });
 
   // Settings Logic
   function loadSettings() {
-    const container = document.getElementById('settings'); // Ensure this exists in HTML
+    const container = document.getElementById('settings');
     container.innerHTML = `
        <h2 class="text-xl font-bold mb-4">Settings</h2>
        <div class="bg-white p-4 rounded shadow">
@@ -148,10 +174,7 @@
 
     google.script.run.withSuccessHandler(() => {
       alert("Settings Updated");
-    }).doPost({
-       parameter: { action: 'updateSettings' },
-       postData: { contents: JSON.stringify({ token: SESSION_TOKEN, settings: { adminPassword: newPass } }) }
-    });
+    }).rpc('updateSettings', { token: SESSION_TOKEN, settings: { adminPassword: newPass } });
   }
 
   function handleError(e) {

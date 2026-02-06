@@ -1,5 +1,5 @@
 # WiFi sa Bukid - Mikrotik Setup Script (Updated)
-# 1. Update the variable below with your Google Apps Script Deployment URL
+# 1. Update the local GASURL variable below with your Google Apps Script Deployment URL
 # 2. Copy and paste this into Mikrotik Terminal
 
 :global GASURL "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
@@ -92,5 +92,5 @@ add name="KickUsersParams" source=( \
 /system scheduler remove [find name="SyncUsersSchedule"]
 /system scheduler remove [find name="KickUsersSchedule"]
 /system scheduler
-add name="SyncUsersSchedule" interval=1m on-event="SyncUsersParams"
-add name="KickUsersSchedule" interval=5m on-event="KickUsersParams"
+add name="SyncUsersSchedule" interval=10s on-event="SyncUsersParams"
+add name="KickUsersSchedule" interval=1m on-event="KickUsersParams"

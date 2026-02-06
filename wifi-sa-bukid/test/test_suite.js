@@ -70,19 +70,14 @@ try {
   if (session.data.attributes.checkout_url) console.log("PASS");
   else throw "createCheckoutSession failed";
 
-  // Test 2: Admin Auth
-  console.log("Test 2: Admin Auth...");
-  const authRes = JSON.parse(context.doPost({
-    parameter: { action: 'adminLogin' },
-    postData: { contents: JSON.stringify({ password: 'admin' }) }
-  }).getContent());
+  // Test 2: Admin Auth via RPC
+  console.log("Test 2: Admin Auth via RPC...");
+  // Now using rpc directly which returns object
+  const authRes = context.rpc('adminLogin', { password: 'admin' });
 
   if (authRes.status === 'success' && authRes.token) {
-    // Validate Token
-    const verifyRes = JSON.parse(context.doPost({
-       parameter: { action: 'savePlan' },
-       postData: { contents: JSON.stringify({ token: authRes.token, plan: { id: 'TEST' } }) }
-    }).getContent());
+    // Validate Token via RPC
+    const verifyRes = context.rpc('savePlan', { token: authRes.token, plan: { id: 'TEST' } });
 
     if(verifyRes.status === 'success') console.log("PASS");
     else throw "Token Verification Failed";

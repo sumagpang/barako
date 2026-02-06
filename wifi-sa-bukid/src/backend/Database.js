@@ -4,7 +4,12 @@ function getDbConnection() {
   if (typeof SpreadsheetApp === 'undefined') {
     return null;
   }
-  return SpreadsheetApp.openById(SS_ID);
+  try {
+    return SpreadsheetApp.openById(SS_ID);
+  } catch (e) {
+    console.error("DB Connection Error: " + e);
+    return null;
+  }
 }
 
 // === Settings ===
@@ -73,7 +78,24 @@ function getUsers() {
 
 function getUsersToKick() {
   var users = getUsers();
-  return users.filter(function(u) { return u.status === 'KICK'; }).map(function(u) { return u.mobile; });
+  // Logic: Group by mobile, find if LATEST entry is KICK or ACTIVE.
+  // If a user has multiple entries, we honor the status of the most recent one (by date/order).
+  // Assuming appendRow means last is latest.
+
+  var userStatusMap = {}; // mobile -> status
+
+  users.forEach(function(u) {
+    userStatusMap[u.mobile] = u.status; // Overwrites with latest
+  });
+
+  var kickList = [];
+  for (var mobile in userStatusMap) {
+    if (userStatusMap[mobile] === 'KICK') {
+      kickList.push(mobile);
+    }
+  }
+
+  return kickList;
 }
 
 function getNewUsersSync() {
