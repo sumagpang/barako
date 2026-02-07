@@ -10,21 +10,20 @@ var PaymongoService = {
         "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":"),
         "Content-Type": "application/json"
       },
-      muteHttpExceptions: true, // IMPORTANT: Inspect errors
+      muteHttpExceptions: true,
       payload: JSON.stringify({
         data: {
           attributes: {
             line_items: [
               {
-                amount: Math.round(amount * 100), // ensure integer centavos
+                amount: Math.round(amount * 100),
                 currency: "PHP",
                 name: description,
                 quantity: 1
               }
             ],
-            // Removed shopeepay to avoid potential 500 errors if unsupported.
-            // Stick to core supported methods.
-            payment_method_types: ["gcash", "paymaya", "grab_pay", "card"],
+            // Expanded list: Cards, E-wallets, DOB (Banks), QRPh
+            payment_method_types: ["card", "gcash", "grab_pay", "paymaya", "dob", "qrph"],
             success_url: redirectUrl,
             cancel_url: redirectUrl,
             description: description
@@ -39,7 +38,6 @@ var PaymongoService = {
     var json = JSON.parse(content);
 
     if (code >= 400) {
-      // Log error details for debugging (visible in user's execution transcript)
       console.error("Paymongo Error " + code + ": " + JSON.stringify(json));
       var detail = (json.errors && json.errors[0] && json.errors[0].detail) ? json.errors[0].detail : "Unknown Error";
       throw "Paymongo Error: " + detail;
