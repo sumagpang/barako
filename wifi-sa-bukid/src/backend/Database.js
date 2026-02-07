@@ -39,7 +39,6 @@ function saveSettings(newSettings) {
   if (!ss) return;
 
   var sheet = ss.getSheetByName("Settings");
-  // Simple overwrite for this demo key
   var data = sheet.getDataRange().getValues();
   for(var i=1; i<data.length; i++) {
     if(data[i][0] === 'adminPassword' && newSettings.adminPassword) {
@@ -78,11 +77,10 @@ function getUsers() {
 
 function getUsersToKick() {
   var users = getUsers();
-
-  var userStatusMap = {}; // mobile -> status
+  var userStatusMap = {};
 
   users.forEach(function(u) {
-    userStatusMap[u.mobile] = u.status; // Overwrites with latest
+    userStatusMap[u.mobile] = u.status;
   });
 
   var kickList = [];
@@ -91,7 +89,6 @@ function getUsersToKick() {
       kickList.push(mobile);
     }
   }
-
   return kickList;
 }
 
@@ -133,13 +130,45 @@ function saveUser(user) {
   ]);
 }
 
+function updateUserStatus(mobile, status) {
+  var ss = getDbConnection();
+  if (!ss) return;
+
+  var sheet = ss.getSheetByName("Users");
+  var data = sheet.getDataRange().getValues();
+
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (data[i][0] == mobile) {
+        sheet.getRange(i + 1, 6).setValue(status);
+        sheet.getRange(i + 1, 7).setValue(false);
+        return;
+    }
+  }
+}
+
 // === Plans ===
 function savePlan(plan) {
   var ss = getDbConnection();
   if (!ss) return;
 
   var sheet = ss.getSheetByName("Plans");
-  sheet.appendRow([plan.id, plan.name, plan.price, plan.durationMinutes, plan.speedLimit]);
+  var data = sheet.getDataRange().getValues();
+
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == plan.id) {
+      sheet.getRange(i + 1, 2).setValue(plan.name);
+      sheet.getRange(i + 1, 3).setValue(plan.price);
+      sheet.getRange(i + 1, 4).setValue(plan.durationMinutes);
+      sheet.getRange(i + 1, 5).setValue(plan.speedLimit);
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    sheet.appendRow([plan.id, plan.name, plan.price, plan.durationMinutes, plan.speedLimit]);
+  }
 }
 
 function getPlans() {
@@ -236,7 +265,6 @@ function mockSaveUser(user) {
 
 function mockPlans() {
   return [
-    // Updated Plan Prices to 20/50 PHP to strictly meet typical Paymongo minimums
     { id: "PLAN1", name: "1 Hour", price: 20, durationMinutes: 60, speedLimit: "5M/5M" },
     { id: "PLAN2", name: "1 Day", price: 50, durationMinutes: 1440, speedLimit: "10M/10M" }
   ];

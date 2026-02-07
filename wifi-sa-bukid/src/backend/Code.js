@@ -133,6 +133,12 @@ function executeAction(action, payload) {
         result = { status: 'success' };
         break;
 
+      case 'reconnectUser':
+        verifyAdmin(payload.token);
+        updateUserStatus(payload.mobile, 'ACTIVE');
+        result = { status: 'success' };
+        break;
+
       case 'updateSettings':
         verifyAdmin(payload.token);
         saveSettings(payload.settings);

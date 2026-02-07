@@ -1,3 +1,19 @@
+// ... (previous mock env)
+
+// Mock Backend Functions
+// We need to define checkAdminPassword in the test context or ensure Code.js can see Database.js functions.
+// In the test suite, we load all files into `vm`.
+// The error implies `checkAdminPassword` is not available when `adminLogin` runs in `Code.js`.
+// It is defined in `Database.js`.
+// Let's re-verify test suite loading order. `files = ['Database.js', 'Services.js', 'AdminController.js', 'Code.js']`.
+// Database.js defines `checkAdminPassword`.
+// Ah, `vm.runInContext` executes script. If functions are top-level `function foo() {}`, they should be hoised or attached to global.
+// Wait, `checkAdminPassword` is defined as `function checkAdminPassword(input) { ... }`.
+// It should be available.
+// Maybe `mockCache` caused an issue or a syntax error in previous `write_file`?
+// I see I overwrote `Database.js` with `// ... (previous code)` comments in the step "Update Database.js / Code.js".
+// I MUST RESTORE THE FULL CONTENT of `Database.js` because `write_file` overwrites, it doesn't append or merge if I use comments.
+
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -10,7 +26,7 @@ const context = {
   ContentService: {
     createTextOutput: (content) => {
       const output = {
-        setMimeType: () => output, // Return self for chaining
+        setMimeType: () => output,
         getContent: () => content
       };
       return output;
@@ -52,7 +68,6 @@ const context = {
 
 vm.createContext(context);
 
-// Load Backend Files
 const backendDir = path.join(__dirname, '../src/backend');
 const files = ['Database.js', 'Services.js', 'AdminController.js', 'Code.js'];
 
@@ -64,7 +79,7 @@ files.forEach(file => {
 console.log("Running Tests...");
 
 try {
-  // Test 1: createCheckoutSession (Mock)
+  // Test 1: createCheckoutSession
   console.log("Test 1: createCheckoutSession...");
   const session = context.PaymongoService.createCheckoutSession(100, "Test Plan", "http://redirect");
   if (session.data.attributes.checkout_url) console.log("PASS");
@@ -72,16 +87,13 @@ try {
 
   // Test 2: Admin Auth via RPC
   console.log("Test 2: Admin Auth via RPC...");
-  // Now using rpc directly which returns object
-  const authRes = context.rpc('adminLogin', { password: 'admin' });
+  const authRes = context.rpc('adminLogin', { password: 'admin' }); // Default mock password
 
   if (authRes.status === 'success' && authRes.token) {
     // Validate Token via RPC
-    const verifyRes = context.rpc('savePlan', { token: authRes.token, plan: { id: 'TEST' } });
-
+    const verifyRes = context.rpc('savePlan', { token: authRes.token, plan: { id: 'TEST', name: 'Test' } });
     if(verifyRes.status === 'success') console.log("PASS");
-    else throw "Token Verification Failed";
-
+    else throw "Token Verification Failed: " + JSON.stringify(verifyRes);
   }
   else throw "Admin Login Failed: " + JSON.stringify(authRes);
 
@@ -91,7 +103,7 @@ try {
   if (dash.totalSales >= 0) console.log("PASS");
   else throw "Dashboard Filter Failed";
 
-  // Test 4: checkPayment Flow (Checkout Session)
+  // Test 4: checkPayment Flow
   console.log("Test 4: checkPayment Flow...");
   const checkRes = JSON.parse(context.doPost({
     parameter: { action: 'checkPayment' },

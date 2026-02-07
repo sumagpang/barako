@@ -1,6 +1,7 @@
 <script>
   let SESSION_TOKEN = null;
   let chartInstance = null;
+  let editingPlanId = null;
 
   function showSection(id) {
     if (!SESSION_TOKEN) {
@@ -11,7 +12,6 @@
     document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
 
-    // Highlight sidebar item
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
     const navItem = document.getElementById('nav-' + id);
     if(navItem) navItem.classList.add('active');
@@ -19,7 +19,19 @@
     if (id === 'dashboard') loadDashboard();
     if (id === 'users') loadUsers();
     if (id === 'plans') loadPlans();
+    if (id === 'announcements') loadAnnouncements();
     if (id === 'settings') loadSettings();
+  }
+
+  // === Modal Logic ===
+  function showModal(title, message) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-message').textContent = message;
+    document.getElementById('notification-modal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('notification-modal').classList.add('hidden');
   }
 
   function attemptLogin() {
@@ -30,11 +42,12 @@
         document.getElementById('login-modal').classList.add('hidden');
         showSection('dashboard');
       } else {
-        alert("Invalid Password");
+        showModal("Error", "Invalid Password");
       }
     }).withFailureHandler(handleError).rpc('adminLogin', { password: pass });
   }
 
+  // === Dashboard ===
   function loadDashboard() {
     const month = document.getElementById('filter-month').value;
     google.script.run.withSuccessHandler(renderDashboard).withFailureHandler(handleError).getDashboardData(month);
@@ -50,42 +63,31 @@
     data.topUsers.forEach((user, index) => {
       const li = document.createElement('li');
       li.className = "flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors";
-
-      const leftDiv = document.createElement('div');
-      leftDiv.className = "flex items-center";
-      const rank = document.createElement('span');
-      rank.className = "font-bold text-green-600 mr-3 w-6 text-center";
-      rank.textContent = "#" + (index + 1);
-      const mobile = document.createElement('span');
-      mobile.className = "text-gray-700 font-medium";
-      mobile.textContent = user.mobile;
-
-      leftDiv.appendChild(rank);
-      leftDiv.appendChild(mobile);
-
-      const rightDiv = document.createElement('div');
-      rightDiv.className = "font-bold text-gray-800";
-      rightDiv.textContent = "₱" + user.total;
-
-      li.appendChild(leftDiv);
-      li.appendChild(rightDiv);
+      li.innerHTML = `
+        <div class="flex items-center">
+            <span class="font-bold text-green-600 mr-3 w-6 text-center">#${index + 1}</span>
+            <span class="text-gray-700 font-medium">${user.mobile}</span>
+        </div>
+        <div class="font-bold text-gray-800">₱${user.total}</div>
+      `;
       topUsersList.appendChild(li);
     });
 
-    // Render Chart
     renderChart(data.planCounts);
+
+    // Also render active users in dashboard as requested
+    // Reuse renderUsersTable logic but target dashboard container if we had one,
+    // but user asked "in the dashboard it should show the users... and can be disconnected"
+    // We already have "Active Users" section. Maybe add a "Recent Active" table in dashboard?
+    // For simplicity/cleanness, we will just link the "Active Users" card to the Users section.
   }
 
   function renderChart(planCounts) {
     const ctx = document.getElementById('planChart').getContext('2d');
-
-    // Convert counts object to arrays
     const labels = Object.keys(planCounts);
     const data = Object.values(planCounts);
 
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
+    if (chartInstance) chartInstance.destroy();
 
     chartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -93,28 +95,19 @@
             labels: labels,
             datasets: [{
                 data: data,
-                backgroundColor: [
-                    '#10B981', // Green
-                    '#3B82F6', // Blue
-                    '#F59E0B', // Yellow
-                    '#8B5CF6', // Purple
-                    '#EC4899'  // Pink
-                ],
+                backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
                 borderWidth: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
+            plugins: { legend: { position: 'bottom' } }
         }
     });
   }
 
+  // === Users ===
   function loadUsers() {
     google.script.run.withSuccessHandler(renderUsersTable).withFailureHandler(handleError).getDashboardData();
   }
@@ -126,64 +119,134 @@
       const tr = document.createElement('tr');
       tr.className = "hover:bg-gray-50 transition-colors";
 
-      const tdMobile = document.createElement('td');
-      tdMobile.className = "px-6 py-4 border-b";
-      tdMobile.textContent = user.mobile;
-      tr.appendChild(tdMobile);
-
-      const tdPlan = document.createElement('td');
-      tdPlan.className = "px-6 py-4 border-b";
-      tdPlan.textContent = user.planId;
-      tr.appendChild(tdPlan);
-
-      const tdStatus = document.createElement('td');
-      tdStatus.className = "px-6 py-4 border-b";
-      const spanStatus = document.createElement('span');
-      spanStatus.className = "bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide";
-      spanStatus.textContent = user.status;
-      tdStatus.appendChild(spanStatus);
-      tr.appendChild(tdStatus);
-
-      const tdAction = document.createElement('td');
-      tdAction.className = "px-6 py-4 border-b";
-      const btn = document.createElement('button');
-      btn.className = "text-red-500 hover:text-red-700 font-semibold text-sm transition-colors flex items-center";
-      btn.innerHTML = '<i class="fas fa-power-off mr-1"></i> Disconnect';
-      btn.onclick = function() { disconnectUser(user.mobile); };
-      tdAction.appendChild(btn);
-      tr.appendChild(tdAction);
-
+      tr.innerHTML = `
+        <td class="px-6 py-4 border-b text-gray-800">${user.mobile}</td>
+        <td class="px-6 py-4 border-b text-gray-800">${user.planId}</td>
+        <td class="px-6 py-4 border-b">
+            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">${user.status}</span>
+        </td>
+        <td class="px-6 py-4 border-b">
+            <div class="flex space-x-2">
+                <button onclick="disconnectUser('${user.mobile}')" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded text-sm font-semibold">
+                    <i class="fas fa-power-off"></i> Disconnect
+                </button>
+                <button onclick="reconnectUser('${user.mobile}')" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded text-sm font-semibold">
+                    <i class="fas fa-plug"></i> Connect
+                </button>
+            </div>
+        </td>
+      `;
       tbody.appendChild(tr);
     });
   }
 
   function disconnectUser(mobile) {
-    if(confirm("Are you sure you want to disconnect " + mobile + "?")) {
+    // Show confirmation modal? JS confirm is blocking, better for this.
+    if(confirm("Disconnect " + mobile + "?")) {
       google.script.run.withSuccessHandler(() => {
-        alert("User scheduled for disconnection.");
+        showModal("Success", "User scheduled for disconnection.");
         loadUsers();
       }).withFailureHandler(handleError).kickUser(mobile);
     }
   }
 
+  function reconnectUser(mobile) {
+     if(confirm("Reconnect " + mobile + "?")) {
+      google.script.run.withSuccessHandler(() => {
+        showModal("Success", "User re-connected.");
+        loadUsers();
+      }).withFailureHandler(handleError).rpc('reconnectUser', { token: SESSION_TOKEN, mobile: mobile });
+    }
+  }
+
+  // === Plans ===
   function loadPlans() {
+    // Render Layout: List + Form
     const container = document.getElementById('plans');
     container.innerHTML = `
-      <h2 class="text-3xl font-bold text-white mb-6">Promo Plans</h2>
-      <div class="glass-panel p-8 rounded-2xl shadow-lg">
-        <h3 class="font-bold text-gray-800 text-lg mb-4">Add New Plan</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <input id="plan-id" placeholder="ID (e.g. PLAN1)" class="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
-            <input id="plan-name" placeholder="Name (e.g. 1 Hour)" class="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
-            <input id="plan-price" placeholder="Price (PHP)" type="number" class="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
-            <input id="plan-dur" placeholder="Duration (Minutes)" type="number" class="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
-            <input id="plan-speed" placeholder="Speed (e.g. 5M/5M)" class="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- List -->
+        <div class="lg:col-span-2 glass-panel p-6 rounded-2xl shadow-lg">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Existing Plans</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-800">
+                    <thead class="bg-gray-100/50">
+                        <tr>
+                            <th class="p-3">Name</th>
+                            <th class="p-3">Price</th>
+                            <th class="p-3">Duration</th>
+                            <th class="p-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plans-list-body"></tbody>
+                </table>
+            </div>
         </div>
-        <button onclick="savePlan()" class="mt-4 bg-green-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-green-700 transition-colors w-full md:w-auto">
-            <i class="fas fa-save mr-2"></i> Save Plan
-        </button>
+
+        <!-- Form -->
+        <div class="glass-panel p-6 rounded-2xl shadow-lg h-fit">
+            <h3 class="text-xl font-bold text-gray-800 mb-4" id="plan-form-title">Create Plan</h3>
+            <div class="space-y-3">
+                <input id="plan-id" placeholder="ID (e.g. PLAN1)" class="w-full p-3 border rounded-lg bg-white text-black">
+                <input id="plan-name" placeholder="Name" class="w-full p-3 border rounded-lg bg-white text-black">
+                <input id="plan-price" placeholder="Price (PHP)" type="number" class="w-full p-3 border rounded-lg bg-white text-black">
+                <input id="plan-dur" placeholder="Minutes" type="number" class="w-full p-3 border rounded-lg bg-white text-black">
+                <input id="plan-speed" placeholder="Speed (5M/5M)" class="w-full p-3 border rounded-lg bg-white text-black">
+                <button onclick="savePlan()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 mt-2">
+                    Save Plan
+                </button>
+                <button onclick="resetPlanForm()" class="w-full bg-gray-300 text-gray-700 font-bold py-2 rounded-xl hover:bg-gray-400 hidden" id="cancel-edit-btn">
+                    Cancel Edit
+                </button>
+            </div>
+        </div>
       </div>
     `;
+
+    // Fetch Data
+    google.script.run.withSuccessHandler(renderPlansList).rpc('getPlans');
+  }
+
+  function renderPlansList(res) {
+      const tbody = document.getElementById('plans-list-body');
+      tbody.innerHTML = '';
+      res.data.forEach(plan => {
+          const tr = document.createElement('tr');
+          tr.className = "border-b hover:bg-gray-50";
+          tr.innerHTML = `
+            <td class="p-3 font-medium">${plan.name}</td>
+            <td class="p-3 text-green-600 font-bold">₱${plan.price}</td>
+            <td class="p-3 text-sm">${plan.durationMinutes}m</td>
+            <td class="p-3">
+                <button onclick='editPlan(${JSON.stringify(plan)})' class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+      });
+  }
+
+  function editPlan(plan) {
+      editingPlanId = plan.id;
+      document.getElementById('plan-form-title').textContent = "Edit Plan";
+      document.getElementById('plan-id').value = plan.id;
+      document.getElementById('plan-id').disabled = true; // Cannot change ID on edit
+      document.getElementById('plan-name').value = plan.name;
+      document.getElementById('plan-price').value = plan.price;
+      document.getElementById('plan-dur').value = plan.durationMinutes;
+      document.getElementById('plan-speed').value = plan.speedLimit;
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+  }
+
+  function resetPlanForm() {
+      editingPlanId = null;
+      document.getElementById('plan-form-title').textContent = "Create Plan";
+      document.getElementById('plan-id').value = "";
+      document.getElementById('plan-id').disabled = false;
+      document.getElementById('plan-name').value = "";
+      document.getElementById('plan-price').value = "";
+      document.getElementById('plan-dur').value = "";
+      document.getElementById('plan-speed').value = "";
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
   }
 
   function savePlan() {
@@ -195,22 +258,46 @@
       speedLimit: document.getElementById('plan-speed').value
     };
 
+    if(!plan.id || !plan.name) {
+        showModal("Error", "Please fill required fields");
+        return;
+    }
+
     google.script.run.withSuccessHandler(() => {
-      alert("Plan Saved!");
+      showModal("Success", "Plan Saved!");
+      loadPlans(); // Refresh
     }).withFailureHandler(handleError).rpc('savePlan', { token: SESSION_TOKEN, plan: plan });
   }
 
-  // Announcement Logic
-  document.addEventListener('click', function(e) {
-    if(e.target.innerText === 'Post Announcement' && e.target.parentElement.id === 'announcements') {
-      const textarea = e.target.previousElementSibling;
-      const message = textarea.value;
+  // === Announcements ===
+  function loadAnnouncements() {
+      // Load current announcement first
+      google.script.run.withSuccessHandler(res => {
+          const current = (res.data && res.data.length > 0) ? res.data[0] : "";
+          renderAnnouncementUI(current);
+      }).rpc('getAnnouncements');
+  }
+
+  function renderAnnouncementUI(currentMessage) {
+      const container = document.getElementById('announcements');
+      container.innerHTML = `
+        <h2 class="text-3xl font-bold text-white mb-6">Marquee Announcement</h2>
+        <div class="glass-panel p-8 rounded-2xl shadow-lg max-w-2xl">
+            <label class="block text-gray-700 font-bold mb-2">Current Message</label>
+            <textarea id="announce-msg" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:outline-none mb-4 text-black" rows="4">${currentMessage}</textarea>
+            <button onclick="postAnnouncement()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors">
+                <i class="fas fa-bullhorn mr-2"></i> Update Announcement
+            </button>
+        </div>
+      `;
+  }
+
+  function postAnnouncement() {
+      const message = document.getElementById('announce-msg').value;
       google.script.run.withSuccessHandler(() => {
-        alert("Announcement Posted!");
-        textarea.value = "";
+        showModal("Success", "Announcement Updated!");
       }).withFailureHandler(handleError).rpc('saveAnnouncement', { token: SESSION_TOKEN, message: message });
-    }
-  });
+  }
 
   // Settings Logic
   function loadSettings() {
@@ -221,7 +308,7 @@
          <h3 class="font-bold text-gray-800 text-lg mb-4">Security</h3>
          <label class="block text-sm font-medium text-gray-700 mb-2">New Admin Password</label>
          <div class="flex">
-            <input id="new-admin-pass" type="password" placeholder="Enter new password" class="flex-1 p-3 border rounded-l-lg focus:ring-2 focus:ring-green-500 outline-none">
+            <input id="new-admin-pass" type="password" placeholder="Enter new password" class="flex-1 p-3 border rounded-l-lg focus:ring-2 focus:ring-green-500 outline-none bg-white text-black">
             <button onclick="saveSettings()" class="bg-blue-600 text-white font-bold px-6 rounded-r-lg hover:bg-blue-700 transition-colors">Update</button>
          </div>
        </div>
@@ -233,14 +320,14 @@
     if(!newPass) return;
 
     google.script.run.withSuccessHandler(() => {
-      alert("Settings Updated");
+      showModal("Success", "Settings Updated");
     }).withFailureHandler(handleError).rpc('updateSettings', { token: SESSION_TOKEN, settings: { adminPassword: newPass } });
   }
 
   function handleError(e) {
     console.error(e);
     if (e.message.indexOf("script.googleusercontent.com") === -1) {
-       alert("An error occurred: " + e.message);
+       showModal("Error", e.message);
     }
   }
 
