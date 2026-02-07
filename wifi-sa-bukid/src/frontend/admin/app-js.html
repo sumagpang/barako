@@ -26,7 +26,7 @@
       } else {
         alert("Invalid Password");
       }
-    }).rpc('adminLogin', { password: pass });
+    }).withFailureHandler(handleError).rpc('adminLogin', { password: pass });
   }
 
   function loadDashboard() {
@@ -45,7 +45,6 @@
       const li = document.createElement('li');
       li.className = "py-4 flex justify-between";
 
-      // Safe rendering
       const mobileSpan = document.createElement('span');
       mobileSpan.textContent = user.mobile;
 
@@ -60,7 +59,7 @@
   }
 
   function loadUsers() {
-    google.script.run.withSuccessHandler(renderUsersTable).getDashboardData();
+    google.script.run.withSuccessHandler(renderUsersTable).withFailureHandler(handleError).getDashboardData();
   }
 
   function renderUsersTable(data) {
@@ -69,19 +68,16 @@
     data.activeUsers.forEach(user => {
       const tr = document.createElement('tr');
 
-      // Cell 1: Mobile
       const tdMobile = document.createElement('td');
       tdMobile.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
       tdMobile.textContent = user.mobile;
       tr.appendChild(tdMobile);
 
-      // Cell 2: Plan
       const tdPlan = document.createElement('td');
       tdPlan.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
       tdPlan.textContent = user.planId;
       tr.appendChild(tdPlan);
 
-      // Cell 3: Status
       const tdStatus = document.createElement('td');
       tdStatus.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
       const spanStatus = document.createElement('span');
@@ -90,7 +86,6 @@
       tdStatus.appendChild(spanStatus);
       tr.appendChild(tdStatus);
 
-      // Cell 4: Action
       const tdAction = document.createElement('td');
       tdAction.className = "px-5 py-5 border-b border-gray-200 bg-white text-sm";
       const btn = document.createElement('button');
@@ -109,7 +104,7 @@
       google.script.run.withSuccessHandler(() => {
         alert("User scheduled for disconnection.");
         loadUsers();
-      }).kickUser(mobile);
+      }).withFailureHandler(handleError).kickUser(mobile);
     }
   }
 
@@ -140,7 +135,7 @@
 
     google.script.run.withSuccessHandler(() => {
       alert("Plan Saved!");
-    }).rpc('savePlan', { token: SESSION_TOKEN, plan: plan });
+    }).withFailureHandler(handleError).rpc('savePlan', { token: SESSION_TOKEN, plan: plan });
   }
 
   // Announcement Logic
@@ -151,7 +146,7 @@
       google.script.run.withSuccessHandler(() => {
         alert("Announcement Posted!");
         textarea.value = "";
-      }).rpc('saveAnnouncement', { token: SESSION_TOKEN, message: message });
+      }).withFailureHandler(handleError).rpc('saveAnnouncement', { token: SESSION_TOKEN, message: message });
     }
   });
 
@@ -174,12 +169,15 @@
 
     google.script.run.withSuccessHandler(() => {
       alert("Settings Updated");
-    }).rpc('updateSettings', { token: SESSION_TOKEN, settings: { adminPassword: newPass } });
+    }).withFailureHandler(handleError).rpc('updateSettings', { token: SESSION_TOKEN, settings: { adminPassword: newPass } });
   }
 
   function handleError(e) {
     console.error(e);
-    alert("An error occurred: " + e.message);
+    // Suppress OAuth dialog errors if they occur silently, but alert others
+    if (e.message.indexOf("script.googleusercontent.com") === -1) {
+       alert("An error occurred: " + e.message);
+    }
   }
 
   window.onload = function() {
