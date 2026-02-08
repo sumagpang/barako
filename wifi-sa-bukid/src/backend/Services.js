@@ -64,6 +64,32 @@ var PaymongoService = {
        throw "Paymongo Retrieve Error: " + response.getContentText();
     }
     return JSON.parse(response.getContentText());
+  },
+
+  createWebhook: function(targetUrl) {
+    if (typeof UrlFetchApp === 'undefined') return { data: { id: "hook_mock" } };
+
+    var keys = getApiKeys();
+    var url = "https://api.paymongo.com/v1/webhooks";
+    var options = {
+      method: "post",
+      headers: {
+        "Authorization": "Basic " + Utilities.base64Encode(keys.PAYMONGO_SECRET_KEY + ":"),
+        "Content-Type": "application/json"
+      },
+      muteHttpExceptions: true,
+      payload: JSON.stringify({
+        data: {
+          attributes: {
+            events: ["checkout_session.payment.paid"],
+            url: targetUrl
+          }
+        }
+      })
+    };
+
+    var response = UrlFetchApp.fetch(url, options);
+    return JSON.parse(response.getContentText());
   }
 };
 

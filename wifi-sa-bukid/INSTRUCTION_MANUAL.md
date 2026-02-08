@@ -175,6 +175,13 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Click **Deploy**.
     *   **Copy the Web App URL** (ends in `/exec`).
 
+9.  **Setup Paymongo Webhook (Automatic Connection):**
+    *   Once deployed as a Web App, go back to the Script Editor.
+    *   Select `setupWebhook` from the function dropdown.
+    *   Click **Run**.
+    *   Check the Execution Log. It should say "Webhook Created".
+    *   This ensures that even if the user closes the browser after payment, the system will still process the transaction and send the SMS passcode.
+
 ---
 
 ## 5. Frontend & Hotspot Setup

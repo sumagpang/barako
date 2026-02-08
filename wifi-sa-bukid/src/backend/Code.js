@@ -41,6 +41,39 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // Handle Paymongo Webhook
+  if (!e.parameter.action && e.postData) {
+      try {
+          var hook = JSON.parse(e.postData.contents);
+          if (hook.data && hook.data.attributes && hook.data.attributes.type === 'checkout_session.payment.paid') {
+              var session = hook.data.attributes.data;
+              var sourceId = session.id;
+
+              // We need to parse metadata from description or verify with session retrieve
+              // Unfortunately, Paymongo webhook payload for checkout session might not have all custom fields easily.
+              // But we can retrieve the session details again to be sure.
+              var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
+              var desc = sessionData.data.attributes.description || "";
+              // Description format: "WiFi Plan {planId} - {mobile}"
+              // OR we can store metadata during creation? We didn't.
+              // Let's parse the description.
+              var parts = desc.split(" - ");
+              if(parts.length >= 2) {
+                  var planId = parts[0].replace("WiFi Plan ", "");
+                  var mobile = parts[1];
+                  // MAC is harder. We might not have it in description.
+                  // But usually the user is already created via polling.
+                  // This is a failsafe.
+                  processSuccessfulPayment(sourceId, planId, mobile, null);
+              }
+          }
+          return ContentService.createTextOutput("Webhook Received");
+      } catch (err) {
+          console.error("Webhook Error: " + err);
+          return ContentService.createTextOutput("Webhook Error");
+      }
+  }
+
   var action = e.parameter.action;
   var payload = e.postData ? JSON.parse(e.postData.contents) : {};
 
@@ -52,6 +85,68 @@ function doPost(e) {
 
 function rpc(action, payload) {
   return executeAction(action, payload || {});
+}
+
+function setupWebhook() {
+  var url = ScriptApp.getService().getUrl();
+  if (!url || url.indexOf("/exec") === -1) {
+    Logger.log("Please deploy as Web App first.");
+    return;
+  }
+
+  try {
+     var res = PaymongoService.createWebhook(url);
+     Logger.log("Webhook Created: " + JSON.stringify(res));
+  } catch (e) {
+     Logger.log("Error creating webhook: " + e);
+  }
+}
+
+function processSuccessfulPayment(sourceId, planId, mobile, mac) {
+    // Check idempotency: if transaction exists, do nothing
+    var txs = getTransactions();
+    var exists = txs.find(function(t) { return t.refId === sourceId; });
+    if (exists) return { status: 'success', paid: true, passcode: "ALREADY_PROCESSED", mobile: mobile };
+
+    var passcode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Get amount from session (we need to retrieve it if not passed, but let's assume valid planId price or fetch session)
+    // To be safe, let's fetch session again or get plan price.
+    // Fetching session is safer for amount.
+    var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
+    var amountPaid = sessionData.data.attributes.line_items[0].amount / 100;
+
+    saveUser({
+      mobile: mobile,
+      passcode: passcode,
+      planId: planId,
+      mac: mac,
+      expiry: calculateExpiry(planId),
+      status: "ACTIVE",
+      synced: false
+    });
+
+    saveTransaction({
+       refId: sourceId,
+       mobile: mobile,
+       planId: planId,
+       amount: amountPaid,
+       status: 'PAID'
+    });
+
+    // Get plan name for SMS
+    var plans = getPlans();
+    var plan = plans.find(function(p) { return p.id === planId; });
+    var planName = plan ? plan.name : planId;
+
+    try {
+      var message = "You bought " + planName + ". User: " + mobile + ", Passcode: " + passcode + ". Enjoy WiFi sa Bukid!";
+      SemaphoreService.sendSMS(mobile, message);
+    } catch (smsErr) {
+      console.error("SMS Failed: " + smsErr);
+    }
+
+    return { status: 'success', paid: true, passcode: passcode, mobile: mobile };
 }
 
 function executeAction(action, payload) {
@@ -90,42 +185,7 @@ function executeAction(action, payload) {
         var sessionData = PaymongoService.retrieveCheckoutSession(sourceId);
 
         if (sessionData.data.attributes.payment_status === 'paid') {
-            var passcode = Math.floor(1000 + Math.random() * 9000).toString();
-
-            saveUser({
-              mobile: mobile,
-              passcode: passcode,
-              planId: planId,
-              mac: mac,
-              expiry: calculateExpiry(planId),
-              status: "ACTIVE",
-              synced: false
-            });
-
-            var refId = sourceId;
-            var amountPaid = sessionData.data.attributes.line_items[0].amount / 100;
-
-            saveTransaction({
-               refId: refId,
-               mobile: mobile,
-               planId: planId,
-               amount: amountPaid,
-               status: 'PAID'
-            });
-
-            // Get plan name for SMS
-            var plans = getPlans();
-            var plan = plans.find(function(p) { return p.id === planId; });
-            var planName = plan ? plan.name : planId;
-
-            try {
-              var message = "You bought " + planName + ". User: " + mobile + ", Passcode: " + passcode + ". Enjoy WiFi sa Bukid!";
-              SemaphoreService.sendSMS(mobile, message);
-            } catch (smsErr) {
-              console.error("SMS Failed: " + smsErr);
-            }
-
-            result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
+            result = processSuccessfulPayment(sourceId, planId, mobile, mac);
         } else {
             result = { status: 'success', paid: false };
         }

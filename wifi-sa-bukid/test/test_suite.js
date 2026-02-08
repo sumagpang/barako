@@ -112,6 +112,45 @@ try {
   if (statusRes.status === 'success' && statusRes.passcode) console.log("PASS");
   else throw "checkUserStatus Failed: " + JSON.stringify(statusRes);
 
+  // Test 6: Webhook
+  console.log("Test 6: Webhook...");
+  // Mock doPost
+  const hookPayload = {
+      data: {
+          attributes: {
+              type: 'checkout_session.payment.paid',
+              data: {
+                  id: 'cs_hook_123'
+              }
+          }
+      }
+  };
+
+  // Mock Paymongo Retrieve for this hook (since Code.js calls retrieveCheckoutSession)
+  const originalRetrieve = context.PaymongoService.retrieveCheckoutSession;
+  context.PaymongoService.retrieveCheckoutSession = (id) => {
+      return {
+          data: {
+              attributes: {
+                  payment_status: 'paid',
+                  description: 'WiFi Plan PLAN1 - 0917HOOK123',
+                  line_items: [{ amount: 1000 }]
+              }
+          }
+      };
+  };
+
+  const postRes = context.doPost({
+      parameter: {},
+      postData: { contents: JSON.stringify(hookPayload) }
+  });
+
+  if (postRes.getContent() === "Webhook Received") console.log("PASS");
+  else throw "Webhook Failed: " + postRes.getContent();
+
+  // Restore mock
+  context.PaymongoService.retrieveCheckoutSession = originalRetrieve;
+
   console.log("All Tests Passed!");
 
 } catch (err) {
