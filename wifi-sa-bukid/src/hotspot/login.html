@@ -166,7 +166,13 @@
         .then(res => res.json())
         .then(res => {
             if(res.status === 'success' && res.data.length > 0) {
-                document.getElementById('announcement-text').innerText = res.data.join(" | ");
+                const messages = res.data
+                    .filter(a => a.active === true || a.active === "true")
+                    .map(a => a.message);
+
+                if (messages.length > 0) {
+                    document.getElementById('announcement-text').innerText = messages.join(" | ");
+                }
             }
         });
     }

@@ -101,7 +101,11 @@ function executeAction(action, payload) {
                status: 'PAID'
             });
 
-            SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
+            try {
+              SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
+            } catch (smsErr) {
+              console.error("SMS Failed: " + smsErr);
+            }
 
             result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
         } else {
@@ -127,9 +131,21 @@ function executeAction(action, payload) {
         result = { status: 'success' };
         break;
 
+      case 'deletePlan':
+        verifyAdmin(payload.token);
+        deletePlan(payload.id);
+        result = { status: 'success' };
+        break;
+
       case 'saveAnnouncement':
         verifyAdmin(payload.token);
-        saveAnnouncement(payload.message);
+        saveAnnouncement(payload.data);
+        result = { status: 'success' };
+        break;
+
+      case 'deleteAnnouncement':
+        verifyAdmin(payload.token);
+        deleteAnnouncement(payload.id);
         result = { status: 'success' };
         break;
 
@@ -156,10 +172,8 @@ function executeAction(action, payload) {
 
 function verifyAdmin(token) {
   if (!token) throw "Unauthorized";
-
   var cache = CacheService.getScriptCache();
   var session = cache.get("ADMIN_SESSION_" + token);
-
   if (session !== "TRUE") {
     throw "Unauthorized - Session Expired";
   }

@@ -2,6 +2,7 @@
   let SESSION_TOKEN = null;
   let chartInstance = null;
   let editingPlanId = null;
+  let editingAnnounceId = null;
 
   function showSection(id) {
     if (!SESSION_TOKEN) {
@@ -56,30 +57,32 @@
   function renderDashboard(data) {
     document.getElementById('total-sales').textContent = "₱" + data.totalSales;
     document.getElementById('active-users-count').textContent = data.activeUsersCount;
-    document.getElementById('total-traffic').textContent = data.traffic.download + " / " + data.traffic.upload;
+    // Traffic stats
+    document.getElementById('total-traffic').textContent = "N/A";
 
-    const topUsersList = document.getElementById('top-users-list');
-    topUsersList.innerHTML = '';
-    data.topUsers.forEach((user, index) => {
-      const li = document.createElement('li');
-      li.className = "flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors";
-      li.innerHTML = `
-        <div class="flex items-center">
-            <span class="font-bold text-green-600 mr-3 w-6 text-center">#${index + 1}</span>
-            <span class="text-gray-700 font-medium">${user.mobile}</span>
-        </div>
-        <div class="font-bold text-gray-800">₱${user.total}</div>
-      `;
-      topUsersList.appendChild(li);
+    // Render Active Users Table (Connected Users)
+    const connectedBody = document.getElementById('connected-users-body');
+    connectedBody.innerHTML = '';
+
+    // Filter active users
+    const connectedUsers = data.activeUsers.filter(u => u.status === 'ACTIVE');
+
+    connectedUsers.forEach(user => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-gray-100 hover:bg-gray-50";
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-gray-800 font-medium">${user.mobile}</td>
+            <td class="py-3 px-4 text-gray-600 font-mono text-xs">${user.mac || 'Unknown'}</td>
+            <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
+            <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
+            <td class="py-3 px-4">
+                <button onclick="disconnectUser('${user.mobile}')" class="text-red-500 hover:text-red-700 text-xs font-bold">DISCONNECT</button>
+            </td>
+        `;
+        connectedBody.appendChild(tr);
     });
 
     renderChart(data.planCounts);
-
-    // Also render active users in dashboard as requested
-    // Reuse renderUsersTable logic but target dashboard container if we had one,
-    // but user asked "in the dashboard it should show the users... and can be disconnected"
-    // We already have "Active Users" section. Maybe add a "Recent Active" table in dashboard?
-    // For simplicity/cleanness, we will just link the "Active Users" card to the Users section.
   }
 
   function renderChart(planCounts) {
@@ -141,11 +144,11 @@
   }
 
   function disconnectUser(mobile) {
-    // Show confirmation modal? JS confirm is blocking, better for this.
     if(confirm("Disconnect " + mobile + "?")) {
       google.script.run.withSuccessHandler(() => {
         showModal("Success", "User scheduled for disconnection.");
         loadUsers();
+        loadDashboard(); // Refresh both if called from dashboard
       }).withFailureHandler(handleError).kickUser(mobile);
     }
   }
@@ -161,11 +164,9 @@
 
   // === Plans ===
   function loadPlans() {
-    // Render Layout: List + Form
     const container = document.getElementById('plans');
     container.innerHTML = `
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- List -->
         <div class="lg:col-span-2 glass-panel p-6 rounded-2xl shadow-lg">
             <h3 class="text-xl font-bold text-gray-800 mb-4">Existing Plans</h3>
             <div class="overflow-x-auto">
@@ -183,7 +184,6 @@
             </div>
         </div>
 
-        <!-- Form -->
         <div class="glass-panel p-6 rounded-2xl shadow-lg h-fit">
             <h3 class="text-xl font-bold text-gray-800 mb-4" id="plan-form-title">Create Plan</h3>
             <div class="space-y-3">
@@ -203,7 +203,6 @@
       </div>
     `;
 
-    // Fetch Data
     google.script.run.withSuccessHandler(renderPlansList).rpc('getPlans');
   }
 
@@ -219,6 +218,7 @@
             <td class="p-3 text-sm">${plan.durationMinutes}m</td>
             <td class="p-3">
                 <button onclick='editPlan(${JSON.stringify(plan)})' class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                <button onclick="deletePlan('${plan.id}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
             </td>
           `;
           tbody.appendChild(tr);
@@ -229,12 +229,21 @@
       editingPlanId = plan.id;
       document.getElementById('plan-form-title').textContent = "Edit Plan";
       document.getElementById('plan-id').value = plan.id;
-      document.getElementById('plan-id').disabled = true; // Cannot change ID on edit
+      document.getElementById('plan-id').disabled = true;
       document.getElementById('plan-name').value = plan.name;
       document.getElementById('plan-price').value = plan.price;
       document.getElementById('plan-dur').value = plan.durationMinutes;
       document.getElementById('plan-speed').value = plan.speedLimit;
       document.getElementById('cancel-edit-btn').classList.remove('hidden');
+  }
+
+  function deletePlan(id) {
+      if(confirm("Delete Plan " + id + "?")) {
+          google.script.run.withSuccessHandler(() => {
+              showModal("Success", "Plan Deleted");
+              loadPlans();
+          }).withFailureHandler(handleError).rpc('deletePlan', { token: SESSION_TOKEN, id: id });
+      }
   }
 
   function resetPlanForm() {
@@ -265,38 +274,104 @@
 
     google.script.run.withSuccessHandler(() => {
       showModal("Success", "Plan Saved!");
-      loadPlans(); // Refresh
+      loadPlans();
     }).withFailureHandler(handleError).rpc('savePlan', { token: SESSION_TOKEN, plan: plan });
   }
 
   // === Announcements ===
   function loadAnnouncements() {
-      // Load current announcement first
-      google.script.run.withSuccessHandler(res => {
-          const current = (res.data && res.data.length > 0) ? res.data[0] : "";
-          renderAnnouncementUI(current);
-      }).rpc('getAnnouncements');
-  }
-
-  function renderAnnouncementUI(currentMessage) {
       const container = document.getElementById('announcements');
       container.innerHTML = `
-        <h2 class="text-3xl font-bold text-white mb-6">Marquee Announcement</h2>
-        <div class="glass-panel p-8 rounded-2xl shadow-lg max-w-2xl">
-            <label class="block text-gray-700 font-bold mb-2">Current Message</label>
-            <textarea id="announce-msg" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:outline-none mb-4 text-black" rows="4">${currentMessage}</textarea>
-            <button onclick="postAnnouncement()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors">
-                <i class="fas fa-bullhorn mr-2"></i> Update Announcement
-            </button>
+        <h2 class="text-3xl font-bold text-white mb-6">Announcements</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 glass-panel p-6 rounded-2xl shadow-lg">
+                <table class="w-full text-left text-gray-800">
+                    <thead class="bg-gray-100/50">
+                        <tr>
+                            <th class="p-3">Message</th>
+                            <th class="p-3">Active</th>
+                            <th class="p-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="announce-list-body"></tbody>
+                </table>
+            </div>
+
+            <div class="glass-panel p-6 rounded-2xl shadow-lg h-fit">
+                <h3 class="text-xl font-bold text-gray-800 mb-4" id="announce-form-title">Create Announcement</h3>
+                <input type="hidden" id="announce-id">
+                <textarea id="announce-msg" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none mb-2 text-black" rows="3" placeholder="Message"></textarea>
+                <div class="flex items-center mb-4">
+                    <input type="checkbox" id="announce-active" class="mr-2" checked> <label class="text-gray-700">Active</label>
+                </div>
+                <button onclick="saveAnnouncement()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700">Save</button>
+                <button onclick="resetAnnounceForm()" class="w-full bg-gray-300 text-gray-700 font-bold py-2 rounded-xl hover:bg-gray-400 hidden mt-2" id="cancel-announce-btn">Cancel</button>
+            </div>
         </div>
       `;
+
+      google.script.run.withSuccessHandler(renderAnnouncements).rpc('getAnnouncements');
   }
 
-  function postAnnouncement() {
-      const message = document.getElementById('announce-msg').value;
+  function renderAnnouncements(res) {
+      const tbody = document.getElementById('announce-list-body');
+      tbody.innerHTML = '';
+      res.data.forEach(a => {
+          const tr = document.createElement('tr');
+          tr.className = "border-b hover:bg-gray-50";
+          // If no ID (legacy), use message as ID sort of, but db adds ID now.
+          const activeBadge = a.active ? '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Yes</span>' : '<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">No</span>';
+
+          tr.innerHTML = `
+            <td class="p-3 text-sm truncate max-w-xs" title="${a.message}">${a.message}</td>
+            <td class="p-3">${activeBadge}</td>
+            <td class="p-3">
+                <button onclick='editAnnouncement(${JSON.stringify(a)})' class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteAnnouncement('${a.id}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+      });
+  }
+
+  function saveAnnouncement() {
+      const data = {
+          id: document.getElementById('announce-id').value || null,
+          message: document.getElementById('announce-msg').value,
+          active: document.getElementById('announce-active').checked
+      };
+
+      if(!data.message) { showModal("Error", "Message required"); return; }
+
       google.script.run.withSuccessHandler(() => {
-        showModal("Success", "Announcement Updated!");
-      }).withFailureHandler(handleError).rpc('saveAnnouncement', { token: SESSION_TOKEN, message: message });
+          showModal("Success", "Announcement Saved");
+          loadAnnouncements();
+      }).withFailureHandler(handleError).rpc('saveAnnouncement', { token: SESSION_TOKEN, data: data });
+  }
+
+  function editAnnouncement(a) {
+      document.getElementById('announce-form-title').textContent = "Edit Announcement";
+      document.getElementById('announce-id').value = a.id;
+      document.getElementById('announce-msg').value = a.message;
+      document.getElementById('announce-active').checked = a.active;
+      document.getElementById('cancel-announce-btn').classList.remove('hidden');
+  }
+
+  function deleteAnnouncement(id) {
+      if(confirm("Delete Announcement?")) {
+          google.script.run.withSuccessHandler(() => {
+              showModal("Success", "Deleted");
+              loadAnnouncements();
+          }).withFailureHandler(handleError).rpc('deleteAnnouncement', { token: SESSION_TOKEN, id: id });
+      }
+  }
+
+  function resetAnnounceForm() {
+      document.getElementById('announce-form-title').textContent = "Create Announcement";
+      document.getElementById('announce-id').value = "";
+      document.getElementById('announce-msg').value = "";
+      document.getElementById('announce-active').checked = true;
+      document.getElementById('cancel-announce-btn').classList.add('hidden');
   }
 
   // Settings Logic
@@ -332,6 +407,7 @@
   }
 
   window.onload = function() {
+    // Show login modal initially
     document.getElementById('login-modal').classList.remove('hidden');
   };
 </script>
