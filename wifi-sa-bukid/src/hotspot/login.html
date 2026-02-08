@@ -196,6 +196,12 @@
 
         if(!mobile || !selectedPlan) { alert("Please enter mobile and select plan"); return; }
 
+        // Open window immediately to avoid popup blocker
+        const paymentWindow = window.open('about:blank', '_blank');
+        if (paymentWindow) {
+            paymentWindow.document.write('<html><head><title>Payment</title><style>body{font-family:sans-serif;text-align:center;padding:50px;} .loader{border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; margin: 20px auto;} @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}</style></head><body><div class="loader"></div><h3>Generating Payment Link...</h3><p>Please wait, you will be redirected...</p></body></html>');
+        }
+
         const btn = document.getElementById('pay-btn');
         const originalText = btn.innerText;
         btn.disabled = true;
@@ -215,18 +221,49 @@
             if(res.status === 'success') {
                 const checkoutUrl = res.data.data.attributes.checkout_url;
                 const sourceId = res.data.data.id;
-                window.open(checkoutUrl, '_blank');
-                showPaymentModal(sourceId, mobile, selectedPlan.id);
+
+                if (paymentWindow) {
+                    paymentWindow.location.href = checkoutUrl;
+                }
+                showPaymentModal(sourceId, mobile, selectedPlan.id, checkoutUrl);
             } else {
                 alert("Error creating payment: " + res.message);
                 btn.disabled = false;
                 btn.innerText = originalText;
+                if(paymentWindow) paymentWindow.close();
             }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error connecting to server");
+            btn.disabled = false;
+            btn.innerText = originalText;
+            if(paymentWindow) paymentWindow.close();
         });
     }
 
-    function showPaymentModal(sourceId, mobile, planId) {
+    function showPaymentModal(sourceId, mobile, planId, checkoutUrl) {
         document.getElementById('payment-modal').classList.remove('hidden');
+
+        // Add fallback link in case popup blocked
+        const modalContent = document.getElementById('payment-modal').querySelector('div');
+        const originalContent = modalContent.innerHTML; // Keep layout structure
+
+        // Inject the fallback link into the existing text
+        const fallbackHtml = `
+            <div class="mb-4 text-green-500 text-5xl">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Processing Payment</h3>
+            <p class="text-gray-600 mb-2">Please complete the transaction in the new tab.</p>
+            <p class="text-sm text-gray-500 mb-6">
+                If the payment page didn't open,
+                <a href="${checkoutUrl}" target="_blank" class="text-green-600 font-bold underline">Click Here</a>
+            </p>
+            <button onclick="cancelPayment()" class="text-gray-400 hover:text-gray-600 font-semibold text-sm underline">Cancel Transaction</button>
+        `;
+        modalContent.innerHTML = fallbackHtml;
+
         paymentCheckInterval = setInterval(() => {
             checkPaymentStatus(sourceId, mobile, planId);
         }, 3000);
