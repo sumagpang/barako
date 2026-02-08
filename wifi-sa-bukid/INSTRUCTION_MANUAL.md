@@ -152,6 +152,7 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   In the Apps Script Editor, go to **Project Settings** (Gear icon).
     *   Scroll to **Script Properties**.
     *   Add the following properties:
+        *   `SPREADSHEET_ID`: The ID of your Google Sheet (from Step 3.4).
         *   `PAYMONGO_SECRET_KEY`: Your Paymongo Secret Key.
         *   `SEMAPHORE_API_KEY`: Your Semaphore API Key.
         *   `SEMAPHORE_SENDER_NAME`: (Optional) Your SMS Sender Name.

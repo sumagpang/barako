@@ -4,11 +4,28 @@ function getDbConnection() {
   if (typeof SpreadsheetApp === 'undefined') {
     return null;
   }
+
+  var id = SS_ID;
+  // Try to get from Properties
   try {
-    return SpreadsheetApp.openById(SS_ID);
+      var props = PropertiesService.getScriptProperties();
+      var propId = props.getProperty("SPREADSHEET_ID");
+      if (propId) id = propId;
+  } catch(e) {
+      console.warn("Could not read properties: " + e);
+  }
+
+  if (id === "YOUR_SPREADSHEET_ID_HERE") {
+      throw new Error("Configuration Error: SPREADSHEET_ID is not set in Code or Script Properties.");
+  }
+
+  try {
+    return SpreadsheetApp.openById(id);
   } catch (e) {
-    console.error("DB Connection Error: " + e);
-    return null;
+    // If we are in GAS (SpreadsheetApp exists) but cant open DB, this is a fatal error.
+    // Do NOT return null (which triggers mocks). Throw exception.
+    console.error("DB Connection Failed: " + e);
+    throw new Error("DB Connection Failed: " + e + ". Check SPREADSHEET_ID permissions.");
   }
 }
 
