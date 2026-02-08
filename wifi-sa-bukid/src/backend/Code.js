@@ -10,6 +10,16 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
+  if (page == 'payment_success') {
+      var t = HtmlService.createTemplateFromFile('payment_success');
+      t.mobile = e.parameter.mobile;
+      t.planId = e.parameter.planId;
+      return t.evaluate()
+        .setTitle('Verifying Payment...')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
   // Public Endpoint: Kick List (Router Only)
   if (action == 'getKickList') {
     var users = getUsersToKick();
@@ -62,8 +72,9 @@ function executeAction(action, payload) {
         var mobile = payload.mobile;
         var planId = payload.planId;
         var mac = payload.mac;
-        // Redirect to hotspot login with payment verification params
-        var redirectUrl = "http://hotspot.mikrotik.com/login?action=from_payment&mobile=" + mobile + "&planId=" + planId;
+        // Redirect back to THIS Web App first to record transaction/verify
+        var scriptUrl = ScriptApp.getService().getUrl();
+        var redirectUrl = scriptUrl + "?page=payment_success&mobile=" + mobile + "&planId=" + planId;
         var description = "WiFi Plan " + planId + " - " + mobile;
 
         var session = PaymongoService.createCheckoutSession(amount, description, redirectUrl);

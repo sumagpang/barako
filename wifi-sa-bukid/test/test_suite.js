@@ -52,6 +52,9 @@ const context = {
     base64Encode: (str) => Buffer.from(str).toString('base64'),
     getUuid: () => "mock-uuid-1234"
   },
+  ScriptApp: {
+    getService: () => ({ getUrl: () => "https://script.google.com/macros/s/TEST_ID/exec" })
+  },
   SpreadsheetApp: undefined,
   UrlFetchApp: undefined,
   console: console
