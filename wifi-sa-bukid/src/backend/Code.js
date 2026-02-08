@@ -90,15 +90,14 @@ function rpc(action, payload) {
 function setupWebhook() {
   var url = ScriptApp.getService().getUrl();
   if (!url || url.indexOf("/exec") === -1) {
-    Logger.log("Please deploy as Web App first.");
-    return;
+    return { status: 'error', message: "Please deploy as Web App first." };
   }
 
   try {
      var res = PaymongoService.createWebhook(url);
-     Logger.log("Webhook Created: " + JSON.stringify(res));
+     return { status: 'success', data: res };
   } catch (e) {
-     Logger.log("Error creating webhook: " + e);
+     return { status: 'error', message: e.toString() };
   }
 }
 
@@ -251,6 +250,16 @@ function executeAction(action, payload) {
         verifyAdmin(payload.token);
         saveSettings(payload.settings);
         result = { status: 'success' };
+        break;
+
+      case 'setupWebhook':
+        verifyAdmin(payload.token);
+        var setupRes = setupWebhook();
+        if(setupRes.status === 'success') {
+            result = { status: 'success', data: setupRes.data };
+        } else {
+            result = { status: 'error', message: setupRes.message };
+        }
         break;
 
       default:

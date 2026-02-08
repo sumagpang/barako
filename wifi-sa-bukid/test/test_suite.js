@@ -151,6 +151,18 @@ try {
   // Restore mock
   context.PaymongoService.retrieveCheckoutSession = originalRetrieve;
 
+  // Test 7: setupWebhook (RPC)
+  console.log("Test 7: setupWebhook...");
+  // We need an admin token. Test 2 generated one.
+  const token = authRes.token;
+  const webhookRes = context.rpc('setupWebhook', { token: token });
+
+  if (webhookRes.status === 'success' && webhookRes.data && webhookRes.data.data.id === 'hook_mock') {
+      console.log("PASS");
+  } else {
+      throw "setupWebhook Failed: " + JSON.stringify(webhookRes);
+  }
+
   console.log("All Tests Passed!");
 
 } catch (err) {
