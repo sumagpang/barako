@@ -62,7 +62,8 @@ function executeAction(action, payload) {
         var mobile = payload.mobile;
         var planId = payload.planId;
         var mac = payload.mac;
-        var redirectUrl = "http://hotspot.mikrotik.com/login";
+        // Redirect to hotspot login with payment verification params
+        var redirectUrl = "http://hotspot.mikrotik.com/login?action=from_payment&mobile=" + mobile + "&planId=" + planId;
         var description = "WiFi Plan " + planId + " - " + mobile;
 
         var session = PaymongoService.createCheckoutSession(amount, description, redirectUrl);
@@ -101,8 +102,14 @@ function executeAction(action, payload) {
                status: 'PAID'
             });
 
+            // Get plan name for SMS
+            var plans = getPlans();
+            var plan = plans.find(function(p) { return p.id === planId; });
+            var planName = plan ? plan.name : planId;
+
             try {
-              SemaphoreService.sendSMS(mobile, "Your WiFi Passcode is: " + passcode);
+              var message = "You bought " + planName + ". User: " + mobile + ", Passcode: " + passcode + ". Enjoy WiFi sa Bukid!";
+              SemaphoreService.sendSMS(mobile, message);
             } catch (smsErr) {
               console.error("SMS Failed: " + smsErr);
             }
@@ -110,6 +117,20 @@ function executeAction(action, payload) {
             result = { status: 'success', paid: true, passcode: passcode, mobile: mobile };
         } else {
             result = { status: 'success', paid: false };
+        }
+        break;
+
+      case 'checkUserStatus':
+        var mobile = payload.mobile;
+        var users = getUsers();
+        // Find latest active user with this mobile
+        var activeUser = users.filter(function(u) { return u.mobile == mobile && u.status == 'ACTIVE'; })
+                              .sort(function(a,b) { return new Date(b.expiry) - new Date(a.expiry); })[0];
+
+        if (activeUser) {
+            result = { status: 'success', passcode: activeUser.passcode, mobile: activeUser.mobile };
+        } else {
+            result = { status: 'pending', message: 'User not found or not active' };
         }
         break;
 

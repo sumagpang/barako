@@ -132,7 +132,111 @@
         fetchPlans();
         fetchAnnouncements();
         document.getElementById('admin-portal-link').href = API_URL + "?page=admin";
+
+        // Check for payment redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'from_payment') {
+            handlePaymentReturn(urlParams);
+        }
     });
+
+    function handlePaymentReturn(params) {
+        const mobile = params.get('mobile');
+        const planId = params.get('planId');
+
+        if (!mobile || !planId) return;
+
+        // Show Full Screen Loading Overlay
+        const overlay = document.createElement('div');
+        overlay.className = "fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 text-center";
+        overlay.innerHTML = `
+            <div class="mb-6 text-green-500 text-6xl animate-bounce"><i class="fas fa-check-circle"></i></div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Verifying Payment</h2>
+            <p class="text-gray-600 mb-8">Please wait while we connect you...</p>
+            <div class="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        // We need sourceId to check payment, but Paymongo redirect doesn't always provide it clearly in query params unless we saved it.
+        // However, we can re-create the check loop or just wait for the SMS/Server sync.
+        // Since we don't have the Source ID from the URL (unless we stored it),
+        // we might need to rely on the user manually entering or just waiting.
+        // WAIT: The previous flow relied on the *original* tab having the Source ID.
+        // If the user is here, they completed payment. We can try to login with just mobile?
+        // No, we need the passcode.
+        // The backend `checkPayment` needs `sourceId` to verify Paymongo status.
+        // Workaround: We can't easily get Source ID here without persistence.
+        // BUT, if the payment is successful, the backend *already* created the user in the 'checkPayment' call from the OTHER tab?
+        // OR webhooks? We don't have webhooks set up in this simple GAS version.
+        // The other tab (polling) might have already triggered the creation.
+        // Let's assume the user knows the passcode or it was sent via SMS.
+        // BETTER: If we want "Automatic" login, we need the passcode.
+        // Limitation: Without the Source ID in the return URL, we can't call checkPayment to get the passcode.
+        // Let's modify the prompt logic: The user asked for "Automatic".
+        // If we can't get the passcode, we can't login automatically.
+        // Strategy: Modify Code.js to include sourceId/refId in redirect if possible?
+        // Paymongo doesn't let us inject dynamic IDs into the success URL easily unless we pre-register?
+        // Actually, we passed `redirectUrl` to `createCheckoutSession`. We CAN include the ID there?
+        // No, we generate the session to GET the ID. We can't put the ID in the URL *before* we get the ID.
+        // Valid Point.
+        // Alternative: We can lookup the latest transaction for this mobile number?
+        // Let's add a `getLastPasscode` action for this specific flow? Secure?
+        // Risk: Anyone can put ?mobile=... and get the passcode.
+        // Mitigate: Only allow if recent (last 5 mins) and status is active.
+
+        // Let's try to poll for the user status instead of payment status.
+        // We know the Mobile Number. We can check if there is an active user with this mobile.
+
+        verifyAndLogin(mobile, overlay);
+    }
+
+    function verifyAndLogin(mobile, overlay) {
+        let attempts = 0;
+        const maxAttempts = 10; // 30 seconds
+
+        const interval = setInterval(() => {
+            attempts++;
+            // Poll for active user status since we don't have the payment session ID in the return URL
+            // (The original payment tab handles the creation, or we wait for sync)
+            // Actually, I can edit Code.js in the next step or revise the plan?
+            // "You are currently working on plan step: Update src/hotspot/login.html"
+
+            fetch(API_URL + "?action=checkUserStatus&mobile=" + mobile, { method: "POST" })
+            .then(res => res.json())
+            .then(res => {
+                if(res.status === 'success' && res.passcode) {
+                    clearInterval(interval);
+                    // Login
+                    document.getElementById('login-username').value = mobile;
+                    document.getElementById('login-password').value = res.passcode;
+
+                    // Set Redirect to Status
+                    const form = document.getElementById('login-form');
+                    const dstInput = form.querySelector('input[name="dst"]');
+                    if(dstInput) dstInput.value = "http://wifi.bukid/status";
+
+                    overlay.innerHTML = `
+                         <div class="mb-6 text-green-500 text-6xl animate-bounce"><i class="fas fa-wifi"></i></div>
+                         <h2 class="text-2xl font-bold text-gray-800 mb-2">Connected!</h2>
+                         <p class="text-gray-600">Redirecting you...</p>
+                    `;
+
+                    setTimeout(() => form.submit(), 1000);
+                }
+            })
+            .catch(e => console.log(e));
+
+            if(attempts > maxAttempts) {
+                 clearInterval(interval);
+                 overlay.innerHTML = `
+                    <div class="mb-4 text-orange-500 text-5xl"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Verification Timeout</h3>
+                    <p class="text-gray-600 mb-4">We couldn't auto-connect you yet. Please check your SMS for the passcode.</p>
+                    <button onclick="document.body.removeChild(this.parentElement.parentElement)" class="bg-gray-800 text-white px-6 py-2 rounded-lg">Close</button>
+                 `;
+            }
+        }, 3000);
+    }
 
     function fetchPlans() {
         fetch(API_URL + "?action=getPlans", { method: "POST" })

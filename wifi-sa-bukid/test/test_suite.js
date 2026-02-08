@@ -102,6 +102,13 @@ try {
   if (checkRes.status === 'success' && checkRes.paid === true) console.log("PASS");
   else throw "checkPayment Failed: " + JSON.stringify(checkRes);
 
+  // Test 5: checkUserStatus
+  console.log("Test 5: checkUserStatus...");
+  // Use a user from mockUsers() in Database.js since mock state is not persisted in file
+  const statusRes = context.rpc('checkUserStatus', { mobile: '09171234567' });
+  if (statusRes.status === 'success' && statusRes.passcode) console.log("PASS");
+  else throw "checkUserStatus Failed: " + JSON.stringify(statusRes);
+
   console.log("All Tests Passed!");
 
 } catch (err) {
