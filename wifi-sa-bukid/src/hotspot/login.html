@@ -138,7 +138,43 @@
         if (urlParams.get('action') === 'from_payment') {
             handlePaymentReturn(urlParams);
         }
+
+        // Check for Retry Loop (Sync Latency Handling)
+        checkRetryLoop();
     });
+
+    function checkRetryLoop() {
+        const errorMsg = document.querySelector('.text-red-500').innerText;
+        const stored = localStorage.getItem('bukid_auto_login');
+
+        if (errorMsg && (errorMsg.includes("invalid") || errorMsg.includes("found")) && stored) {
+            const data = JSON.parse(stored);
+            const now = new Date().getTime();
+
+            // If data is recent (< 2 mins)
+            if (now - data.timestamp < 120000) {
+                // Show Overlay
+                const overlay = document.createElement('div');
+                overlay.className = "fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 text-center";
+                overlay.innerHTML = `
+                    <div class="mb-6 text-blue-500 text-6xl animate-spin"><i class="fas fa-sync"></i></div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Synchronizing Account</h2>
+                    <p class="text-gray-600 mb-8">Your payment is confirmed. Waiting for the router to update...</p>
+                    <p class="text-sm text-gray-400">Retrying automatically in 5 seconds.</p>
+                `;
+                document.body.appendChild(overlay);
+
+                // Retry Login
+                setTimeout(() => {
+                    document.getElementById('login-username').value = data.mobile;
+                    document.getElementById('login-password').value = data.passcode;
+                    document.getElementById('login-form').submit();
+                }, 5000);
+            } else {
+                localStorage.removeItem('bukid_auto_login');
+            }
+        }
+    }
 
     function handlePaymentReturn(params) {
         const mobile = params.get('mobile');
@@ -209,6 +245,13 @@
                     // Login
                     document.getElementById('login-username').value = mobile;
                     document.getElementById('login-password').value = res.passcode;
+
+                    // Save for Retry Loop
+                    localStorage.setItem('bukid_auto_login', JSON.stringify({
+                        mobile: mobile,
+                        passcode: res.passcode,
+                        timestamp: new Date().getTime()
+                    }));
 
                     // Set Redirect to Status
                     const form = document.getElementById('login-form');
