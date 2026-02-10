@@ -48,6 +48,12 @@ const context = {
       get: (key) => mockCache.get(key)
     })
   },
+  LockService: {
+    getScriptLock: () => ({
+      waitLock: (timeout) => true,
+      releaseLock: () => true
+    })
+  },
   Utilities: {
     base64Encode: (str) => Buffer.from(str).toString('base64'),
     getUuid: () => "mock-uuid-1234"
@@ -161,6 +167,18 @@ try {
       console.log("PASS");
   } else {
       throw "setupWebhook Failed: " + JSON.stringify(webhookRes);
+  }
+
+  // Test 8: updateConnection
+  console.log("Test 8: updateConnection...");
+  const updateRes = context.rpc('updateConnection', { mac: '00:00:00:00:00:01', status: 'OFFLINE' });
+  if (updateRes.status === 'success') {
+      const users = context.getUsers();
+      const targetUser = users.find(u => u.mac === '00:00:00:00:00:01');
+      if (targetUser && targetUser.connectionStatus === 'OFFLINE') console.log("PASS");
+      else throw "updateConnection Failed to update status: " + JSON.stringify(targetUser);
+  } else {
+      throw "updateConnection RPC Failed: " + JSON.stringify(updateRes);
   }
 
   console.log("All Tests Passed!");

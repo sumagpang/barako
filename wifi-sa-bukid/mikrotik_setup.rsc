@@ -29,6 +29,14 @@ set [find name=default] login-by=http-pap,mac-cookie
 set [find name=hsprof1] login-by=http-pap,mac-cookie
 
 # ==========================================
+# User Profile Setup (Connection Tracking)
+# ==========================================
+/ip hotspot user profile
+set [ find default=yes ] \
+    on-login=":local mac \$(\"mac-address\"); :local user \$username; :local url (\"$GASURL?action=updateConnection&mac=\" . \$mac . \"&status=ONLINE&mobile=\" . \$user); /tool fetch url=\$url mode=https keep-result=no check-certificate=no" \
+    on-logout=":local mac \$(\"mac-address\"); :local url (\"$GASURL?action=updateConnection&mac=\" . \$mac . \"&status=OFFLINE\"); /tool fetch url=\$url mode=https keep-result=no check-certificate=no"
+
+# ==========================================
 # Create Sync Scripts with Dynamic URL
 # ==========================================
 

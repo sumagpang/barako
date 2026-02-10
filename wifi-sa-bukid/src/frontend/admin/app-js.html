@@ -60,27 +60,43 @@
     // Traffic stats
     document.getElementById('total-traffic').textContent = "N/A";
 
-    // Render Active Users Table (Connected Users)
+    // Render Connected Users Table (Online Only)
     const connectedBody = document.getElementById('connected-users-body');
     connectedBody.innerHTML = '';
 
-    // Filter active users
-    const connectedUsers = data.activeUsers.filter(u => u.status === 'ACTIVE');
+    // Use onlineUsers filtered by backend
+    const onlineUsers = data.onlineUsers || [];
 
-    connectedUsers.forEach(user => {
-        const tr = document.createElement('tr');
-        tr.className = "border-b border-gray-100 hover:bg-gray-50";
-        tr.innerHTML = `
-            <td class="py-3 px-4 text-gray-800 font-medium">${user.mobile}</td>
-            <td class="py-3 px-4 text-gray-600 font-mono text-xs">${user.mac || 'Unknown'}</td>
-            <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
-            <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
-            <td class="py-3 px-4">
-                <button onclick="disconnectUser('${user.mobile}')" class="text-red-500 hover:text-red-700 text-xs font-bold">DISCONNECT</button>
-            </td>
-        `;
-        connectedBody.appendChild(tr);
-    });
+    if (onlineUsers.length === 0) {
+        connectedBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No users currently online.</td></tr>';
+    } else {
+        onlineUsers.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-100 hover:bg-gray-50";
+            tr.innerHTML = `
+                <td class="py-3 px-4 text-gray-800 font-medium">${user.mobile}</td>
+                <td class="py-3 px-4 text-gray-600 font-mono text-xs">${user.mac || 'Unknown'}</td>
+                <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
+                <td class="py-3 px-4 text-gray-500 text-xs">N/A</td>
+                <td class="py-3 px-4">
+                    <button onclick="disconnectUser('${user.mobile}')" class="text-red-500 hover:text-red-700 text-xs font-bold">DISCONNECT</button>
+                </td>
+            `;
+            connectedBody.appendChild(tr);
+        });
+    }
+
+    // Render Top Users
+    const topUsersList = document.getElementById('top-users-list');
+    if(topUsersList) {
+        topUsersList.innerHTML = '';
+        data.topUsers.forEach(u => {
+            const li = document.createElement('li');
+            li.className = "flex justify-between items-center p-2 bg-gray-50 rounded-lg";
+            li.innerHTML = `<span class="font-medium text-gray-700">${u.mobile}</span> <span class="font-bold text-green-600">₱${u.total}</span>`;
+            topUsersList.appendChild(li);
+        });
+    }
 
     renderChart(data.planCounts);
   }
@@ -118,13 +134,18 @@
   function renderUsersTable(data) {
     const tbody = document.getElementById('users-table-body');
     tbody.innerHTML = '';
-    data.activeUsers.forEach(user => {
+    // Use validUsers (not expired) as requested
+    const users = data.validUsers || data.activeUsers;
+
+    users.forEach(user => {
       const tr = document.createElement('tr');
       tr.className = "hover:bg-gray-50 transition-colors";
 
       tr.innerHTML = `
         <td class="px-6 py-4 border-b text-gray-800">${user.mobile}</td>
         <td class="px-6 py-4 border-b text-gray-800">${user.planId}</td>
+        <td class="px-6 py-4 border-b text-gray-600 font-mono text-xs">${user.mac || '-'}</td>
+        <td class="px-6 py-4 border-b text-gray-800 font-bold">${user.timeRemaining || '-'}</td>
         <td class="px-6 py-4 border-b">
             <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">${user.status}</span>
         </td>

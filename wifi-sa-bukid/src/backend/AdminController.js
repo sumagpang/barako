@@ -32,12 +32,27 @@ function getDashboardData(filterMonth) {
     return { mobile: k, total: topUsersMap[k] };
   }).sort(function(a,b) { return b.total - a.total; }).slice(0, 10);
 
+  var now = new Date();
+
+  // Enrich users with time remaining
+  var validUsers = users.filter(function(u) {
+      return u.status === 'ACTIVE' && new Date(u.expiry) > now;
+  }).map(function(u) {
+      var msLeft = new Date(u.expiry) - now;
+      var hrs = Math.floor(msLeft / 3600000);
+      var mins = Math.floor((msLeft % 3600000) / 60000);
+      u.timeRemaining = hrs + "h " + mins + "m";
+      return u;
+  });
+
   return {
     totalSales: totalSales,
-    activeUsersCount: users.filter(function(u) { return u.status === 'ACTIVE'; }).length,
+    activeUsersCount: validUsers.length,
     planCounts: planCounts,
     topUsers: topUsers,
-    activeUsers: users.filter(function(u) { return u.status === 'ACTIVE'; }),
+    activeUsers: validUsers, // Backward compatibility
+    validUsers: validUsers,
+    onlineUsers: validUsers.filter(function(u) { return u.connectionStatus === 'ONLINE'; }),
     traffic: { download: "N/A", upload: "N/A (Router Only)" }
   };
 }

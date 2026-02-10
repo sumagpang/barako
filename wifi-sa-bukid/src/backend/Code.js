@@ -204,6 +204,13 @@ function executeAction(action, payload) {
         }
         break;
 
+      case 'updateConnection':
+        var mac = payload.mac;
+        var status = payload.status;
+        updateUserConnection(mac, status);
+        result = { status: 'success' };
+        break;
+
       // Admin Actions (Protected)
       case 'adminLogin':
         if (checkAdminPassword(payload.password)) {
