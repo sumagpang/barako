@@ -50,21 +50,36 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 6.  Click **+**.
 7.  Gateway: `192.168.1.1` (Your ISP modem IP).
 
-### Step 2.4: LAN Bridge Setup
+### Step 2.4: LAN Bridge Setup (Split Network)
+**Goal:** Create two networks.
+*   **Hotspot Network:** Ports 2 & 3 (Requires Login).
+*   **Direct Network:** Ports 4 & 5 (Automatic Internet).
+
 1.  Go to **Bridge**.
-2.  Tab **Bridge**: Click **+**. Name: `bridge-LAN`. Click **OK**.
-3.  Tab **Ports**:
+2.  **Create Hotspot Bridge:**
+    *   Tab **Bridge**: Click **+**. Name: `bridge-LAN`. Click **OK**.
+3.  **Create Direct Bridge:**
+    *   Click **+**. Name: `bridge-Direct`. Click **OK**.
+4.  **Assign Ports:**
+    *   Go to **Ports** Tab.
     *   Click **+**. Interface: `ether2-LAN`. Bridge: `bridge-LAN`. Click **OK**.
     *   Click **+**. Interface: `ether3`. Bridge: `bridge-LAN`. Click **OK**.
-    *   Click **+**. Interface: `ether4`. Bridge: `bridge-LAN`. Click **OK**.
-    *   Click **+**. Interface: `ether5`. Bridge: `bridge-LAN`. Click **OK**.
+    *   Click **+**. Interface: `ether4`. Bridge: `bridge-Direct`. Click **OK**.
+    *   Click **+**. Interface: `ether5`. Bridge: `bridge-Direct`. Click **OK**.
 
-### Step 2.5: LAN IP Address
+### Step 2.5: LAN IP Addresses
 1.  Go to **IP** > **Addresses**.
-2.  Click **+**.
-3.  Address: `10.0.0.1/24`.
-4.  Interface: `bridge-LAN`.
-5.  Click **OK**.
+2.  **Hotspot IP:**
+    *   Click **+**. Address: `10.0.0.1/24`. Interface: `bridge-LAN`. Click **OK**.
+3.  **Direct IP:**
+    *   Click **+**. Address: `192.168.55.1/24`. Interface: `bridge-Direct`. Click **OK**.
+
+### Step 2.5b: DHCP for Direct Network (Automatic Internet)
+1.  Go to **IP** > **DHCP Server**.
+2.  Click **DHCP Setup**.
+3.  Select Interface: `bridge-Direct` (Ports 4 & 5).
+4.  Click **Next** until completed (Accept defaults).
+    *   *Now devices on Port 4 & 5 will get IP 192.168.55.x and have direct internet.*
 
 ### Step 2.6: DNS & NAT
 1.  Go to **IP** > **DNS**.
@@ -83,7 +98,7 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 ### Step 2.7: Hotspot Setup Wizard
 1.  Go to **IP** > **Hotspot**.
 2.  Click **Hotspot Setup** button.
-3.  **Hotspot Interface:** `bridge-LAN`. Click **Next**.
+3.  **Hotspot Interface:** `bridge-LAN` (Important: Do not select bridge-Direct). Click **Next**.
 4.  **Local Address of Network:** `10.0.0.1/24` (Default). **Masquerade Network:** Checked. Click **Next**.
 5.  **Address Pool of Network:** `10.0.0.2-10.0.0.254` (Default). Click **Next**.
 6.  **Select Certificate:** `none`. Click **Next**.
