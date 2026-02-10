@@ -307,7 +307,7 @@
     }
 
     function fetchPlans() {
-        fetch(API_URL + "?action=getPlans", { method: "POST" })
+        fetch(API_URL + "?action=getPlans", { method: "GET" })
         .then(res => res.json())
         .then(res => {
             if(res.status === 'success') {
@@ -328,13 +328,23 @@
                     div.onclick = () => selectPlan(div, plan);
                     container.appendChild(div);
                 });
+            } else {
+                showPlanError("Failed to load plans.");
             }
         })
-        .catch(err => console.error("Error fetching plans", err));
+        .catch(err => {
+            console.error("Error fetching plans", err);
+            showPlanError("Network Error. Check internet connection.");
+        });
+    }
+
+    function showPlanError(msg) {
+        const el = document.getElementById('loading-plans');
+        el.innerHTML = `<span class="text-red-500 text-sm"><i class="fas fa-exclamation-circle"></i> ${msg}</span>`;
     }
 
     function fetchAnnouncements() {
-        fetch(API_URL + "?action=getAnnouncements", { method: "POST" })
+        fetch(API_URL + "?action=getAnnouncements", { method: "GET" })
         .then(res => res.json())
         .then(res => {
             if(res.status === 'success' && res.data.length > 0) {

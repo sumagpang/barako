@@ -36,6 +36,18 @@ function doGet(e) {
     return ContentService.createTextOutput(csv);
   }
 
+  // Public Endpoint: Get Plans (GET)
+  if (action == 'getPlans') {
+    var result = { status: 'success', data: getPlans() };
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Public Endpoint: Get Announcements (GET)
+  if (action == 'getAnnouncements') {
+    var result = { status: 'success', data: getAnnouncements() };
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  }
+
   // Default response
   return ContentService.createTextOutput("WiFi sa Bukid API Active");
 }

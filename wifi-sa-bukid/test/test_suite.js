@@ -181,6 +181,12 @@ try {
       throw "updateConnection RPC Failed: " + JSON.stringify(updateRes);
   }
 
+  // Test 9: doGet Public Actions
+  console.log("Test 9: doGet Public Actions...");
+  const getPlansRes = context.doGet({ parameter: { action: 'getPlans' } });
+  if (JSON.parse(getPlansRes.getContent()).status === 'success') console.log("PASS");
+  else throw "doGet getPlans Failed";
+
   console.log("All Tests Passed!");
 
 } catch (err) {
