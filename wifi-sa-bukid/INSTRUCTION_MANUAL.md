@@ -52,8 +52,8 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 ### Step 2.4: LAN Bridge Setup (Split Network)
 **Goal:** Create two networks.
-*   **Hotspot Network:** Ports 2 & 3 (Requires Login).
-*   **Direct Network:** Ports 4 & 5 (Automatic Internet).
+*   **Hotspot Network:** Ports 4 & 5 (Requires Login).
+*   **Direct Network:** Ports 2 & 3 (Automatic Internet).
 
 1.  Go to **Bridge**.
 2.  **Create Hotspot Bridge:**
@@ -62,10 +62,10 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Click **+**. Name: `bridge-Direct`. Click **OK**.
 4.  **Assign Ports:**
     *   Go to **Ports** Tab.
-    *   Click **+**. Interface: `ether2-LAN`. Bridge: `bridge-LAN`. Click **OK**.
-    *   Click **+**. Interface: `ether3`. Bridge: `bridge-LAN`. Click **OK**.
-    *   Click **+**. Interface: `ether4`. Bridge: `bridge-Direct`. Click **OK**.
-    *   Click **+**. Interface: `ether5`. Bridge: `bridge-Direct`. Click **OK**.
+    *   Click **+**. Interface: `ether2-LAN`. Bridge: `bridge-Direct`. Click **OK**.
+    *   Click **+**. Interface: `ether3`. Bridge: `bridge-Direct`. Click **OK**.
+    *   Click **+**. Interface: `ether4`. Bridge: `bridge-LAN`. Click **OK**.
+    *   Click **+**. Interface: `ether5`. Bridge: `bridge-LAN`. Click **OK**.
 
 ### Step 2.5: LAN IP Addresses
 1.  Go to **IP** > **Addresses**.
@@ -77,9 +77,9 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 ### Step 2.5b: DHCP for Direct Network (Automatic Internet)
 1.  Go to **IP** > **DHCP Server**.
 2.  Click **DHCP Setup**.
-3.  Select Interface: `bridge-Direct` (Ports 4 & 5).
+3.  Select Interface: `bridge-Direct` (Ports 2 & 3).
 4.  Click **Next** until completed (Accept defaults).
-    *   *Now devices on Port 4 & 5 will get IP 192.168.55.x and have direct internet.*
+    *   *Now devices on Port 2 & 3 will get IP 192.168.55.x and have direct internet.*
 
 ### Step 2.6: DNS & NAT
 1.  Go to **IP** > **DNS**.

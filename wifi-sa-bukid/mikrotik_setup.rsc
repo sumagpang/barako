@@ -104,27 +104,33 @@ add name="SyncUsersSchedule" interval=10s on-event="SyncUsersParams"
 add name="KickUsersSchedule" interval=1m on-event="KickUsersParams"
 
 # ==========================================
-# Automatic Internet for Ports 4 & 5 (Direct Bridge)
+# Network Setup: Swap Ports
+# Hotspot: Ports 4 & 5 (bridge-LAN)
+# Direct: Ports 2 & 3 (bridge-Direct)
 # ==========================================
-# Remove ports from old bridges (ignore errors if not present)
+
+# 1. Clear old port assignments
+/interface bridge port remove [find interface=ether2]
+/interface bridge port remove [find interface=ether3]
 /interface bridge port remove [find interface=ether4]
 /interface bridge port remove [find interface=ether5]
 
-# Create bridge-Direct if not exists
-:if ([:len [/interface bridge find name=bridge-Direct]] = 0) do={
-    /interface bridge add name=bridge-Direct
-}
+# 2. Ensure Bridges Exist
+:if ([:len [/interface bridge find name=bridge-LAN]] = 0) do={ /interface bridge add name=bridge-LAN }
+:if ([:len [/interface bridge find name=bridge-Direct]] = 0) do={ /interface bridge add name=bridge-Direct }
 
-# Add ports
-/interface bridge port add bridge=bridge-Direct interface=ether4
-/interface bridge port add bridge=bridge-Direct interface=ether5
+# 3. Assign Ports
+/interface bridge port add bridge=bridge-Direct interface=ether2
+/interface bridge port add bridge=bridge-Direct interface=ether3
+/interface bridge port add bridge=bridge-LAN interface=ether4
+/interface bridge port add bridge=bridge-LAN interface=ether5
 
-# Add IP (if not exists)
+# 4. Configure Direct Network (IP & DHCP)
+# Note: bridge-LAN IP (10.0.0.1) is assumed to be set manually or via QuickSet, but we can ensure Direct IP.
 :if ([:len [/ip address find interface=bridge-Direct]] = 0) do={
     /ip address add address=192.168.55.1/24 interface=bridge-Direct
 }
 
-# Setup DHCP (Direct Internet)
 :if ([:len [/ip dhcp-server find name=dhcp-Direct]] = 0) do={
     /ip pool add name=pool-Direct ranges=192.168.55.10-192.168.55.254
     /ip dhcp-server network add address=192.168.55.0/24 gateway=192.168.55.1 dns-server=8.8.8.8,8.8.4.4
