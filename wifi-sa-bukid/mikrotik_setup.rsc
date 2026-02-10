@@ -8,9 +8,14 @@
 # Walled Garden Setup
 # ==========================================
 /ip hotspot walled-garden
+# Allow Google Script Execution (Ports 80/443 explicitly)
+add dst-host=*script.google.com dst-port=443 comment="Google Script HTTPS"
+add dst-host=*script.google.com dst-port=80 comment="Google Script HTTP"
+add dst-host=*googleusercontent.com dst-port=443 comment="Google Content HTTPS"
+add dst-host=*accounts.google.com dst-port=443 comment="Google Auth"
+
+# Other Services
 add dst-host=*paymongo.com comment="Paymongo"
-add dst-host=*script.google.com comment="Google Script"
-add dst-host=*googleusercontent.com comment="Google Content"
 add dst-host=*googleapis.com comment="Google Fonts"
 add dst-host=*gstatic.com comment="Google Static"
 add dst-host=*semaphore.co comment="Semaphore SMS"
