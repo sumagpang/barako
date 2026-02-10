@@ -270,3 +270,14 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
     *   Check if `getNewUsers` endpoint on your Script is returning data.
 *   **Walled Garden issues:**
     *   If the payment page doesn't load, ensure `paymongo.com` and `mag1.shopper-exchange.com` (and other Paymongo domains) are in Walled Garden.
+
+## 8. Payment Flow & Troubleshooting
+
+### Understanding the "After Payment" URL
+When a user pays, Paymongo redirects them to a special **Payment Success Page** hosted on your Google Script.
+*   **URL Structure:** `https://script.google.com/.../exec?page=payment_success&mobile=...&planId=...`
+*   **Purpose:** This page polls your database to confirm the payment and then **automatically redirects** the user back to the Router (`http://hotspot.mikrotik.com/login`) to log them in.
+*   **Requirement:** Since this page is hosted on Google, **`script.google.com` MUST be in the Walled Garden**. If the user sees "Web page not available" after payment, it means the router blocked access to this Google page.
+
+### Webhook Endpoint
+If you need to manually configure the Webhook in Paymongo (instead of using the Admin Portal button), the Endpoint URL is simply your **Web App URL** (ending in `/exec`).
