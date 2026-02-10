@@ -281,3 +281,12 @@ When a user pays, Paymongo redirects them to a special **Payment Success Page** 
 
 ### Webhook Endpoint
 If you need to manually configure the Webhook in Paymongo (instead of using the Admin Portal button), the Endpoint URL is simply your **Web App URL** (ending in `/exec`).
+
+## 9. Troubleshooting & Diagnostics
+
+**Issue: "SyncUsers failed" or "Records not adding"**
+*   **Cause:** Often due to missing or incorrect `SPREADSHEET_ID` in Script Properties.
+*   **Diagnosis:** Visit this URL in your browser:
+    `https://script.google.com/.../exec?action=testConfig`
+*   **Expected Result:** `{"status":"ok", "details": {"db": "Connected: WiFi Database", "keys": "Present"}}`
+*   **If it says "Failed" or "Error":** Check your Script Properties in the Google Apps Script editor.

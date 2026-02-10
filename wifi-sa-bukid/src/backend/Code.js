@@ -48,6 +48,27 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   }
 
+  // Public Endpoint: Diagnostic Config Check
+  if (action == 'testConfig') {
+      var status = { db: 'unknown', keys: 'unknown' };
+      try {
+          // Check DB
+          var ss = getDbConnection();
+          if (ss) status.db = "Connected: " + ss.getName();
+          else status.db = "Failed (Null)";
+
+          // Check Keys
+          var keys = getApiKeys();
+          status.keys = (keys.PAYMONGO_SECRET_KEY && keys.PAYMONGO_SECRET_KEY !== "sk_test_mock") ? "Present" : "Missing/Default";
+
+          return ContentService.createTextOutput(JSON.stringify({ status: 'ok', details: status }))
+            .setMimeType(ContentService.MimeType.JSON);
+      } catch (e) {
+          return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: e.toString() }))
+            .setMimeType(ContentService.MimeType.JSON);
+      }
+  }
+
   // Default response
   return ContentService.createTextOutput("WiFi sa Bukid API Active");
 }

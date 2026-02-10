@@ -39,7 +39,8 @@ const context = {
   },
   PropertiesService: {
     getScriptProperties: () => ({
-      getProperties: () => ({})
+      getProperties: () => ({}),
+      getProperty: (key) => key === "SPREADSHEET_ID" ? "mock_ss_id" : null
     })
   },
   CacheService: {
@@ -186,6 +187,20 @@ try {
   const getPlansRes = context.doGet({ parameter: { action: 'getPlans' } });
   if (JSON.parse(getPlansRes.getContent()).status === 'success') console.log("PASS");
   else throw "doGet getPlans Failed";
+
+  // Test 10: testConfig
+  console.log("Test 10: testConfig...");
+  // Mock SpreadsheetApp.openById result for testConfig
+  context.SpreadsheetApp = {
+      openById: (id) => ({ getName: () => "Mock Sheet" })
+  };
+  const configRes = context.doGet({ parameter: { action: 'testConfig' } });
+  const configJson = JSON.parse(configRes.getContent());
+  if (configJson.status === 'ok' && configJson.details.db.includes("Connected")) console.log("PASS");
+  else throw "testConfig Failed: " + JSON.stringify(configJson);
+
+  // Clean up mock
+  context.SpreadsheetApp = undefined;
 
   console.log("All Tests Passed!");
 
