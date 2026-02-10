@@ -102,3 +102,31 @@ add name="KickUsersParams" source=( \
 /system scheduler
 add name="SyncUsersSchedule" interval=10s on-event="SyncUsersParams"
 add name="KickUsersSchedule" interval=1m on-event="KickUsersParams"
+
+# ==========================================
+# Automatic Internet for Ports 4 & 5 (Direct Bridge)
+# ==========================================
+# Remove ports from old bridges (ignore errors if not present)
+/interface bridge port remove [find interface=ether4]
+/interface bridge port remove [find interface=ether5]
+
+# Create bridge-Direct if not exists
+:if ([:len [/interface bridge find name=bridge-Direct]] = 0) do={
+    /interface bridge add name=bridge-Direct
+}
+
+# Add ports
+/interface bridge port add bridge=bridge-Direct interface=ether4
+/interface bridge port add bridge=bridge-Direct interface=ether5
+
+# Add IP (if not exists)
+:if ([:len [/ip address find interface=bridge-Direct]] = 0) do={
+    /ip address add address=192.168.55.1/24 interface=bridge-Direct
+}
+
+# Setup DHCP (Direct Internet)
+:if ([:len [/ip dhcp-server find name=dhcp-Direct]] = 0) do={
+    /ip pool add name=pool-Direct ranges=192.168.55.10-192.168.55.254
+    /ip dhcp-server network add address=192.168.55.0/24 gateway=192.168.55.1 dns-server=8.8.8.8,8.8.4.4
+    /ip dhcp-server add name=dhcp-Direct interface=bridge-Direct address-pool=pool-Direct disabled=no
+}
