@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WiFi sa Bukid - Connect</title>
+    <title>WiFi sa Mayapyap - Connect</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -22,6 +22,10 @@
         }
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
         .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body class="font-sans antialiased text-gray-900 min-h-screen flex flex-col">
@@ -29,7 +33,7 @@
     <!-- Marquee -->
     <div class="marquee-container text-white py-2 overflow-hidden shadow-md fixed top-0 w-full z-50">
         <div id="announcement-text" class="animate-marquee font-semibold tracking-wide">
-            Welcome to WiFi sa Bukid! Experience fast and reliable internet in the heart of nature.
+            Welcome to WiFi sa Mayapyap! Experience fast and reliable internet in the heart of nature.
         </div>
     </div>
 
@@ -41,7 +45,7 @@
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4 shadow-inner">
                     <i class="fas fa-wifi text-3xl"></i>
                 </div>
-                <h1 class="text-3xl font-extrabold text-green-800 tracking-tight">WiFi sa Bukid</h1>
+                <h1 class="text-3xl font-extrabold text-green-800 tracking-tight">WiFi sa Mayapyap</h1>
                 <p class="text-gray-500 text-sm mt-1">Connect to Nature, Connect to the World</p>
             </div>
 
@@ -74,38 +78,59 @@
                 <div class="flex-grow border-t border-gray-300"></div>
             </div>
 
-            <!-- Promo Section -->
+            <!-- View Promos Button -->
+            <button onclick="openPromoModal()" class="w-full border-2 border-green-500 text-green-600 font-bold py-3 rounded-xl hover:bg-green-50 transition-all duration-200 flex items-center justify-center">
+                <i class="fas fa-tags mr-2"></i> View Available Promos
+            </button>
+
+            <div class="mt-8 text-center">
+                <a href="#" id="admin-portal-link" class="text-xs text-gray-400 hover:text-green-600 transition-colors">Admin Portal Access</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promo List Modal -->
+    <div id="promo-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+            <button onclick="closePromoModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Select a Promo</h3>
+
             <div id="loading-plans" class="text-center text-gray-500 py-4 animate-pulse">
                 <i class="fas fa-spinner fa-spin mr-2"></i> Loading Promos...
             </div>
 
-            <div id="plans-container" class="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-green-200"></div>
+            <div id="plans-container" class="space-y-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-green-200"></div>
+        </div>
+    </div>
 
-            <!-- Purchase Form -->
-            <div id="purchase-form" class="hidden mt-6 bg-green-50 p-4 rounded-xl border border-green-100 animate-fade-in-up">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-green-800 text-sm uppercase">Selected Promo</h3>
-                    <span id="selected-plan-name" class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full font-bold"></span>
-                </div>
-                <div class="relative mb-3">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-green-500"><i class="fas fa-mobile-alt"></i></span>
-                    <input type="text" id="buy-mobile" placeholder="Enter Mobile Number"
-                        class="w-full pl-10 pr-3 py-2 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
-                </div>
-                <!-- Hidden MAC Field -->
-                <input type="hidden" id="user-mac" value="$(mac)">
+    <!-- Purchase Modal -->
+    <div id="purchase-modal" class="fixed inset-0 modal-overlay z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative animate-fade-in-up">
+            <h3 class="text-xl font-bold text-gray-800 mb-1" id="selected-plan-name">Plan Name</h3>
+            <p class="text-green-600 font-bold text-lg mb-6" id="selected-plan-price">₱0</p>
 
-                <p class="text-xs text-gray-500 mb-3 text-center leading-relaxed">
-                    <i class="fas fa-lock mr-1"></i> Secure Payment via: <br>
-                    <span class="font-bold">Cards, GCash, Maya, GrabPay, Banks, QRPh</span>
-                </p>
-                <button onclick="initiatePayment()" id="pay-btn" class="w-full bg-gray-900 text-white font-bold py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                    Proceed to Payment
-                </button>
+            <div class="relative mb-4">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-green-500"><i class="fas fa-mobile-alt"></i></span>
+                <input type="text" id="buy-mobile" placeholder="Enter Mobile Number"
+                    class="w-full pl-10 pr-3 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50" />
             </div>
+            <!-- Hidden MAC Field -->
+            <input type="hidden" id="user-mac" value="$(mac)">
 
-            <div class="mt-8 text-center">
-                <a href="#" id="admin-portal-link" class="text-xs text-gray-400 hover:text-green-600 transition-colors">Admin Portal Access</a>
+            <p class="text-xs text-gray-500 mb-6 text-center leading-relaxed">
+                <i class="fas fa-lock mr-1"></i> Secure Payment via: <br>
+                <span class="font-bold">Cards, GCash, Maya, GrabPay, Banks, QRPh</span>
+            </p>
+
+            <div class="flex space-x-3">
+                <button onclick="closePurchaseModal()" class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button onclick="initiatePayment()" id="pay-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-lg">
+                    Buy Now
+                </button>
             </div>
         </div>
     </div>
@@ -324,17 +349,27 @@
         });
     }
 
-    function selectPlan(el, plan) {
-        document.querySelectorAll('#plans-container > div').forEach(c => {
-            c.classList.remove('border-green-500', 'bg-green-50', 'ring-2', 'ring-green-200');
-            c.classList.add('border-gray-200');
-        });
-        el.classList.remove('border-gray-200');
-        el.classList.add('border-green-500', 'bg-green-50', 'ring-2', 'ring-green-200');
+    // Modal Functions
+    function openPromoModal() {
+        document.getElementById('promo-modal').classList.remove('hidden');
+    }
 
+    function closePromoModal() {
+        document.getElementById('promo-modal').classList.add('hidden');
+    }
+
+    function closePurchaseModal() {
+        document.getElementById('purchase-modal').classList.add('hidden');
+    }
+
+    function selectPlan(el, plan) {
         selectedPlan = plan;
         document.getElementById('selected-plan-name').innerText = plan.name;
-        document.getElementById('purchase-form').classList.remove('hidden');
+        document.getElementById('selected-plan-price').innerText = "₱" + plan.price;
+
+        // Switch Modals
+        closePromoModal();
+        document.getElementById('purchase-modal').classList.remove('hidden');
     }
 
     function initiatePayment() {
