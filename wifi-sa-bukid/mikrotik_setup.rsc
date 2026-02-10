@@ -50,34 +50,39 @@ set [ find default=yes ] \
 /system script
 add name="SyncUsersParams" source=( \
     ":local url (\"" . $GASURL . "?action=getNewUsers\")\r\n" . \
-    "/tool fetch url=\$url mode=https keep-result=yes dst-path=\"newusers.txt\" check-certificate=no\r\n" . \
-    ":local content [/file get newusers.txt contents]\r\n" . \
-    ":if ([:len \$content] > 3) do={\r\n" . \
-    "    :local users \$content\r\n" . \
-    "    :local len [:len \$users]\r\n" . \
-    "    :local start 0\r\n" . \
-    "    :local end 0\r\n" . \
-    "    :do {\r\n" . \
-    "        :set end [:find \$users \"\\n\" \$start]\r\n" . \
-    "        :if ([:typeof \$end] = \"nil\") do={ :set end \$len }\r\n" . \
-    "        :local line [:pick \$users \$start \$end]\r\n" . \
-    "        :if ([:pick \$line ([:len \$line]-1)] = \"\\r\") do={ :set line [:pick \$line 0 ([:len \$line]-1)] }\r\n" . \
-    "        :if ([:len \$line] > 0) do={\r\n" . \
-    "            :local c1 [:find \$line \",\"]\r\n" . \
-    "            :local c2 [:find \$line \",\" (\$c1 + 1)]\r\n" . \
-    "            :if ([:typeof \$c1] != \"nil\" && [:typeof \$c2] != \"nil\") do={\r\n" . \
-    "                :local u [:pick \$line 0 \$c1]\r\n" . \
-    "                :local p [:pick \$line (\$c1 + 1) \$c2]\r\n" . \
-    "                :local l [:pick \$line (\$c2 + 1) [:len \$line]]\r\n" . \
-    "                :if ([:len [/ip hotspot user find name=\$u]] = 0) do={\r\n" . \
-    "                    /ip hotspot user add name=\$u password=\$p limit-uptime=\$l profile=default\r\n" . \
-    "                    :log info (\"Added user: \" . \$u)\r\n" . \
+    ":do {\r\n" . \
+    "    /tool fetch url=\$url mode=https keep-result=yes dst-path=\"newusers.txt\" check-certificate=no\r\n" . \
+    "    :if ([:len [/file find name=\"newusers.txt\"]] > 0) do={\r\n" . \
+    "        :local content [/file get newusers.txt contents]\r\n" . \
+    "        :if ([:len \$content] > 3) do={\r\n" . \
+    "            :local users \$content\r\n" . \
+    "            :local len [:len \$users]\r\n" . \
+    "            :local start 0\r\n" . \
+    "            :local end 0\r\n" . \
+    "            :do {\r\n" . \
+    "                :set end [:find \$users \"\\n\" \$start]\r\n" . \
+    "                :if ([:typeof \$end] = \"nil\") do={ :set end \$len }\r\n" . \
+    "                :local line [:pick \$users \$start \$end]\r\n" . \
+    "                :if ([:pick \$line ([:len \$line]-1)] = \"\\r\") do={ :set line [:pick \$line 0 ([:len \$line]-1)] }\r\n" . \
+    "                :if ([:len \$line] > 0) do={\r\n" . \
+    "                    :local c1 [:find \$line \",\"]\r\n" . \
+    "                    :local c2 [:find \$line \",\" (\$c1 + 1)]\r\n" . \
+    "                    :if ([:typeof \$c1] != \"nil\" && [:typeof \$c2] != \"nil\") do={\r\n" . \
+    "                        :local u [:pick \$line 0 \$c1]\r\n" . \
+    "                        :local p [:pick \$line (\$c1 + 1) \$c2]\r\n" . \
+    "                        :local l [:pick \$line (\$c2 + 1) [:len \$line]]\r\n" . \
+    "                        :if ([:len [/ip hotspot user find name=\$u]] = 0) do={\r\n" . \
+    "                            /ip hotspot user add name=\$u password=\$p limit-uptime=\$l profile=default\r\n" . \
+    "                            :log info (\"Added user: \" . \$u)\r\n" . \
+    "                        }\r\n" . \
+    "                    }\r\n" . \
     "                }\r\n" . \
-    "            }\r\n" . \
+    "                :set start (\$end + 1)\r\n" . \
+    "            } while (\$start < \$len)\r\n" . \
     "        }\r\n" . \
-    "        :set start (\$end + 1)\r\n" . \
-    "    } while (\$start < \$len)\r\n" . \
-    "}" \
+    "        /file remove \"newusers.txt\"\r\n" . \
+    "    }\r\n" . \
+    "} on-error={ :log warning \"SyncUsers failed to fetch from GAS\" }" \
 )
 
 # 2. Kick Users Script
@@ -85,18 +90,23 @@ add name="SyncUsersParams" source=( \
 /system script
 add name="KickUsersParams" source=( \
     ":local url (\"" . $GASURL . "?action=getKickList\")\r\n" . \
-    "/tool fetch url=\$url mode=https keep-result=yes dst-path=\"kicklist.txt\" check-certificate=no\r\n" . \
-    ":local content [/file get kicklist.txt contents]\r\n" . \
-    ":if ([:len \$content] > 0) do={\r\n" . \
-    "    :local activeUsers [/ip hotspot active find]\r\n" . \
-    "    :foreach u in=\$activeUsers do={\r\n" . \
-    "        :local user [:pick [/ip hotspot active get \$u user] 0 15]\r\n" . \
-    "        :if ([:find \$content \$user] >= 0) do={\r\n" . \
-    "            /ip hotspot active remove \$u\r\n" . \
-    "            :log info (\"Kicked user: \" . \$user)\r\n" . \
+    ":do {\r\n" . \
+    "    /tool fetch url=\$url mode=https keep-result=yes dst-path=\"kicklist.txt\" check-certificate=no\r\n" . \
+    "    :if ([:len [/file find name=\"kicklist.txt\"]] > 0) do={\r\n" . \
+    "        :local content [/file get kicklist.txt contents]\r\n" . \
+    "        :if ([:len \$content] > 0) do={\r\n" . \
+    "            :local activeUsers [/ip hotspot active find]\r\n" . \
+    "            :foreach u in=\$activeUsers do={\r\n" . \
+    "                :local user [:pick [/ip hotspot active get \$u user] 0 15]\r\n" . \
+    "                :if ([:find \$content \$user] >= 0) do={\r\n" . \
+    "                    /ip hotspot active remove \$u\r\n" . \
+    "                    :log info (\"Kicked user: \" . \$user)\r\n" . \
+    "                }\r\n" . \
+    "            }\r\n" . \
     "        }\r\n" . \
+    "        /file remove \"kicklist.txt\"\r\n" . \
     "    }\r\n" . \
-    "}" \
+    "} on-error={ :log warning \"KickUsers failed to fetch from GAS\" }" \
 )
 
 # ==========================================
