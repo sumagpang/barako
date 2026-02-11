@@ -8,122 +8,112 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
       body {
-        background-image: linear-gradient(rgba(0, 50, 20, 0.8), rgba(0, 50, 20, 0.9)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f3f4f6;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
       }
-      .glass-sidebar {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      .sidebar {
+        background: #1e293b; /* Slate-800 */
+        border-right: 1px solid #334155;
       }
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+      .content-area {
+        background: #f8fafc;
       }
-      .glass-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(5px);
-        transition: transform 0.2s;
-      }
-      .glass-card:hover {
-        transform: translateY(-5px);
+      .panel {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
       }
       .menu-item {
         cursor: pointer;
         user-select: none;
         transition: all 0.2s;
+        color: #94a3b8;
       }
       .menu-item:hover, .menu-item.active {
-        background: rgba(255, 255, 255, 0.2);
-        border-left: 4px solid #10B981; /* Green-500 */
+        background: #334155; /* Slate-700 */
         color: white;
+        border-left: 4px solid #3b82f6; /* Blue-500 */
       }
-      /* Login Modal */
-      .modal-glass {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
+      .modal-overlay {
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(2px);
       }
-      /* Input overrides */
       input, textarea {
-          color: black !important;
+          color: #1e293b !important;
       }
     </style>
   </head>
-  <body class="text-gray-100 h-screen overflow-hidden flex">
+  <body class="text-slate-800 h-screen overflow-hidden flex bg-gray-50">
 
     <!-- Notification Modal -->
-    <div id="notification-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm hidden">
-        <div class="modal-glass p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
-            <h3 class="text-xl font-bold text-gray-800 mb-2" id="modal-title">Notification</h3>
-            <p class="text-gray-600 mb-6" id="modal-message">Message body</p>
-            <button onclick="closeModal()" class="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-900 transition-colors">Okay</button>
+    <div id="notification-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm text-center border border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900 mb-2" id="modal-title">Notification</h3>
+            <p class="text-gray-600 mb-6 text-sm" id="modal-message">Message body</p>
+            <button onclick="closeModal()" class="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-900 transition-colors text-sm">Okay</button>
         </div>
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm">
-        <div class="modal-glass p-8 rounded-2xl shadow-2xl w-full max-w-sm text-gray-800">
+    <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm text-gray-800 border border-gray-200">
             <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
-                    <i class="fas fa-lock text-2xl"></i>
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-4">
+                    <i class="fas fa-shield-alt text-xl"></i>
                 </div>
-                <h2 class="text-2xl font-bold">Admin Access</h2>
-                <p class="text-sm text-gray-500">WiFi sa Bukid Portal</p>
+                <h2 class="text-xl font-bold text-gray-900">Admin Login</h2>
+                <p class="text-xs text-gray-500 mt-1">Authorized Personnel Only</p>
             </div>
-            <input type="password" id="admin-password-input" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:outline-none mb-4 bg-gray-50 text-black" placeholder="Enter Password">
-            <button onclick="attemptLogin()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">Login</button>
+            <input type="password" id="admin-password-input" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4 bg-white text-gray-900 placeholder-gray-400 text-sm" placeholder="Password">
+            <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md text-sm">Access Dashboard</button>
         </div>
     </div>
 
     <!-- Sidebar -->
-    <div class="glass-sidebar w-64 flex flex-col hidden md:flex">
-      <div class="h-20 flex items-center justify-center border-b border-gray-700">
-        <h1 class="text-2xl font-bold text-white tracking-wider"><i class="fas fa-leaf mr-2 text-green-400"></i>BukidWiFi</h1>
+    <div class="sidebar w-64 flex flex-col hidden md:flex">
+      <div class="h-16 flex items-center px-6 border-b border-slate-700">
+        <h1 class="text-lg font-bold text-white tracking-wide flex items-center"><i class="fas fa-wifi mr-2 text-blue-400"></i> Mayapyap WiFi</h1>
       </div>
       <nav class="flex-1 overflow-y-auto py-4">
         <ul class="space-y-1">
           <li>
-            <div onclick="showSection('dashboard')" id="nav-dashboard" class="menu-item py-3 px-6 text-gray-300 flex items-center">
+            <div onclick="showSection('dashboard')" id="nav-dashboard" class="menu-item py-3 px-6 flex items-center text-sm font-medium">
               <i class="fas fa-chart-pie w-6"></i> <span class="font-medium">Dashboard</span>
             </div>
           </li>
           <li>
-            <div onclick="showSection('plans')" id="nav-plans" class="menu-item py-3 px-6 text-gray-300 flex items-center">
+            <div onclick="showSection('plans')" id="nav-plans" class="menu-item py-3 px-6 flex items-center text-sm font-medium">
               <i class="fas fa-tag w-6"></i> <span class="font-medium">Promo Plans</span>
             </div>
           </li>
           <li>
-            <div onclick="showSection('users')" id="nav-users" class="menu-item py-3 px-6 text-gray-300 flex items-center">
+            <div onclick="showSection('users')" id="nav-users" class="menu-item py-3 px-6 flex items-center text-sm font-medium">
               <i class="fas fa-users w-6"></i> <span class="font-medium">Active Users</span>
             </div>
           </li>
           <li>
-            <div onclick="showSection('announcements')" id="nav-announcements" class="menu-item py-3 px-6 text-gray-300 flex items-center">
+            <div onclick="showSection('announcements')" id="nav-announcements" class="menu-item py-3 px-6 flex items-center text-sm font-medium">
               <i class="fas fa-bullhorn w-6"></i> <span class="font-medium">Announce</span>
             </div>
           </li>
           <li>
-            <div onclick="showSection('settings')" id="nav-settings" class="menu-item py-3 px-6 text-gray-300 flex items-center">
+            <div onclick="showSection('settings')" id="nav-settings" class="menu-item py-3 px-6 flex items-center text-sm font-medium">
               <i class="fas fa-cog w-6"></i> <span class="font-medium">Settings</span>
             </div>
           </li>
         </ul>
       </nav>
-      <div class="p-4 border-t border-gray-700 text-center text-xs text-gray-400">
-        &copy; 2024 WiFi sa Bukid
+      <div class="p-4 border-t border-slate-700 text-center text-xs text-slate-500">
+        &copy; 2024 Mayapyap WiFi
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden relative">
+    <div class="flex-1 flex flex-col overflow-hidden relative content-area">
       <!-- Mobile Header -->
-      <div class="md:hidden h-16 glass-sidebar flex items-center justify-between px-4">
-        <span class="text-xl font-bold text-white"><i class="fas fa-leaf mr-1"></i> BukidWiFi</span>
-        <button onclick="document.querySelector('.glass-sidebar').classList.toggle('hidden')" class="text-white">
+      <div class="md:hidden h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm">
+        <span class="text-lg font-bold text-slate-800"><i class="fas fa-wifi mr-2 text-blue-600"></i> Mayapyap WiFi</span>
+        <button onclick="document.querySelector('.sidebar').classList.toggle('hidden')" class="text-slate-600">
             <i class="fas fa-bars text-xl"></i>
         </button>
       </div>
@@ -134,43 +124,43 @@
         <!-- Dashboard -->
         <div id="dashboard" class="section animate-fade-in">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-3xl font-bold text-white">Dashboard Overview</h2>
-            <input type="month" id="filter-month" onchange="loadDashboard()" class="bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400">
+            <h2 class="text-2xl font-bold text-slate-800">Overview</h2>
+            <input type="month" id="filter-month" onchange="loadDashboard()" class="bg-white text-slate-700 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
           </div>
 
           <!-- Stats Cards -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="glass-card p-6 rounded-2xl shadow-lg border-l-4 border-green-500">
+            <div class="panel p-6 shadow-sm border-l-4 border-emerald-500">
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="text-xs font-bold text-green-600 uppercase mb-1">Total Sales</p>
-                  <h3 class="text-3xl font-bold text-gray-800" id="total-sales">Loading...</h3>
+                  <p class="text-xs font-bold text-slate-500 uppercase mb-1">Total Revenue</p>
+                  <h3 class="text-3xl font-bold text-slate-900" id="total-sales">Loading...</h3>
                 </div>
-                <div class="p-3 bg-green-100 rounded-full text-green-600">
+                <div class="p-3 bg-emerald-50 rounded-full text-emerald-600">
                   <i class="fas fa-coins text-xl"></i>
                 </div>
               </div>
             </div>
 
-            <div class="glass-card p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+            <div class="panel p-6 shadow-sm border-l-4 border-blue-500">
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="text-xs font-bold text-blue-600 uppercase mb-1">Active Users</p>
-                  <h3 class="text-3xl font-bold text-gray-800" id="active-users-count">Loading...</h3>
+                  <p class="text-xs font-bold text-slate-500 uppercase mb-1">Active Subscribers</p>
+                  <h3 class="text-3xl font-bold text-slate-900" id="active-users-count">Loading...</h3>
                 </div>
-                <div class="p-3 bg-blue-100 rounded-full text-blue-600">
+                <div class="p-3 bg-blue-50 rounded-full text-blue-600">
                   <i class="fas fa-user-check text-xl"></i>
                 </div>
               </div>
             </div>
 
-            <div class="glass-card p-6 rounded-2xl shadow-lg border-l-4 border-purple-500">
+            <div class="panel p-6 shadow-sm border-l-4 border-violet-500">
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="text-xs font-bold text-purple-600 uppercase mb-1">Total Traffic</p>
-                  <h3 class="text-3xl font-bold text-gray-800" id="total-traffic">Loading...</h3>
+                  <p class="text-xs font-bold text-slate-500 uppercase mb-1">Network Traffic</p>
+                  <h3 class="text-3xl font-bold text-slate-900" id="total-traffic">Loading...</h3>
                 </div>
-                <div class="p-3 bg-purple-100 rounded-full text-purple-600">
+                <div class="p-3 bg-violet-50 rounded-full text-violet-600">
                   <i class="fas fa-network-wired text-xl"></i>
                 </div>
               </div>
@@ -178,8 +168,8 @@
           </div>
 
           <!-- Connected Users Table (New Requirement) -->
-          <div class="glass-panel p-6 rounded-2xl shadow-lg mb-8">
-              <h3 class="text-lg font-bold text-gray-800 mb-4">Connected Users</h3>
+          <div class="panel p-6 shadow-sm mb-8">
+              <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-gray-100 pb-2">Connected Devices (Live)</h3>
               <div class="overflow-x-auto">
                   <table class="w-full text-left">
                       <thead class="bg-gray-100/50">
@@ -200,16 +190,16 @@
 
           <!-- Chart Area -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-             <div class="glass-panel p-6 rounded-2xl shadow-lg">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Plan Distribution</h3>
+             <div class="panel p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-gray-100 pb-2">Plan Distribution</h3>
                 <div class="relative h-64">
                     <canvas id="planChart"></canvas>
                 </div>
              </div>
-             <div class="glass-panel p-6 rounded-2xl shadow-lg">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Top Users</h3>
+             <div class="panel p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-gray-100 pb-2">Top Customers</h3>
                 <div class="overflow-auto h-64">
-                    <ul id="top-users-list" class="space-y-3">
+                    <ul id="top-users-list" class="space-y-2">
                         <!-- JS -->
                     </ul>
                 </div>
@@ -219,11 +209,11 @@
 
         <!-- Users Section -->
         <div id="users" class="section hidden">
-          <h2 class="text-3xl font-bold text-white mb-6">User Management</h2>
-          <div class="glass-panel rounded-2xl shadow-lg overflow-hidden">
+          <h2 class="text-2xl font-bold text-slate-800 mb-6">User Management</h2>
+          <div class="panel shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-              <table class="min-w-full text-left text-gray-800">
-                <thead class="bg-gray-100/50 border-b border-gray-200">
+              <table class="min-w-full text-left text-slate-700">
+                <thead class="bg-gray-50 border-b border-gray-200 text-slate-500 uppercase text-xs font-semibold">
                   <tr>
                     <th class="px-6 py-4 font-semibold text-sm">Mobile Number</th>
                     <th class="px-6 py-4 font-semibold text-sm">Plan</th>

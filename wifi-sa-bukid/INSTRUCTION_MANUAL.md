@@ -218,20 +218,23 @@ This manual guides you through setting up the "WiFi sa Bukid" captive portal sys
 
 ## 6. Mikrotik Configuration Script (Automation)
 
-1.  **Open the Setup Script:**
-    *   Open `mikrotik_setup.rsc`.
+**Important:** This script performs a **COMPLETE SETUP**. It assumes you have reset the router with "No Default Configuration" as per Step 2.
+
+1.  **Open the Complete Setup Script:**
+    *   Open `mikrotik_complete.rsc`.
     *   Update the line `:global GASURL "..."` with your **Web App URL**.
 
 2.  **Run the Script:**
-    *   Copy the entire content of the updated `mikrotik_setup.rsc`.
+    *   Copy the entire content of `mikrotik_complete.rsc`.
     *   In WinBox, open **New Terminal**.
     *   Paste the script and press Enter.
+    *   *This will configure WAN, LAN Bridges (Direct & Hotspot), IP Addresses, DHCP, NAT, DNS, Hotspot, Walled Garden, and Sync Scripts in one go.*
 
 3.  **Verify:**
-    *   Check **IP > Hotspot > Walled Garden**. You should see entries for Paymongo and Google.
-    *   Check **IP > Hotspot > Server Profiles > Login**. Ensure `HTTP PAP` is checked.
-    *   Check **System > Scripts**. You should see `SyncUsersParams` and `KickUsersParams`.
-    *   Check **System > Scheduler**. You should see schedules running every 10s and 1m.
+    *   **Ports 2 & 3:** Should provide direct internet immediately.
+    *   **Ports 4 & 5:** Should show the Hotspot login page.
+    *   **System > Scripts:** Should show `SyncUsersParams`.
+    *   **IP > Hotspot > Walled Garden:** Should list Google/Paymongo domains.
 
 ---
 
