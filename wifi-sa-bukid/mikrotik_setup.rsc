@@ -5,14 +5,21 @@
 :global GASURL "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
 
 # ==========================================
-# Walled Garden Setup
+# Force DNS & Walled Garden Setup
 # ==========================================
+
+# Force users to use Router DNS (Critical for Walled Garden)
+/ip firewall nat
+add chain=dstnat protocol=udp dst-port=53 action=redirect to-ports=53 comment="Force DNS UDP"
+add chain=dstnat protocol=tcp dst-port=53 action=redirect to-ports=53 comment="Force DNS TCP"
+
 /ip hotspot walled-garden
 # Allow Google Script Execution (Ports 80/443 explicitly)
 add dst-host=*script.google.com dst-port=443 comment="Google Script HTTPS"
 add dst-host=*script.google.com dst-port=80 comment="Google Script HTTP"
 add dst-host=*googleusercontent.com dst-port=443 comment="Google Content HTTPS"
 add dst-host=*accounts.google.com dst-port=443 comment="Google Auth"
+add dst-host=*google.com dst-port=443 comment="Google General"
 
 # Other Services
 add dst-host=*paymongo.com comment="Paymongo"
