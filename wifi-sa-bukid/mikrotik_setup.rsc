@@ -8,6 +8,18 @@
 # Force DNS & Walled Garden Setup
 # ==========================================
 
+# Ensure Basic Connectivity (DNS/NAT)
+/ip dns set allow-remote-requests=yes
+:if ([:len [/ip firewall nat find action=masquerade]] = 0) do={
+    /ip firewall nat add chain=srcnat out-interface=ether1-WAN action=masquerade comment="Default Masquerade"
+}
+
+# Ensure Bridges are in LAN list (if default firewall exists)
+:if ([:len [/interface list find name=LAN]] > 0) do={
+    :do { /interface list member add list=LAN interface=bridge-Direct } on-error={}
+    :do { /interface list member add list=LAN interface=bridge-LAN } on-error={}
+}
+
 # Force users to use Router DNS (Critical for Walled Garden)
 /ip firewall nat
 add chain=dstnat protocol=udp dst-port=53 action=redirect to-ports=53 comment="Force DNS UDP"
