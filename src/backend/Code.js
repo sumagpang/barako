@@ -1,0 +1,227 @@
+/**
+ * Code.js - Main entry point and request handling
+ */
+
+function doGet(e) {
+  const action = e.parameter.action;
+  const page = e.parameter.page;
+
+  if (page === 'admin') {
+    const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+    if (e.parameter.pw !== adminPassword) {
+      return HtmlService.createHtmlOutput('<h1>Access Denied</h1><p>Invalid password.</p>');
+    }
+    return HtmlService.createTemplateFromFile('frontend/admin/index')
+      .evaluate()
+      .setTitle('ARASU WiFi Admin')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  // Hotspot API Endpoints
+  if (action === 'getPlans') {
+    return jsonResponse(DB.getData('Plans').filter(p => p.status === 'Active'));
+  }
+
+  if (action === 'getAnnouncements') {
+    return jsonResponse(DB.getData('Announcements').filter(a => a.status === 'Active'));
+  }
+
+  if (action === 'checkPayment') {
+    const refId = e.parameter.refId;
+    const transaction = DB.findBy('Transactions', 'referenceId', refId);
+    if (transaction && transaction.status === 'Success') {
+      const user = DB.findBy('Users', 'referenceId', refId);
+      return jsonResponse({ success: true, passcode: user.passcode, username: user.username });
+    }
+    return jsonResponse({ success: false });
+  }
+
+  // Mikrotik Sync Endpoints
+  if (action === 'getNewUsers') {
+    const token = e.parameter.token;
+    if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      return jsonResponse({ error: 'Unauthorized' });
+    }
+    const users = DB.getData('Users').filter(u => u.syncStatus !== 'Synced');
+    return jsonResponse(users);
+  }
+
+  return HtmlService.createHtmlOutput('<h1>ARASU WiFi sa Bukid</h1><p>Backend is running.</p>');
+}
+
+function doPost(e) {
+  // Handle Paymongo Webhook
+  try {
+    const postData = JSON.parse(e.postData.contents);
+    if (postData.data && postData.data.attributes && postData.data.attributes.type === 'link.payment.paid') {
+      const paymentData = postData.data.attributes.data.attributes;
+      const referenceId = paymentData.remarks;
+      processSuccessfulPayment(referenceId);
+      return ContentService.createTextOutput('OK');
+    }
+  } catch (err) {
+    // Handle RPC or other POSTs
+    if (e.parameter.rpc) {
+      return handleRpc(e);
+    }
+  }
+}
+
+function handleRpc(e) {
+  const payload = JSON.parse(e.postData.contents);
+  const method = payload.method;
+  const args = payload.args || [];
+
+  // Basic security for Admin RPC
+  const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  if (payload.password !== adminPassword && method !== 'buyPlan') {
+    return jsonResponse({ error: 'Unauthorized' });
+  }
+
+  if (method === 'getDashboardData') {
+    return jsonResponse({
+      sales: DB.getData('Transactions').filter(t => t.status === 'Success'),
+      users: DB.getData('Users'),
+      plans: DB.getData('Plans'),
+      settings: DB.getData('Settings')
+    });
+  }
+
+  if (method === 'buyPlan') {
+    return jsonResponse(initiatePurchase(args[0]));
+  }
+
+  if (method === 'saveUser') {
+    const user = args[0];
+    if (user._row) {
+      DB.update('Users', user._row, user);
+    } else {
+      DB.insert('Users', user);
+    }
+    return jsonResponse({ success: true });
+  }
+
+  if (method === 'savePlan') {
+    const plan = args[0];
+    if (plan._row) {
+      DB.update('Plans', plan._row, plan);
+    } else {
+      DB.insert('Plans', plan);
+    }
+    return jsonResponse({ success: true });
+  }
+
+  if (method === 'updateConnection') {
+    const { username, status } = args[0];
+    const user = DB.findBy('Users', 'username', username);
+    if (user) {
+      DB.update('Users', user._row, { connectionStatus: status });
+    }
+    return jsonResponse({ success: true });
+  }
+}
+
+function initiatePurchase(data) {
+  const plan = DB.findBy('Plans', 'id', data.planId);
+  const referenceId = 'REF' + new Date().getTime();
+  const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+  const username = data.mobileNumber;
+
+  // Save pending transaction
+  DB.insert('Transactions', {
+    referenceId: referenceId,
+    mobileNumber: data.mobileNumber,
+    planId: data.planId,
+    amount: plan.price,
+    status: 'Pending',
+    timestamp: new Date()
+  });
+
+  // Save pending user
+  DB.insert('Users', {
+    username: username,
+    passcode: passcode,
+    planId: data.planId,
+    mobileNumber: data.mobileNumber,
+    referenceId: referenceId,
+    syncStatus: 'Pending',
+    expirationDate: '',
+    connectionStatus: 'Offline'
+  });
+
+  const checkoutUrl = PaymongoService.createPaymentLink(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
+  return { checkoutUrl: checkoutUrl, referenceId: referenceId };
+}
+
+function processSuccessfulPayment(referenceId) {
+  const transaction = DB.findBy('Transactions', 'referenceId', referenceId);
+  if (transaction && transaction.status === 'Pending') {
+    DB.update('Transactions', transaction._row, { status: 'Success' });
+
+    const user = DB.findBy('Users', 'referenceId', referenceId);
+    const plan = DB.findBy('Plans', 'id', user.planId);
+
+    // Calculate expiration
+    const now = new Date();
+    const expiration = new Date(now.getTime() + (plan.durationHours * 60 * 60 * 1000));
+
+    DB.update('Users', user._row, {
+      syncStatus: 'Ready',
+      expirationDate: expiration.toISOString()
+    });
+
+    // Send SMS
+    const message = 'Thank you for your purchase! Your passcode for ARASU WiFi is: ' + user.passcode + '. Valid for ' + plan.durationHours + ' hours.';
+    SemaphoreService.sendSMS(user.mobileNumber, message);
+  }
+}
+
+function jsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Wrapper for google.script.run calls from the Admin Portal
+ */
+function handleRpcManual(method, args) {
+  // Use the same logic as handleRpc but without the event object
+  const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+
+  // For google.script.run, we assume session-based auth is handled by Google
+  // But we can add extra checks if needed.
+
+  if (method === 'getDashboardData') {
+    return {
+      sales: DB.getData('Transactions').filter(t => t.status === 'Success'),
+      users: DB.getData('Users'),
+      plans: DB.getData('Plans'),
+      settings: DB.getData('Settings')
+    };
+  }
+
+  if (method === 'saveUser') {
+    const user = args[0];
+    if (user._row) {
+      return DB.update('Users', user._row, user);
+    } else {
+      return DB.insert('Users', user);
+    }
+  }
+
+  if (method === 'savePlan') {
+    const plan = args[0];
+    if (plan._row) {
+      return DB.update('Plans', plan._row, plan);
+    } else {
+      return DB.insert('Plans', plan);
+    }
+  }
+
+  // Add more methods...
+  return { error: 'Unknown method' };
+}

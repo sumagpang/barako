@@ -1,0 +1,63 @@
+<section v-if="currentPage === 'dashboard'">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total Sales -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Total Sales</div>
+      <div class="text-3xl font-bold text-slate-900">₱{{ dashboardData.sales.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0).toFixed(2) }}</div>
+      <div class="text-xs text-green-600 font-medium mt-2">↑ Active income</div>
+    </div>
+
+    <!-- Online Users -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Online Users</div>
+      <div class="text-3xl font-bold text-slate-900">{{ dashboardData.users.filter(u => u.connectionStatus === 'Online').length }}</div>
+      <div class="text-xs text-blue-600 font-medium mt-2">Current connections</div>
+    </div>
+
+    <!-- Total Users -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Total Registered</div>
+      <div class="text-3xl font-bold text-slate-900">{{ dashboardData.users.length }}</div>
+      <div class="text-xs text-slate-400 mt-2">Historical database</div>
+    </div>
+
+    <!-- Active Plans -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Active Plans</div>
+      <div class="text-3xl font-bold text-slate-900">{{ dashboardData.plans.filter(p => p.status === 'Active').length }}</div>
+      <div class="text-xs text-slate-400 mt-2">Available for purchase</div>
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+      <h3 class="font-bold">Recent Transactions</h3>
+      <button @click="currentPage = 'sales'" class="text-sm text-blue-600 font-medium hover:underline">View All</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-bold">
+          <tr>
+            <th class="px-6 py-4">Reference</th>
+            <th class="px-6 py-4">Mobile</th>
+            <th class="px-6 py-4">Amount</th>
+            <th class="px-6 py-4">Status</th>
+            <th class="px-6 py-4">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="sale in dashboardData.sales.slice(0, 5)" :key="sale.referenceId">
+            <td class="px-6 py-4 text-sm font-mono">{{ sale.referenceId }}</td>
+            <td class="px-6 py-4 text-sm">{{ sale.mobileNumber }}</td>
+            <td class="px-6 py-4 text-sm font-bold">₱{{ sale.amount }}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Success</span>
+            </td>
+            <td class="px-6 py-4 text-sm text-slate-500">{{ new Date(sale.timestamp).toLocaleDateString() }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARASU WiFi sa Bukid</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4">
+  <div class="w-full max-w-md glass rounded-3xl p-8 shadow-2xl text-white">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-extrabold tracking-tight text-blue-400">ARASU WiFi</h1>
+      <p class="text-slate-400 mt-1">Malakas na koneksyon sa bukid</p>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" action="http://hotspot.mikrotik.com/login" method="post" class="space-y-4">
+      <input type="hidden" name="dst" value="$(link-orig)" />
+      <input type="hidden" name="popup" value="true" />
+
+      <div>
+        <label class="block text-sm font-medium mb-1 text-slate-300">Mobile Number (Username)</label>
+        <input type="text" name="username" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1 text-slate-300">6-Digit Passcode</label>
+        <input type="password" name="password" placeholder="******" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
+        Connect to Internet
+      </button>
+
+      <div class="text-center text-sm text-slate-400 py-2">
+        $(if error)<span class="text-red-400">$(error)</span>$(endif)
+      </div>
+    </form>
+
+    <div class="mt-8 border-t border-slate-700 pt-6 text-center">
+      <p class="text-sm text-slate-400 mb-4">Wala pang passcode?</p>
+      <button onclick="showPromoModal()" class="w-full border border-blue-500/50 hover:bg-blue-500/10 text-blue-400 font-semibold py-3 rounded-xl transition">
+        View Promos & Buy
+      </button>
+    </div>
+
+    <div class="mt-6 text-center">
+      <p class="text-[10px] text-slate-500 uppercase tracking-widest">Powered by ARASU Tech</p>
+    </div>
+  </div>
+
+  <!-- Promo Modal -->
+  <div id="promoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-white">Select WiFi Plan</h2>
+        <button onclick="closeModal('promoModal')" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <div id="planList" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+        <!-- Plans will be loaded here -->
+        <div class="animate-pulse bg-slate-800 h-32 rounded-2xl"></div>
+        <div class="animate-pulse bg-slate-800 h-32 rounded-2xl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Purchase Modal -->
+  <div id="purchaseModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
+      <div class="text-center mb-6">
+        <h2 class="text-xl font-bold text-white">Complete Purchase</h2>
+        <p id="selectedPlanDisplay" class="text-blue-400 font-medium"></p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1 text-slate-300">Mobile Number</label>
+          <input type="text" id="buyerMobile" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+          <p class="text-[10px] text-slate-500 mt-1">Saan ise-send ang passcode?</p>
+        </div>
+
+        <button id="payButton" onclick="processPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
+          Pay with GCash/Maya
+        </button>
+
+        <button onclick="closeModal('purchaseModal')" class="w-full text-slate-400 text-sm py-2">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'YOUR_SCRIPT_ID';
+    let selectedPlan = null;
+
+    function showPromoModal() {
+      document.getElementById('promoModal').classList.remove('hidden');
+      fetchPlans();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    async function fetchPlans() {
+      try {
+        const res = await fetch(`${API_URL}?action=getPlans`);
+        const plans = await res.json();
+        const container = document.getElementById('planList');
+        container.innerHTML = plans.map(plan => `
+          <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 cursor-pointer transition group">
+            <div class="text-blue-400 font-bold mb-1">${plan.name}</div>
+            <div class="text-2xl font-black text-white">₱${plan.price}</div>
+            <div class="text-xs text-slate-500 mt-2">${plan.durationHours} Hours Internet</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Fetch plans failed', err);
+      }
+    }
+
+    function selectPlan(plan) {
+      selectedPlan = plan;
+      document.getElementById('selectedPlanDisplay').innerText = `${plan.name} - ₱${plan.price}`;
+      closeModal('promoModal');
+      document.getElementById('purchaseModal').classList.remove('hidden');
+    }
+
+    async function processPayment() {
+      const mobile = document.getElementById('buyerMobile').value;
+      if (!mobile) return alert('Please enter mobile number');
+
+      const btn = document.getElementById('payButton');
+      btn.disabled = true;
+      btn.innerText = 'Redirecting...';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            method: 'buyPlan',
+            args: [{ planId: selectedPlan.id, mobileNumber: mobile }]
+          })
+        });
+        const result = await res.json();
+        if (result.checkoutUrl) {
+          // Store for auto-sync logic
+          localStorage.setItem('pendingRef', result.referenceId);
+          window.location.href = result.checkoutUrl;
+        }
+      } catch (err) {
+        alert('Payment initialization failed');
+        btn.disabled = false;
+        btn.innerText = 'Pay with GCash/Maya';
+      }
+    }
+
+    // Auto-login logic
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('action') === 'from_payment') {
+        const username = urlParams.get('user');
+        const passcode = urlParams.get('pass');
+        if (username && passcode) {
+          document.getElementsByName('username')[0].value = username;
+          document.getElementsByName('password')[0].value = passcode;
+          document.getElementById('loginForm').submit();
+        }
+      }
+    };
+  </script>
+</body>
+</html>

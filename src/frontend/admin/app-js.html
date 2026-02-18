@@ -1,0 +1,89 @@
+<script>
+const { createApp, ref, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const currentPage = ref('dashboard');
+    const loading = ref(true);
+    const lastRefresh = ref(new Date().toLocaleTimeString());
+    const dashboardData = ref({ sales: [], users: [], plans: [] });
+
+    const refreshData = async () => {
+      loading.value = true;
+      try {
+        const response = await callBackend('getDashboardData');
+        dashboardData.value = response;
+        lastRefresh.value = new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        alert('Error fetching data. Check console for details.');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const promptAddUser = () => {
+      const username = prompt('Enter Mobile Number (Username):');
+      if (!username) return;
+      const passcode = prompt('Enter 6-digit Passcode:');
+      if (!passcode) return;
+      saveUser({ username, passcode, connectionStatus: 'Offline', syncStatus: 'Ready' });
+    };
+
+    const saveUser = async (user) => {
+      loading.value = true;
+      try {
+        await callBackend('saveUser', [user]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const savePlan = async (plan) => {
+      loading.value = true;
+      try {
+        await callBackend('savePlan', [plan]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const callBackend = (method, args = []) => {
+      return new Promise((resolve, reject) => {
+        // In GAS web apps, we use google.script.run for RPC
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .handleRpcManual(method, args); // We'll need a wrapper in Code.js if not using google.script.run directly
+        } else {
+          // Mock for local testing
+          console.log('Mock RPC:', method, args);
+          setTimeout(() => resolve({ sales: [], users: [], plans: [] }), 500);
+        }
+      });
+    };
+
+    onMounted(refreshData);
+
+    return {
+      currentPage,
+      loading,
+      lastRefresh,
+      dashboardData,
+      refreshData,
+      saveUser,
+      savePlan,
+      promptAddUser
+    };
+  }
+}).mount('#app');
+
+// Helper for Code.js to handle RPC when called via google.script.run
+function handleRpcManual(method, args) {
+  // This would be called on the server side
+  // But here it's just a placeholder for the logic
+}
+</script>
