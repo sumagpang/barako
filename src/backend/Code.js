@@ -43,6 +43,38 @@ function doGet(e) {
     }));
   }
 
+  if (page === 'payment_success') {
+    const refId = e.parameter.refId;
+    return HtmlService.createHtmlOutput(`
+      <html>
+        <head><title>Payment Success</title><script src="https://cdn.tailwindcss.com"></script></head>
+        <body class="bg-slate-900 text-white flex items-center justify-center min-h-screen p-6">
+          <div class="max-w-md w-full text-center space-y-6">
+            <div class="text-6xl text-emerald-500">✅</div>
+            <h1 class="text-2xl font-bold">Payment Successful!</h1>
+            <p class="text-slate-400">Please wait while we prepare your connection. You will be redirected shortly.</p>
+            <div class="animate-pulse text-sm text-blue-400">Syncing with router...</div>
+            <script>
+              async function checkSync() {
+                try {
+                  const res = await fetch('?action=checkPayment&refId=${refId}');
+                  const data = await res.json();
+                  if (data.success) {
+                    // Redirect back to Mikrotik with credentials
+                    window.location.href = 'http://hotspot.bukid.net/login?action=from_payment&user=' + data.username + '&pass=' + data.passcode;
+                  } else {
+                    setTimeout(checkSync, 2000);
+                  }
+                } catch(e) { setTimeout(checkSync, 2000); }
+              }
+              checkSync();
+            </script>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
   // Mikrotik Sync Endpoints
   if (action === 'getNewUsers') {
     const token = e.parameter.token;
@@ -163,35 +195,42 @@ function handleRpc(e) {
 }
 
 function initiatePurchase(data) {
-  const plan = DB.findBy('Plans', 'id', data.planId);
-  const referenceId = 'REF' + new Date().getTime();
-  const passcode = Math.floor(100000 + Math.random() * 900000).toString();
-  const username = data.mobileNumber;
+  try {
+    const plan = DB.findBy('Plans', 'id', data.planId);
+    if (!plan) throw new Error('Selected plan not found.');
 
-  // Save pending transaction
-  DB.insert('Transactions', {
-    referenceId: referenceId,
-    mobileNumber: data.mobileNumber,
-    planId: data.planId,
-    amount: plan.price,
-    status: 'Pending',
-    timestamp: new Date()
-  });
+    const referenceId = 'REF' + new Date().getTime();
+    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+    const username = data.mobileNumber;
 
-  // Save pending user
-  DB.insert('Users', {
-    username: username,
-    passcode: passcode,
-    planId: data.planId,
-    mobileNumber: data.mobileNumber,
-    referenceId: referenceId,
-    syncStatus: 'Pending',
-    expirationDate: '',
-    connectionStatus: 'Offline'
-  });
+    // Save pending transaction
+    DB.insert('Transactions', {
+      referenceId: referenceId,
+      mobileNumber: data.mobileNumber,
+      planId: data.planId,
+      amount: plan.price,
+      status: 'Pending',
+      timestamp: new Date()
+    });
 
-  const checkoutUrl = PaymongoService.createPaymentLink(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
-  return { checkoutUrl: checkoutUrl, referenceId: referenceId };
+    // Save pending user
+    DB.insert('Users', {
+      username: username,
+      passcode: passcode,
+      planId: data.planId,
+      mobileNumber: data.mobileNumber,
+      referenceId: referenceId,
+      syncStatus: 'Pending',
+      expirationDate: '',
+      connectionStatus: 'Offline'
+    });
+
+    const checkoutUrl = PaymongoService.createPaymentLink(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
+    return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
+  } catch (err) {
+    console.error('initiatePurchase Error:', err);
+    return { success: false, error: err.message };
+  }
 }
 
 function processSuccessfulPayment(referenceId) {

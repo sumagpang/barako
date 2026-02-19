@@ -150,15 +150,16 @@
         // We use GET for buyPlan to avoid CORS issues with POST in Google Apps Script
         const res = await fetch(`${API_URL}?action=buyPlan&planId=${selectedPlan.id}&mobileNumber=${mobile}`);
         const result = await res.json();
-        if (result.checkoutUrl) {
+
+        if (result.success && result.checkoutUrl) {
           // Store for auto-sync logic
           localStorage.setItem('pendingRef', result.referenceId);
           window.location.href = result.checkoutUrl;
         } else {
-          throw new Error('No checkout URL');
+          throw new Error(result.error || 'Failed to generate payment link.');
         }
       } catch (err) {
-        alert('Payment initialization failed. Please try again.');
+        alert('Payment Error: ' + err.message);
         btn.disabled = false;
         btn.innerText = 'Pay with GCash/Maya';
       }

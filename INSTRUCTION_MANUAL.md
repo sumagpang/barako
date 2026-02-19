@@ -33,6 +33,7 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
    - `SEMAPHORE_API_KEY`: (From Semaphore Dashboard)
    - `ADMIN_PASSWORD`: (Your desired admin portal password)
    - `MIKROTIK_TOKEN`: (A self-generated secret key. You create this yourself, e.g., `MySecret123`. It ensures only your router can fetch users from your script.)
+   - `WEB_APP_URL`: (You will get this in the next step. After deploying, come back here and paste the URL.)
 5. Click **Deploy** -> **New Deployment**.
    - Select **Web App**.
    - Set "Execute as" to **Me**.
@@ -91,3 +92,7 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 - **Login fails?** Check if the user exists in the `Users` tab and if `syncStatus` is `Synced`.
 - **Payment not recording?** Check the Web App's execution logs in Google Apps Script.
 - **SMS not sending?** Ensure your Semaphore account has balance and the API key is correct.
+- **Payment initialization failed?**
+  - Ensure `PAYMONGO_SECRET_KEY` is correct.
+  - Check if the selected payment method is enabled in your Paymongo Dashboard.
+  - Verify that `WEB_APP_URL` is correctly set in Script Properties.

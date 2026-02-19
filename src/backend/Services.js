@@ -8,6 +8,53 @@ var PaymongoService = {
   },
 
   createPaymentLink: function(amount, description, referenceId) {
+    // We use Checkout Sessions for better control over payment methods
+    const url = 'https://api.paymongo.com/v1/checkout_sessions';
+    const options = {
+      method: 'post',
+      headers: {
+        'Authorization': 'Basic ' + Utilities.base64Encode(this.getApiKey() + ':'),
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        data: {
+          attributes: {
+            send_email_receipt: true,
+            show_description: true,
+            show_line_items: true,
+            description: description,
+            line_items: [
+              {
+                amount: Math.round(amount * 100),
+                currency: 'PHP',
+                description: description,
+                name: 'Internet Plan',
+                quantity: 1
+              }
+            ],
+            payment_method_types: [
+              'card', 'gcash', 'grab_pay', 'paymaya', 'dob', 'qrph', 'shopeepay'
+            ],
+            reference_number: referenceId,
+            success_url: PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') + '?page=payment_success&refId=' + referenceId
+          }
+        }
+      }),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const result = JSON.parse(response.getContentText());
+
+    if (result.errors) {
+      // Fallback to simpler Links API if Session fails (e.g. if some methods are not enabled)
+      return this.createSimpleLink(amount, description, referenceId);
+    }
+
+    return result.data.attributes.checkout_url;
+  },
+
+  createSimpleLink: function(amount, description, referenceId) {
     const url = 'https://api.paymongo.com/v1/links';
     const options = {
       method: 'post',
@@ -18,7 +65,7 @@ var PaymongoService = {
       payload: JSON.stringify({
         data: {
           attributes: {
-            amount: Math.round(amount * 100), // convert to centavos
+            amount: Math.round(amount * 100),
             description: description,
             remarks: referenceId
           }
