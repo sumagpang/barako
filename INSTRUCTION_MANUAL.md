@@ -31,7 +31,7 @@ This guide will walk you through setting up the ARASU WiFi Captive Portal system
    - `PAYMONGO_SECRET_KEY`: (From Paymongo Dashboard)
    - `SEMAPHORE_API_KEY`: (From Semaphore Dashboard)
    - `ADMIN_PASSWORD`: (Your desired admin portal password)
-   - `MIKROTIK_TOKEN`: (A random string for router security)
+   - `MIKROTIK_TOKEN`: (A self-generated secret key. You create this yourself, e.g., `MySecret123`. It ensures only your router can fetch users from your script.)
 5. Click **Deploy** -> **New Deployment**.
    - Select **Web App**.
    - Set "Execute as" to **Me**.
