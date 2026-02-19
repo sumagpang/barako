@@ -49,15 +49,29 @@ This guide will walk you through setting up the ARASU WiFi Captive Portal system
 
 ---
 
-## Step 4: Mikrotik Configuration
-1. Open `mikrotik_complete.rsc`.
-2. Update the `apiUrl` and `token` in the `SyncUsers` script section.
-3. Connect to your Mikrotik via Winbox.
-4. Open **New Terminal**.
-5. Copy and paste the contents of `mikrotik_complete.rsc` into the terminal.
-   - **ether1** should be connected to your ISP.
-   - **ether2/3** are for Direct LAN.
-   - **ether4/5** are for the Hotspot.
+## Step 4: Mikrotik Reset & Setup Walkthrough
+Follow these steps to ensure a clean installation on your Mikrotik hEX S:
+
+### 4.1 Reset to Clean State
+1. Connect your PC to **ether2** of the Mikrotik.
+2. Open **Winbox** and connect to your router.
+3. Go to **System** -> **Reset Configuration**.
+4. Check the following boxes:
+   - **[x] No Default Configuration**
+   - **[x] Do Not Backup**
+5. Click **Reset Configuration**. The router will reboot and be completely empty (no IP, no password).
+
+### 4.2 Apply New Configuration
+1. After the reboot, connect via Winbox again (use the **MAC Address** in the Neighbors tab, username `admin`, no password).
+2. Open `mikrotik_complete.rsc` from this project on your computer.
+3. **IMPORTANT**: Update the `apiUrl` and `token` values in the script with your own (from Step 2).
+4. In Winbox, open a **New Terminal**.
+5. Copy the entire content of your updated `mikrotik_complete.rsc` and **Paste** it into the terminal.
+6. The router will automatically configure:
+   - **ether1**: ISP Internet (DHCP Client)
+   - **ether2 & ether3**: Direct Internet (Bridge-Direct, 192.168.88.x)
+   - **ether4 & ether5**: Hotspot (Bridge-Hotspot, 10.0.0.x)
+7. Your PC might lose connection temporarily. Reconnect to ether2 or ether3 to continue.
 
 ---
 
