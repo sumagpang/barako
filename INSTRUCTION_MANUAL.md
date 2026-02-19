@@ -64,13 +64,13 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 ### 4.2 Apply New Configuration
 1. After the reboot, connect via Winbox again (use the **MAC Address** in the Neighbors tab, username `admin`, no password).
 2. Open `mikrotik_complete.rsc` from this project on your computer.
-3. **IMPORTANT**: Update the `apiUrl` and `token` values in the script with your own (from Step 2).
+3. **IMPORTANT**: Look at the top of the file (**Section 0**). Update the `apiUrl` and `apiToken` with your own values from Step 2.
 4. In Winbox, open a **New Terminal**.
 5. Copy the entire content of your updated `mikrotik_complete.rsc` and **Paste** it into the terminal.
 6. The router will automatically configure:
-   - **ether1**: ISP Internet (DHCP Client)
-   - **ether2 & ether3**: Direct Internet (Bridge-Direct, 192.168.88.x)
-   - **ether4 & ether5**: Hotspot (Bridge-Hotspot, 10.0.0.x)
+   - **ether1**: ISP Internet (Connect your ISP Modem here)
+   - **ether2 & ether3**: Direct Internet (No login required. Connect PCs or non-hotspot devices here)
+   - **ether4 & ether5**: Hotspot (Requires Mobile & Passcode. **Connect your WiFi Access Point here**)
 7. Your PC might lose connection temporarily. Reconnect to ether2 or ether3 to continue.
 
 ---
@@ -83,6 +83,10 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 ---
 
 ## Troubleshooting
+- **Auto-Popup not showing?**
+  - Ensure the **Walled Garden** is not too open. Broad wildcards like `*.google.com` or `*.gstatic.com` can trick mobile phones into thinking they have full internet, preventing the "Sign in to network" popup.
+  - Test by visiting an **HTTP** site (e.g., `http://fixme.it`) in your browser; it should redirect to the login page.
+  - **HTTPS Redirection:** Modern browsers block redirection of HTTPS sites (like Facebook or YouTube) to prevent security attacks. The system relies on the phone's built-in detection (CPD) which uses HTTP.
 - **Login fails?** Check if the user exists in the `Users` tab and if `syncStatus` is `Synced`.
 - **Payment not recording?** Check the Web App's execution logs in Google Apps Script.
 - **SMS not sending?** Ensure your Semaphore account has balance and the API key is correct.

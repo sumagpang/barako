@@ -36,6 +36,13 @@ function doGet(e) {
     return jsonResponse({ success: false });
   }
 
+  if (action === 'buyPlan') {
+    return jsonResponse(initiatePurchase({
+      planId: e.parameter.planId,
+      mobileNumber: e.parameter.mobileNumber
+    }));
+  }
+
   // Mikrotik Sync Endpoints
   if (action === 'getNewUsers') {
     const token = e.parameter.token;
@@ -75,22 +82,22 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // Handle RPC or other POSTs from the Admin Portal or Hotspot
+  if (e.parameter.rpc) {
+    return handleRpc(e);
+  }
+
   // Handle Paymongo Webhook
   try {
     const postData = JSON.parse(e.postData.contents);
     if (postData.data && postData.data.attributes && postData.data.attributes.type === 'link.payment.paid') {
-      // Security: verify-token could be added here if desired.
-      // For now, we use the unique referenceId in remarks as the key.
       const paymentData = postData.data.attributes.data.attributes;
       const referenceId = paymentData.remarks;
       processSuccessfulPayment(referenceId);
       return ContentService.createTextOutput('OK');
     }
   } catch (err) {
-    // Handle RPC or other POSTs
-    if (e.parameter.rpc) {
-      return handleRpc(e);
-    }
+    return ContentService.createTextOutput('Error: ' + err.toString());
   }
 }
 

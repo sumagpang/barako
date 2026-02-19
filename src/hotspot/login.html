@@ -147,21 +147,18 @@
       btn.innerText = 'Redirecting...';
 
       try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            method: 'buyPlan',
-            args: [{ planId: selectedPlan.id, mobileNumber: mobile }]
-          })
-        });
+        // We use GET for buyPlan to avoid CORS issues with POST in Google Apps Script
+        const res = await fetch(`${API_URL}?action=buyPlan&planId=${selectedPlan.id}&mobileNumber=${mobile}`);
         const result = await res.json();
         if (result.checkoutUrl) {
           // Store for auto-sync logic
           localStorage.setItem('pendingRef', result.referenceId);
           window.location.href = result.checkoutUrl;
+        } else {
+          throw new Error('No checkout URL');
         }
       } catch (err) {
-        alert('Payment initialization failed');
+        alert('Payment initialization failed. Please try again.');
         btn.disabled = false;
         btn.innerText = 'Pay with GCash/Maya';
       }

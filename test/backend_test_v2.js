@@ -68,4 +68,20 @@ if (usersResponse2.every(u => u.username !== 'sync_test')) {
   process.exit(1);
 }
 
+console.log('Testing buyPlan via doGet (CORS bypass)...');
+const eBuy = {
+  parameter: {
+    action: 'buyPlan',
+    planId: 'p1',
+    mobileNumber: '09888777666'
+  }
+};
+const buyResponse = JSON.parse(doGet(eBuy).getContent());
+if (buyResponse.checkoutUrl === 'http://checkout.mock') {
+  console.log('✅ buyPlan doGet SUCCESS');
+} else {
+  console.error('❌ buyPlan doGet FAILED');
+  process.exit(1);
+}
+
 console.log('All V2 tests passed!');
