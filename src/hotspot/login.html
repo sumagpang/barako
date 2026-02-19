@@ -107,27 +107,46 @@
 
     function showPromoModal() {
       document.getElementById('promoModal').classList.remove('hidden');
-      fetchPlans();
     }
 
     function closeModal(id) {
       document.getElementById(id).classList.add('hidden');
     }
 
-    async function fetchPlans() {
+    async function fetchPlans(retryCount = 0) {
+      if (API_URL === 'YOUR_SCRIPT_ID') return;
+
       try {
         const res = await fetch(`${API_URL}?action=getPlans`);
+        if (!res.ok) throw new Error('Server returned error');
+
         const plans = await res.json();
         const container = document.getElementById('planList');
-        container.innerHTML = plans.map(plan => `
-          <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition group">
-            <div class="text-emerald-400 font-bold mb-1">${plan.name}</div>
-            <div class="text-2xl font-black text-white">₱${plan.price}</div>
-            <div class="text-xs text-emerald-500/50 mt-2">${plan.durationHours} Hours Internet</div>
-          </div>
-        `).join('');
+
+        if (plans && plans.length > 0) {
+          container.innerHTML = plans.map(plan => `
+            <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition group">
+              <div class="text-emerald-400 font-bold mb-1">${plan.name}</div>
+              <div class="text-2xl font-black text-white">₱${plan.price}</div>
+              <div class="text-xs text-emerald-500/50 mt-2">${plan.durationHours} Hours Internet</div>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<div class="col-span-full text-center p-8 text-slate-500">No active plans available.</div>';
+        }
       } catch (err) {
         console.error('Fetch plans failed', err);
+        if (retryCount < 2) {
+          console.log('Retrying fetchPlans...');
+          setTimeout(() => fetchPlans(retryCount + 1), 3000);
+        } else {
+          document.getElementById('planList').innerHTML = `
+            <div class="col-span-full text-center p-8">
+              <p class="text-red-400 mb-4">Unable to load plans.</p>
+              <button onclick="fetchPlans()" class="text-emerald-400 underline">Try Again</button>
+            </div>
+          `;
+        }
       }
     }
 
@@ -165,8 +184,12 @@
       }
     }
 
-    // Auto-login logic
+    // Initial load
     window.onload = function() {
+      // 1. Fetch plans in background to make modal instant
+      fetchPlans();
+
+      // 2. Auto-login logic from payment redirect
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('action') === 'from_payment') {
         const username = urlParams.get('user');
