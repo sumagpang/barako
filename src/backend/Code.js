@@ -44,7 +44,7 @@ function doGet(e) {
   }
 
   if (page === 'payment_success') {
-    const refId = e.parameter.refId;
+    const refId = (e.parameter.refId || '').replace(/[^a-zA-Z0-9_-]/g, '');
     return HtmlService.createHtmlOutput(`
       <html>
         <head><title>Payment Success</title><script src="https://cdn.tailwindcss.com"></script></head>
@@ -79,19 +79,30 @@ function doGet(e) {
   if (action === 'getNewUsers') {
     const token = e.parameter.token;
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
-      return jsonResponse({ error: 'Unauthorized' });
+      return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
-    const users = DB.getData('Users').filter(u => (u.syncStatus === 'Ready' || u.syncStatus === 'Pending'));
+    // IMPORTANT: Only return READY users (those who paid). NEVER 'Pending'.
+    const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready' && u.connectionStatus !== 'Synced');
     const plans = DB.getData('Plans');
 
-    // Attach durationHours for limit-uptime
-    const richUsers = users.map(u => {
+    // Format: username,passcode,durationHours;username2,passcode2,durationHours2
+    const result = users.map(u => {
       const plan = plans.find(p => p.id === u.planId);
-      u.durationHours = plan ? plan.durationHours : 0;
-      return u;
-    });
+      const hours = plan ? plan.durationHours : 0;
+      return `${u.username},${u.passcode},${hours}`;
+    }).join(';');
 
-    return jsonResponse(richUsers);
+    return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
+  }
+
+  if (action === 'getKickList') {
+    const token = e.parameter.token;
+    if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
+    }
+    const users = DB.getData('Users').filter(u => u.syncStatus === 'Expired' || u.syncStatus === 'Disabled');
+    const result = users.map(u => u.username).join(';');
+    return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
   }
 
   if (action === 'markSynced') {
@@ -119,13 +130,22 @@ function doPost(e) {
     return handleRpc(e);
   }
 
-  // Handle Paymongo Webhook
+  // Handle Paymongo Webhook (Checkout Sessions & Links)
   try {
     const postData = JSON.parse(e.postData.contents);
-    if (postData.data && postData.data.attributes && postData.data.attributes.type === 'link.payment.paid') {
-      const paymentData = postData.data.attributes.data.attributes;
-      const referenceId = paymentData.remarks;
-      processSuccessfulPayment(referenceId);
+    const type = postData.data.attributes.type;
+
+    if (type === 'checkout_session.payment.paid') {
+      const checkoutSession = postData.data.attributes.data.attributes;
+      const referenceId = checkoutSession.reference_number;
+      if (referenceId) processSuccessfulPayment(referenceId);
+      return ContentService.createTextOutput('OK');
+    }
+
+    if (type === 'link.payment.paid') {
+      const linkPayment = postData.data.attributes.data.attributes;
+      const referenceId = linkPayment.remarks; // Link API uses remarks for our refId
+      if (referenceId) processSuccessfulPayment(referenceId);
       return ContentService.createTextOutput('OK');
     }
   } catch (err) {

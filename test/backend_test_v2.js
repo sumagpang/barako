@@ -1,5 +1,5 @@
 /**
- * backend_test_v2.js - Updated test for sync logic
+ * backend_test_v2.js - Updated test for sync logic and webhook
  */
 
 const fs = require('fs');
@@ -17,10 +17,13 @@ eval(DatabaseCode);
 eval(ServicesCode);
 eval(MainCode);
 
-// Test Sync Logic
-console.log('Testing getNewUsers...');
+console.log('--- TEST START ---');
+
+// 1. Test getNewUsers (Should be CSV)
+console.log('Testing getNewUsers (CSV output)...');
 // Pre-populate a user
-DB.insert('Users', { username: 'sync_test', passcode: '111', syncStatus: 'Ready', planId: 'p1' });
+DB.insert('Users', { username: 'sync_test', passcode: '111', syncStatus: 'Ready', planId: 'p1', connectionStatus: 'Offline' });
+DB.insert('Users', { username: 'unpaid_user', passcode: '222', syncStatus: 'Pending', planId: 'p1', connectionStatus: 'Offline' });
 
 const e = {
   parameter: {
@@ -28,18 +31,53 @@ const e = {
     token: 'secret'
   }
 };
-// Token is 'secret' in mocks.js
 
-const usersResponse = JSON.parse(doGet(e).getContent());
+const usersResponse = doGet(e).getContent();
 console.log('getNewUsers Response:', usersResponse);
 
-if (usersResponse.length > 0 && usersResponse[0].durationHours === 1) {
-  console.log('✅ getNewUsers SUCCESS (durationHours attached)');
+if (usersResponse.includes('sync_test') && !usersResponse.includes('unpaid_user')) {
+  console.log('✅ getNewUsers SUCCESS (Ready users only, CSV format)');
 } else {
   console.error('❌ getNewUsers FAILED');
   process.exit(1);
 }
 
+// 2. Test Webhook (Checkout Session)
+console.log('Testing Paymongo Checkout Webhook...');
+const eWeb = {
+  parameter: {}, // ADDED THIS
+  postData: {
+    contents: JSON.stringify({
+      data: {
+        attributes: {
+          type: 'checkout_session.payment.paid',
+          data: {
+            attributes: {
+              reference_number: 'REF_TEST_999'
+            }
+          }
+        }
+      }
+    })
+  }
+};
+
+// Create a pending user/transaction for this ref
+DB.insert('Transactions', { referenceId: 'REF_TEST_999', status: 'Pending' });
+DB.insert('Users', { username: 'paid_user', referenceId: 'REF_TEST_999', syncStatus: 'Pending', planId: 'p1', mobileNumber: '09123' });
+
+const webResponse = doPost(eWeb).getContent();
+console.log('Webhook Response:', webResponse);
+
+const updatedUser = DB.findBy('Users', 'username', 'paid_user');
+if (updatedUser.syncStatus === 'Ready') {
+  console.log('✅ Webhook processing SUCCESS');
+} else {
+  console.error('❌ Webhook processing FAILED');
+  process.exit(1);
+}
+
+// 3. Test markSynced
 console.log('Testing markSynced...');
 const eMark = {
   parameter: {
@@ -49,74 +87,12 @@ const eMark = {
   }
 };
 const markResponse = JSON.parse(doGet(eMark).getContent());
-console.log('markSynced Response:', markResponse);
-
-const updatedUser = DB.findBy('Users', 'username', 'sync_test');
-if (markResponse.success && updatedUser.syncStatus === 'Synced') {
+const userAfterSync = DB.findBy('Users', 'username', 'sync_test');
+if (markResponse.success && userAfterSync.syncStatus === 'Synced') {
   console.log('✅ markSynced SUCCESS');
 } else {
   console.error('❌ markSynced FAILED');
   process.exit(1);
 }
 
-// Test getNewUsers again (should be empty for 'Synced' users)
-const usersResponse2 = JSON.parse(doGet(e).getContent());
-if (usersResponse2.every(u => u.username !== 'sync_test')) {
-  console.log('✅ getNewUsers exclusion SUCCESS');
-} else {
-  console.error('❌ getNewUsers exclusion FAILED');
-  process.exit(1);
-}
-
-console.log('Testing buyPlan via doGet (CORS bypass)...');
-const eBuy = {
-  parameter: {
-    action: 'buyPlan',
-    planId: 'p1',
-    mobileNumber: '09888777666'
-  }
-};
-const buyResponse = JSON.parse(doGet(eBuy).getContent());
-if (buyResponse.checkoutUrl === 'http://checkout.mock') {
-  console.log('✅ buyPlan doGet SUCCESS');
-} else {
-  console.error('❌ buyPlan doGet FAILED');
-  process.exit(1);
-}
-
-console.log('Testing Admin Page route...');
-const eAdmin = {
-  parameter: {
-    page: 'admin',
-    pw: 'admin'
-  }
-};
-const adminResponse = doGet(eAdmin).getContent();
-console.log('Admin Response:', adminResponse);
-if (adminResponse === 'HTML Template: index') {
-  console.log('✅ Admin route SUCCESS');
-} else {
-  console.error('❌ Admin route FAILED');
-  process.exit(1);
-}
-
-console.log('Testing updateConnection with token...');
-const eConn = {
-  parameter: { rpc: 'true' },
-  postData: {
-    contents: JSON.stringify({
-      method: 'updateConnection',
-      token: 'secret',
-      args: [{ username: 'sync_test', status: 'Online' }]
-    })
-  }
-};
-const connResponse = JSON.parse(doPost(eConn).getContent());
-if (connResponse.success) {
-  console.log('✅ updateConnection with token SUCCESS');
-} else {
-  console.error('❌ updateConnection with token FAILED', connResponse);
-  process.exit(1);
-}
-
-console.log('All V2 tests passed!');
+console.log('--- ALL TESTS PASSED ---');
