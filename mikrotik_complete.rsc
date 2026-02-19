@@ -76,8 +76,8 @@ add name=SyncUsers source=":global apiUrl\r\n:global apiToken\r\n:local syncedUs
 
 # 9. Real-time Status Sync (on-login/on-logout)
 /ip hotspot user profile
-set [ find default=yes ] on-login=":global apiUrl\r\n/tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Online\\\"}]}\" keep-result=no" \
-    on-logout=":global apiUrl\r\n/tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Offline\\\"}]}\" keep-result=no"
+set [ find default=yes ] on-login=":global apiUrl\r\n:global apiToken\r\n/tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Online\\\"}]}\" keep-result=no" \
+    on-logout=":global apiUrl\r\n:global apiToken\r\n/tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Offline\\\"}]}\" keep-result=no"
 
 /system scheduler
 add interval=1m name=SyncTask on-event=SyncUsers start-time=startup

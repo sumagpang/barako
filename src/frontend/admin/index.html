@@ -34,6 +34,9 @@
         <div @click="currentPage = 'plans'" :class="['p-4 flex items-center cursor-pointer hover:bg-slate-800 nav-item', currentPage === 'plans' ? 'active' : '']">
           <span class="mr-3">📋</span> Plans
         </div>
+        <div @click="currentPage = 'announcements'" :class="['p-4 flex items-center cursor-pointer hover:bg-slate-800 nav-item', currentPage === 'announcements' ? 'active' : '']">
+          <span class="mr-3">📢</span> Announcements
+        </div>
         <div @click="currentPage = 'settings'" :class="['p-4 flex items-center cursor-pointer hover:bg-slate-800 nav-item', currentPage === 'settings' ? 'active' : '']">
           <span class="mr-3">⚙️</span> Settings
         </div>
@@ -56,16 +59,17 @@
       </div>
 
       <div v-else>
-        <?!= include('frontend/admin/dashboard'); ?>
-        <?!= include('frontend/admin/users'); ?>
-        <?!= include('frontend/admin/sales'); ?>
-        <?!= include('frontend/admin/plans'); ?>
-        <?!= include('frontend/admin/settings'); ?>
+        <?!= include('dashboard'); ?>
+        <?!= include('users'); ?>
+        <?!= include('sales'); ?>
+        <?!= include('plans'); ?>
+        <?!= include('announcements'); ?>
+        <?!= include('settings'); ?>
       </div>
     </main>
   </div>
 
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <?!= include('frontend/admin/app-js'); ?>
+  <?!= include('app-js'); ?>
 </body>
 </html>

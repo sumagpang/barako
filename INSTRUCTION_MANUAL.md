@@ -24,8 +24,9 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 
 ## Step 2: Google Apps Script Deployment
 1. Open the Sheet -> Extensions -> Apps Script.
-2. Copy all files from `src/backend/` into the script editor (maintain file names).
-3. Copy all files from `src/frontend/admin/` into the script editor (as HTML files).
+2. Copy all files from `src/backend/` into the script editor (maintain file names like `Code.gs`, `Database.gs`, `Services.gs`, etc.).
+3. Copy all files from `src/frontend/admin/` into the script editor as **HTML** files.
+   - **IMPORTANT:** Name the HTML files exactly as they are in the folder, but without the `.html` extension (e.g., `index.html` becomes `index`, `dashboard.html` becomes `dashboard`, `app-js.html` becomes `app-js`).
 4. Go to **Project Settings** (gear icon) and add the following **Script Properties**:
    - `SPREADSHEET_ID`: (Your Spreadsheet ID)
    - `PAYMONGO_SECRET_KEY`: (From Paymongo Dashboard)

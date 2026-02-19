@@ -84,4 +84,39 @@ if (buyResponse.checkoutUrl === 'http://checkout.mock') {
   process.exit(1);
 }
 
+console.log('Testing Admin Page route...');
+const eAdmin = {
+  parameter: {
+    page: 'admin',
+    pw: 'admin'
+  }
+};
+const adminResponse = doGet(eAdmin).getContent();
+console.log('Admin Response:', adminResponse);
+if (adminResponse === 'HTML Template: index') {
+  console.log('✅ Admin route SUCCESS');
+} else {
+  console.error('❌ Admin route FAILED');
+  process.exit(1);
+}
+
+console.log('Testing updateConnection with token...');
+const eConn = {
+  parameter: { rpc: 'true' },
+  postData: {
+    contents: JSON.stringify({
+      method: 'updateConnection',
+      token: 'secret',
+      args: [{ username: 'sync_test', status: 'Online' }]
+    })
+  }
+};
+const connResponse = JSON.parse(doPost(eConn).getContent());
+if (connResponse.success) {
+  console.log('✅ updateConnection with token SUCCESS');
+} else {
+  console.error('❌ updateConnection with token FAILED', connResponse);
+  process.exit(1);
+}
+
 console.log('All V2 tests passed!');

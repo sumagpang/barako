@@ -11,7 +11,7 @@ function doGet(e) {
     if (e.parameter.pw !== adminPassword) {
       return HtmlService.createHtmlOutput('<h1>Access Denied</h1><p>Invalid password.</p>');
     }
-    return HtmlService.createTemplateFromFile('frontend/admin/index')
+    return HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setTitle('WiFi sa Bukid Admin')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -106,9 +106,15 @@ function handleRpc(e) {
   const method = payload.method;
   const args = payload.args || [];
 
-  // Basic security for Admin RPC
+  // Basic security for Admin RPC and Mikrotik RPC
   const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
-  if (payload.password !== adminPassword && method !== 'buyPlan') {
+  const mToken = PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN');
+
+  const isAuthorized = (payload.password === adminPassword) ||
+                       (payload.token === mToken && (method === 'updateConnection')) ||
+                       (method === 'buyPlan');
+
+  if (!isAuthorized) {
     return jsonResponse({ error: 'Unauthorized' });
   }
 
@@ -117,6 +123,7 @@ function handleRpc(e) {
       sales: DB.getData('Transactions').filter(t => t.status === 'Success'),
       users: DB.getData('Users'),
       plans: DB.getData('Plans'),
+      announcements: DB.getData('Announcements'),
       settings: DB.getData('Settings')
     });
   }
@@ -234,6 +241,7 @@ function handleRpcManual(method, args) {
       sales: DB.getData('Transactions').filter(t => t.status === 'Success'),
       users: DB.getData('Users'),
       plans: DB.getData('Plans'),
+      announcements: DB.getData('Announcements'),
       settings: DB.getData('Settings')
     };
   }
@@ -256,6 +264,36 @@ function handleRpcManual(method, args) {
     }
   }
 
-  // Add more methods...
+  if (method === 'saveAnnouncement') {
+    const ann = args[0];
+    if (ann._row) {
+      return DB.update('Announcements', ann._row, ann);
+    } else {
+      return DB.insert('Announcements', ann);
+    }
+  }
+
+  if (method === 'deleteAnnouncement') {
+    const ann = args[0];
+    if (ann._row) {
+      return DB.delete('Announcements', ann._row);
+    }
+  }
+
+  if (method === 'updateKeys') {
+    const { paymongo, semaphore, token } = args[0];
+    const props = PropertiesService.getScriptProperties();
+    if (paymongo) props.setProperty('PAYMONGO_SECRET_KEY', paymongo);
+    if (semaphore) props.setProperty('SEMAPHORE_API_KEY', semaphore);
+    if (token) props.setProperty('MIKROTIK_TOKEN', token);
+    return { success: true };
+  }
+
+  if (method === 'changePassword') {
+    const { password } = args[0];
+    PropertiesService.getScriptProperties().setProperty('ADMIN_PASSWORD', password);
+    return { success: true };
+  }
+
   return { error: 'Unknown method' };
 }

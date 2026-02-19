@@ -30,11 +30,77 @@ createApp({
       saveUser({ username, passcode, connectionStatus: 'Offline', syncStatus: 'Ready' });
     };
 
+    const promptAddPlan = () => {
+      const name = prompt('Plan Name:');
+      if (!name) return;
+      const price = prompt('Price (PHP):');
+      if (!price) return;
+      const durationHours = prompt('Duration (Hours):');
+      if (!durationHours) return;
+      savePlan({ id: 'p' + Date.now(), name, price: Number(price), durationHours: Number(durationHours), status: 'Active' });
+    };
+
+    const promptAddAnnouncement = () => {
+      const title = prompt('Title:');
+      if (!title) return;
+      const message = prompt('Message:');
+      if (!message) return;
+      saveAnnouncement({ id: 'a' + Date.now(), title, message, status: 'Active' });
+    };
+
     const saveUser = async (user) => {
       loading.value = true;
       try {
         await callBackend('saveUser', [user]);
         await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const saveAnnouncement = async (ann) => {
+      loading.value = true;
+      try {
+        await callBackend('saveAnnouncement', [ann]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteAnnouncement = async (ann) => {
+      if (!confirm('Are you sure you want to delete this announcement?')) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteAnnouncement', [ann]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const updateKeys = async () => {
+      const paymongo = prompt('New Paymongo Secret Key (leave blank to keep current):');
+      const semaphore = prompt('New Semaphore API Key (leave blank to keep current):');
+      const token = prompt('New Mikrotik Token (leave blank to keep current):');
+      if (!paymongo && !semaphore && !token) return;
+
+      loading.value = true;
+      try {
+        await callBackend('updateKeys', [{ paymongo, semaphore, token }]);
+        alert('Keys updated successfully!');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const changePassword = async () => {
+      const password = prompt('Enter new Admin Password:');
+      if (!password) return;
+      loading.value = true;
+      try {
+        await callBackend('changePassword', [{ password }]);
+        alert('Password changed successfully! You will need to use the new password next time.');
       } finally {
         loading.value = false;
       }
@@ -76,7 +142,13 @@ createApp({
       refreshData,
       saveUser,
       savePlan,
-      promptAddUser
+      promptAddUser,
+      promptAddPlan,
+      promptAddAnnouncement,
+      saveAnnouncement,
+      deleteAnnouncement,
+      updateKeys,
+      changePassword
     };
   }
 }).mount('#app');

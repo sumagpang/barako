@@ -51,6 +51,22 @@ global.ContentService = {
   })
 };
 
+global.HtmlService = {
+  XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+  createHtmlOutput: (html) => ({
+    getContent: () => html
+  }),
+  createTemplateFromFile: (filename) => ({
+    evaluate: () => ({
+      setTitle: (title) => ({
+        setXFrameOptionsMode: (mode) => ({
+          getContent: () => `HTML Template: ${filename}`
+        })
+      })
+    })
+  })
+};
+
 // SpreadsheetApp Mock
 let mockData = {
   'Users': [['username', 'passcode', 'planId', 'mobileNumber', 'referenceId', 'syncStatus', 'expirationDate', 'connectionStatus']],
