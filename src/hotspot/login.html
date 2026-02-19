@@ -50,6 +50,7 @@
 
     <div class="mt-6 text-center">
       <p class="text-[10px] text-slate-500 uppercase tracking-widest">Powered by ARASU Tech</p>
+      <a href="#" onclick="openAdmin()" class="text-[10px] text-slate-600 hover:text-slate-400 mt-2 inline-block">Admin Login</a>
     </div>
   </div>
 
@@ -96,6 +97,13 @@
   <script>
     const API_URL = 'YOUR_SCRIPT_ID';
     let selectedPlan = null;
+
+    function openAdmin() {
+      const pw = prompt('Enter Admin Password:');
+      if (pw) {
+        window.location.href = `${API_URL}?page=admin&pw=${pw}`;
+      }
+    }
 
     function showPromoModal() {
       document.getElementById('promoModal').classList.remove('hidden');
