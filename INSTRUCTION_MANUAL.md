@@ -1,6 +1,6 @@
-# ARASU WiFi sa Bukid - Setup Manual
+# WiFi sa Bukid - Setup Manual
 
-This guide will walk you through setting up the ARASU WiFi Captive Portal system using a Mikrotik hEX S router, Paymongo for payments, Semaphore for SMS, and Google Sheets for the database.
+This guide will walk you through setting up the WiFi sa Bukid Captive Portal system using a Mikrotik hEX S router, Paymongo for payments, Semaphore for SMS, and Google Sheets for the database.
 
 ## Prerequisites
 1. **Mikrotik hEX S Router**

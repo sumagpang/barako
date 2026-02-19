@@ -43,7 +43,11 @@ global.UrlFetchApp = {
 global.ContentService = {
   MimeType: { JSON: 'application/json' },
   createTextOutput: (text) => ({
-    setMimeType: () => ({ content: text })
+    setMimeType: () => ({
+      getContent: () => text,
+      content: text
+    }),
+    getContent: () => text
   })
 };
 

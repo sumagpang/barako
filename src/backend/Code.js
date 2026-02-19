@@ -13,7 +13,7 @@ function doGet(e) {
     }
     return HtmlService.createTemplateFromFile('frontend/admin/index')
       .evaluate()
-      .setTitle('ARASU WiFi Admin')
+      .setTitle('WiFi sa Bukid Admin')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
@@ -42,11 +42,36 @@ function doGet(e) {
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
       return jsonResponse({ error: 'Unauthorized' });
     }
-    const users = DB.getData('Users').filter(u => u.syncStatus !== 'Synced');
-    return jsonResponse(users);
+    const users = DB.getData('Users').filter(u => (u.syncStatus === 'Ready' || u.syncStatus === 'Pending'));
+    const plans = DB.getData('Plans');
+
+    // Attach durationHours for limit-uptime
+    const richUsers = users.map(u => {
+      const plan = plans.find(p => p.id === u.planId);
+      u.durationHours = plan ? plan.durationHours : 0;
+      return u;
+    });
+
+    return jsonResponse(richUsers);
   }
 
-  return HtmlService.createHtmlOutput('<h1>ARASU WiFi sa Bukid</h1><p>Backend is running.</p>');
+  if (action === 'markSynced') {
+    const token = e.parameter.token;
+    if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      return jsonResponse({ error: 'Unauthorized' });
+    }
+    const usernames = (e.parameter.usernames || '').split(',');
+    usernames.forEach(uname => {
+      if (!uname) return;
+      const user = DB.findBy('Users', 'username', uname.trim());
+      if (user) {
+        DB.update('Users', user._row, { syncStatus: 'Synced' });
+      }
+    });
+    return jsonResponse({ success: true });
+  }
+
+  return HtmlService.createHtmlOutput('<h1>WiFi sa Bukid</h1><p>Backend is running.</p>');
 }
 
 function doPost(e) {
@@ -54,6 +79,8 @@ function doPost(e) {
   try {
     const postData = JSON.parse(e.postData.contents);
     if (postData.data && postData.data.attributes && postData.data.attributes.type === 'link.payment.paid') {
+      // Security: verify-token could be added here if desired.
+      // For now, we use the unique referenceId in remarks as the key.
       const paymentData = postData.data.attributes.data.attributes;
       const referenceId = paymentData.remarks;
       processSuccessfulPayment(referenceId);
@@ -171,7 +198,7 @@ function processSuccessfulPayment(referenceId) {
     });
 
     // Send SMS
-    const message = 'Thank you for your purchase! Your passcode for ARASU WiFi is: ' + user.passcode + '. Valid for ' + plan.durationHours + ' hours.';
+    const message = 'Thank you for your purchase! Your passcode for WiFi sa Bukid is: ' + user.passcode + '. Valid for ' + plan.durationHours + ' hours.';
     SemaphoreService.sendSMS(user.mobileNumber, message);
   }
 }

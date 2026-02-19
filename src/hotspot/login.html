@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARASU WiFi sa Bukid</title>
+  <title>WiFi sa Bukid</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; }
+    body { background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); min-height: 100vh; font-family: 'Inter', sans-serif; }
     .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
   </style>
 </head>
 <body class="flex items-center justify-center p-4">
   <div class="w-full max-w-md glass rounded-3xl p-8 shadow-2xl text-white">
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-extrabold tracking-tight text-blue-400">ARASU WiFi</h1>
-      <p class="text-slate-400 mt-1">Malakas na koneksyon sa bukid</p>
+      <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">WiFi sa Bukid</h1>
+      <p class="text-emerald-200/60 mt-1">Malakas na koneksyon sa bukid</p>
     </div>
 
     <!-- Login Form -->
@@ -32,7 +32,7 @@
         <input type="password" name="password" placeholder="******" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
       </div>
 
-      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
+      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
         Connect to Internet
       </button>
 
@@ -41,16 +41,16 @@
       </div>
     </form>
 
-    <div class="mt-8 border-t border-slate-700 pt-6 text-center">
-      <p class="text-sm text-slate-400 mb-4">Wala pang passcode?</p>
-      <button onclick="showPromoModal()" class="w-full border border-blue-500/50 hover:bg-blue-500/10 text-blue-400 font-semibold py-3 rounded-xl transition">
+    <div class="mt-8 border-t border-emerald-800/50 pt-6 text-center">
+      <p class="text-sm text-emerald-100/60 mb-4">Wala pang passcode?</p>
+      <button onclick="showPromoModal()" class="w-full border border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 font-semibold py-3 rounded-xl transition">
         View Promos & Buy
       </button>
     </div>
 
     <div class="mt-6 text-center">
-      <p class="text-[10px] text-slate-500 uppercase tracking-widest">Powered by ARASU Tech</p>
-      <a href="#" onclick="openAdmin()" class="text-[10px] text-slate-600 hover:text-slate-400 mt-2 inline-block">Admin Login</a>
+      <p class="text-[10px] text-emerald-900 uppercase tracking-widest">WiFi sa Bukid Project</p>
+      <a href="#" onclick="openAdmin()" class="text-[10px] text-emerald-800 hover:text-emerald-700 mt-2 inline-block">Admin Login</a>
     </div>
   </div>
 
@@ -59,7 +59,7 @@
     <div class="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-bold text-white">Select WiFi Plan</h2>
-        <button onclick="closeModal('promoModal')" class="text-slate-400 hover:text-white">&times;</button>
+        <button onclick="closeModal('promoModal')" class="text-emerald-400 hover:text-white">&times;</button>
       </div>
 
       <div id="planList" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -120,10 +120,10 @@
         const plans = await res.json();
         const container = document.getElementById('planList');
         container.innerHTML = plans.map(plan => `
-          <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 cursor-pointer transition group">
-            <div class="text-blue-400 font-bold mb-1">${plan.name}</div>
+          <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition group">
+            <div class="text-emerald-400 font-bold mb-1">${plan.name}</div>
             <div class="text-2xl font-black text-white">₱${plan.price}</div>
-            <div class="text-xs text-slate-500 mt-2">${plan.durationHours} Hours Internet</div>
+            <div class="text-xs text-emerald-500/50 mt-2">${plan.durationHours} Hours Internet</div>
           </div>
         `).join('');
       } catch (err) {
