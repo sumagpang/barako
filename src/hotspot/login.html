@@ -96,7 +96,7 @@
   </div>
 
   <script>
-    const API_URL = 'YOUR_FULL_WEB_APP_URL';
+    let API_URL = 'YOUR_FULL_WEB_APP_URL';
     let selectedPlan = null;
 
     function openAdmin() {
@@ -124,23 +124,32 @@
 
       try {
         const res = await fetch(`${API_URL}?action=getPlans`);
-        if (!res.ok) throw new Error('Server returned error');
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Server error (${res.status}): ${text.substring(0, 100)}`);
+        }
 
         const plans = await res.json();
         const container = document.getElementById('planList');
 
-        if (plans && plans.length > 0) {
-          container.innerHTML = plans.map(plan => `
-            <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition flex justify-between items-center group">
-              <div>
-                <div class="text-emerald-400 font-bold">${plan.name}</div>
-                <div class="text-xs text-emerald-500/50">${plan.durationHours} Hours • ${plan.speedLimit || 'Unlimited'}</div>
+        if (plans && Array.isArray(plans)) {
+          if (plans.length > 0) {
+            container.innerHTML = plans.map(plan => `
+              <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition flex justify-between items-center group">
+                <div>
+                  <div class="text-emerald-400 font-bold">${plan.name}</div>
+                  <div class="text-xs text-emerald-500/50">${plan.durationHours} Hours • ${plan.speedLimit || 'Unlimited'}</div>
+                </div>
+                <div class="text-xl font-black text-white">₱${plan.price}</div>
               </div>
-              <div class="text-xl font-black text-white">₱${plan.price}</div>
-            </div>
-          `).join('');
+            `).join('');
+          } else {
+            container.innerHTML = '<div class="col-span-full text-center p-8 text-slate-500">No active plans found in database.</div>';
+          }
+        } else if (plans && plans.error) {
+          throw new Error(`Backend Error: ${plans.error}`);
         } else {
-          container.innerHTML = '<div class="col-span-full text-center p-8 text-slate-500">No active plans available.</div>';
+          throw new Error('Invalid response format from server');
         }
       } catch (err) {
         console.error('Fetch plans failed', err);
@@ -150,8 +159,9 @@
         } else {
           document.getElementById('planList').innerHTML = `
             <div class="col-span-full text-center p-8">
-              <p class="text-red-400 mb-4">Unable to load plans.</p>
-              <button onclick="fetchPlans()" class="text-emerald-400 underline">Try Again</button>
+              <p class="text-red-400 text-sm mb-2">Error: ${err.message}</p>
+              <p class="text-slate-500 text-[10px] mb-4 break-all">URL: ${API_URL}</p>
+              <button onclick="fetchPlans()" class="px-4 py-2 bg-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-500 transition">Try Again</button>
             </div>
           `;
         }

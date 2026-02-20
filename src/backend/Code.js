@@ -3,8 +3,9 @@
  */
 
 function doGet(e) {
-  const action = e.parameter.action;
-  const page = e.parameter.page;
+  try {
+    const action = e.parameter.action;
+    const page = e.parameter.page;
 
   if (page === 'admin') {
     return HtmlService.createTemplateFromFile('index')
@@ -133,34 +134,41 @@ function doGet(e) {
   }
 
   return HtmlService.createHtmlOutput('<h1>WiFi sa Bukid</h1><p>Backend is running.</p>');
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.toString() });
+  }
 }
 
 function doPost(e) {
-  // Handle RPC or other POSTs from the Admin Portal or Hotspot
-  if (e.parameter.rpc) {
-    return handleRpc(e);
-  }
-
-  // Handle Paymongo Webhook (Checkout Sessions & Links)
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const type = postData.data.attributes.type;
-
-    if (type === 'checkout_session.payment.paid') {
-      const checkoutSession = postData.data.attributes.data.attributes;
-      const referenceId = checkoutSession.reference_number;
-      if (referenceId) processSuccessfulPayment(referenceId);
-      return ContentService.createTextOutput('OK');
+    // Handle RPC or other POSTs from the Admin Portal or Hotspot
+    if (e.parameter.rpc) {
+      return handleRpc(e);
     }
 
-    if (type === 'link.payment.paid') {
-      const linkPayment = postData.data.attributes.data.attributes;
-      const referenceId = linkPayment.remarks; // Link API uses remarks for our refId
-      if (referenceId) processSuccessfulPayment(referenceId);
-      return ContentService.createTextOutput('OK');
+    // Handle Paymongo Webhook (Checkout Sessions & Links)
+    try {
+      const postData = JSON.parse(e.postData.contents);
+      const type = postData.data.attributes.type;
+
+      if (type === 'checkout_session.payment.paid') {
+        const checkoutSession = postData.data.attributes.data.attributes;
+        const referenceId = checkoutSession.reference_number;
+        if (referenceId) processSuccessfulPayment(referenceId);
+        return ContentService.createTextOutput('OK');
+      }
+
+      if (type === 'link.payment.paid') {
+        const linkPayment = postData.data.attributes.data.attributes;
+        const referenceId = linkPayment.remarks; // Link API uses remarks for our refId
+        if (referenceId) processSuccessfulPayment(referenceId);
+        return ContentService.createTextOutput('OK');
+      }
+    } catch (err) {
+      return ContentService.createTextOutput('Error: ' + err.toString());
     }
   } catch (err) {
-    return ContentService.createTextOutput('Error: ' + err.toString());
+    return ContentService.createTextOutput('Global Error: ' + err.toString());
   }
 }
 
