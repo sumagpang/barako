@@ -102,7 +102,16 @@ function doGet(e) {
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
-    const users = DB.getData('Users').filter(u => u.syncStatus === 'Expired' || u.syncStatus === 'Disabled');
+
+    const now = new Date();
+    const users = DB.getData('Users').filter(u => {
+      if (u.syncStatus === 'Expired' || u.syncStatus === 'Disabled') return true;
+      if (u.syncStatus === 'Synced' && u.expirationDate) {
+        return new Date(u.expirationDate) < now;
+      }
+      return false;
+    });
+
     const result = users.map(u => u.username).join('|');
     return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
   }

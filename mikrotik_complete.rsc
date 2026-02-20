@@ -74,6 +74,8 @@ add dst-host=ssl.gstatic.com comment="Required for Google Script UI"
 add dst-host=fonts.googleapis.com
 add dst-host=fonts.gstatic.com
 add dst-host=cdn.jsdelivr.net comment="Required for Tailwind/Vue/CDNs"
+add dst-host=cdn.tailwindcss.com
+add dst-host=unpkg.com
 
 # 8. Sync Scripts
 /system script

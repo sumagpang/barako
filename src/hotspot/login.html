@@ -36,19 +36,17 @@
         Connect to Internet
       </button>
 
-      <div class="text-center text-sm text-slate-400 py-2">
+      <div class="text-center py-2">
+        <p class="text-slate-400 text-sm">Walang account?</p>
+        <button type="button" onclick="openPlans()" class="mt-2 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
+          WiFi Plan
+        </button>
+      </div>
+
+      <div class="text-center text-sm text-slate-400">
         $(if error)<span class="text-red-400">$(error)</span>$(endif)
       </div>
     </form>
-
-    <div class="mt-8 border-t border-emerald-800/50 pt-6">
-      <h2 class="text-lg font-bold text-emerald-400 mb-4 text-center">WiFi Plans</h2>
-      <div id="planList" class="grid grid-cols-1 gap-3">
-        <!-- Plans will be loaded here automatically -->
-        <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
-        <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
-      </div>
-    </div>
 
     <div class="mt-6 text-center">
       <p class="text-[10px] text-emerald-900 uppercase tracking-widest">WiFi sa Bukid Project</p>
@@ -57,26 +55,42 @@
   </div>
 
 
+  <!-- Plans Modal -->
+  <div id="plansModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md glass rounded-3xl p-8 shadow-2xl text-white">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-emerald-400">Choose Plan</h2>
+        <button onclick="closeModal('plansModal')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div id="planList" class="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto pr-2">
+        <!-- Plans will be loaded here automatically -->
+        <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
+        <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
+      </div>
+      <button onclick="closeModal('plansModal')" class="mt-6 w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
+    </div>
+  </div>
+
   <!-- Purchase Modal -->
   <div id="purchaseModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
       <div class="text-center mb-6">
-        <h2 class="text-xl font-bold text-white">Complete Purchase</h2>
+        <h2 class="text-xl font-bold text-white">Mobile Number</h2>
         <p id="selectedPlanDisplay" class="text-blue-400 font-medium"></p>
       </div>
 
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium mb-1 text-slate-300">Mobile Number</label>
+          <label class="block text-sm font-medium mb-1 text-slate-300">Enter Number</label>
           <input type="text" id="buyerMobile" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
           <p class="text-[10px] text-slate-500 mt-1">Saan ise-send ang passcode?</p>
         </div>
 
         <button id="payButton" onclick="processPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
-          Pay with GCash/Maya
+          Buy
         </button>
 
-        <button onclick="closeModal('purchaseModal')" class="w-full text-slate-400 text-sm py-2">Cancel</button>
+        <button onclick="closeModal('purchaseModal')" class="w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
       </div>
     </div>
   </div>
@@ -94,6 +108,11 @@
       if (pw) {
         window.location.href = `${API_URL}?page=admin&pw=${pw}`;
       }
+    }
+
+    function openPlans() {
+      document.getElementById('plansModal').classList.remove('hidden');
+      fetchPlans();
     }
 
     function closeModal(id) {
@@ -142,6 +161,7 @@
     function selectPlan(plan) {
       selectedPlan = plan;
       document.getElementById('selectedPlanDisplay').innerText = `${plan.name} - ₱${plan.price}`;
+      closeModal('plansModal');
       document.getElementById('purchaseModal').classList.remove('hidden');
     }
 
