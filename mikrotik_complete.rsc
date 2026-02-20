@@ -69,6 +69,11 @@ add dst-host=*.paymongo.com
 add dst-host=*.semaphore.co
 add dst-host=script.google.com
 add dst-host=script.googleusercontent.com
+add dst-host=accounts.google.com comment="Required for Google Script redirects"
+add dst-host=ssl.gstatic.com comment="Required for Google Script UI"
+add dst-host=fonts.googleapis.com
+add dst-host=fonts.gstatic.com
+add dst-host=cdn.jsdelivr.net comment="Required for Tailwind/Vue/CDNs"
 
 # 8. Sync Scripts
 /system script

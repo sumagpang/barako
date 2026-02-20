@@ -44,7 +44,8 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 
 ## Step 3: Hotspot Page Upload
 1. Open `src/hotspot/login.html`.
-2. Update the `API_URL` variable with your Web App URL.
+2. Update the `API_URL` variable with your **FULL Web App URL** (e.g., `https://script.google.com/macros/s/ABC...XYZ/exec`).
+   - **DO NOT** use just the ID. It must be the complete URL.
 3. Access your Mikrotik via Winbox.
 4. Go to **Files**.
 5. Find the `hotspot` folder. Replace the existing `login.html` with your edited one.
@@ -96,3 +97,7 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
   - Ensure `PAYMONGO_SECRET_KEY` is correct.
   - Check if the selected payment method is enabled in your Paymongo Dashboard.
   - Verify that `WEB_APP_URL` is correctly set in Script Properties.
+- **Admin Page shows ERR_CONNECTION_CLOSED?**
+  - This usually means the Mikrotik is blocking the connection to Google. Ensure the **Walled Garden** in Step 4 is fully applied.
+  - Verify that your `API_URL` in `login.html` starts with `https://`.
+  - Try clearing your browser cache or opening in Incognito.

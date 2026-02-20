@@ -82,10 +82,14 @@
   </div>
 
   <script>
-    const API_URL = 'YOUR_SCRIPT_ID';
+    const API_URL = 'YOUR_FULL_WEB_APP_URL';
     let selectedPlan = null;
 
     function openAdmin() {
+      if (API_URL.indexOf('script.google.com') === -1) {
+        alert('SETUP ERROR: Please configure your FULL Web App URL in login.html');
+        return;
+      }
       const pw = prompt('Enter Admin Password:');
       if (pw) {
         window.location.href = `${API_URL}?page=admin&pw=${pw}`;
@@ -97,7 +101,7 @@
     }
 
     async function fetchPlans(retryCount = 0) {
-      if (API_URL === 'YOUR_SCRIPT_ID') return;
+      if (API_URL.indexOf('script.google.com') === -1) return;
 
       try {
         const res = await fetch(`${API_URL}?action=getPlans`);
