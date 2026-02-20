@@ -37,7 +37,7 @@ const e = {
 const usersResponse = doGet(e).getContent();
 console.log('getNewUsers Response:', usersResponse);
 
-if (usersResponse.includes('sync_test,111,1,1M/1M') && !usersResponse.includes('unpaid_user')) {
+if (usersResponse.includes('sync_test,111,01:00:00,1M/1M') && !usersResponse.includes('unpaid_user')) {
   console.log('✅ getNewUsers SUCCESS (Ready users only, CSV format with speed)');
 } else {
   console.error('❌ getNewUsers FAILED');

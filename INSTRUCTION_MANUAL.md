@@ -42,7 +42,15 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 
 ---
 
-## Step 3: Hotspot Page Upload
+## Step 3: Accessing the Admin Portal
+1. Visit your **Web App URL** and add `?page=admin` to the end.
+   - Example: `https://script.google.com/macros/s/ABC...XYZ/exec?page=admin`
+2. You will see a login screen. Enter the **ADMIN_PASSWORD** you set in Step 2.
+3. **Tip:** You can use the URL `...exec?page=admin&pw=yourpassword` once; the system will save the password in your browser and hide it from the URL automatically.
+
+---
+
+## Step 4: Hotspot Page Upload
 1. Open `src/hotspot/login.html`.
 2. Update the `API_URL` variable with your **FULL Web App URL** (e.g., `https://script.google.com/macros/s/ABC...XYZ/exec`).
    - **DO NOT** use just the ID. It must be the complete URL.
@@ -52,7 +60,7 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 
 ---
 
-## Step 4: Mikrotik Reset & Setup Walkthrough
+## Step 5: Mikrotik Reset & Setup Walkthrough
 Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 
 ### 4.1 Reset to Clean State
@@ -78,7 +86,7 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 
 ---
 
-## Step 5: Paymongo Webhook
+## Step 6: Paymongo Webhook
 1. Go to Paymongo Dashboard -> Developers -> Webhooks.
 2. Register a new webhook pointing to your **Web App URL**.
 3. Enable the event: `link.payment.paid`.

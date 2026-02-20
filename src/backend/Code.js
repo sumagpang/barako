@@ -7,10 +7,6 @@ function doGet(e) {
   const page = e.parameter.page;
 
   if (page === 'admin') {
-    const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
-    if (e.parameter.pw !== adminPassword) {
-      return HtmlService.createHtmlOutput('<h1>Access Denied</h1><p>Invalid password.</p>');
-    }
     return HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setTitle('WiFi sa Bukid Admin')
@@ -88,10 +84,15 @@ function doGet(e) {
     // Format: username,passcode,durationHours,speedLimit;...
     const result = users.map(u => {
       const plan = plans.find(p => p.id === u.planId);
-      const hours = plan ? plan.durationHours : 0;
+      let durationStr = '00:00:00';
+      if (plan && plan.durationHours) {
+        const h = Math.floor(plan.durationHours);
+        const m = Math.round((plan.durationHours - h) * 60);
+        durationStr = (h < 10 ? '0'+h : h) + ':' + (m < 10 ? '0'+m : m) + ':00';
+      }
       const speed = plan ? (plan.speedLimit || '') : '';
-      return `${u.username},${u.passcode},${hours},${speed}`;
-    }).join(';');
+      return `${u.username},${u.passcode},${durationStr},${speed}`;
+    }).join('|');
 
     return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
   }
@@ -102,7 +103,7 @@ function doGet(e) {
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
     const users = DB.getData('Users').filter(u => u.syncStatus === 'Expired' || u.syncStatus === 'Disabled');
-    const result = users.map(u => u.username).join(';');
+    const result = users.map(u => u.username).join('|');
     return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
   }
 
@@ -288,13 +289,14 @@ function include(filename) {
 
 /**
  * Wrapper for google.script.run calls from the Admin Portal
+ * Requires adminPassword as the first argument for all sensitive operations.
  */
-function handleRpcManual(method, args) {
-  // Use the same logic as handleRpc but without the event object
+function handleRpcManual(method, args, password) {
   const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
 
-  // For google.script.run, we assume session-based auth is handled by Google
-  // But we can add extra checks if needed.
+  if (password !== adminPassword) {
+    throw new Error('Unauthorized: Invalid Admin Password');
+  }
 
   if (method === 'getDashboardData') {
     return {

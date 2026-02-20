@@ -4,19 +4,50 @@ const { createApp, ref, onMounted } = Vue;
 createApp({
   setup() {
     const currentPage = ref('dashboard');
-    const loading = ref(true);
+    const loading = ref(false);
+    const isAuthenticated = ref(false);
+    const loginPassword = ref('');
+    const loginError = ref('');
     const lastRefresh = ref(new Date().toLocaleTimeString());
-    const dashboardData = ref({ sales: [], users: [], plans: [] });
+    const dashboardData = ref({ sales: [], users: [], plans: [], announcements: [], settings: [] });
 
-    const refreshData = async () => {
+    const login = async () => {
+      loading.value = true;
+      loginError.value = '';
+      try {
+        // Try to fetch data with the provided password
+        await refreshData(loginPassword.value);
+        sessionStorage.setItem('admin_password', loginPassword.value);
+        isAuthenticated.value = true;
+      } catch (err) {
+        loginError.value = 'Invalid password. Please try again.';
+        console.error('Login failed:', err);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const refreshData = async (pass = null) => {
       loading.value = true;
       try {
-        const response = await callBackend('getDashboardData');
+        const password = pass || sessionStorage.getItem('admin_password');
+        if (!password) {
+          isAuthenticated.value = false;
+          return;
+        }
+        const response = await callBackend('getDashboardData', [], password);
         dashboardData.value = response;
+        isAuthenticated.value = true;
         lastRefresh.value = new Date().toLocaleTimeString();
       } catch (err) {
         console.error('Failed to fetch data:', err);
-        alert('Error fetching data. Check console for details.');
+        if (err.message && err.message.includes('Unauthorized')) {
+          isAuthenticated.value = false;
+          sessionStorage.removeItem('admin_password');
+        } else {
+          alert('Error fetching data. Check console for details.');
+        }
+        throw err;
       } finally {
         loading.value = false;
       }
@@ -39,6 +70,29 @@ createApp({
       if (!durationHours) return;
       const speedLimit = prompt('Speed Limit (e.g., 1M/1M or 512k/2M):', '1M/1M');
       savePlan({ id: 'p' + Date.now(), name, price: Number(price), durationHours: Number(durationHours), speedLimit, status: 'Active' });
+    };
+
+    const promptEditPlan = (plan) => {
+      const name = prompt('Plan Name:', plan.name);
+      if (!name) return;
+      const price = prompt('Price (PHP):', plan.price);
+      if (!price) return;
+      const durationHours = prompt('Duration (Hours):', plan.durationHours);
+      if (!durationHours) return;
+      const speedLimit = prompt('Speed Limit:', plan.speedLimit || '1M/1M');
+
+      savePlan({
+        ...plan,
+        name,
+        price: Number(price),
+        durationHours: Number(durationHours),
+        speedLimit
+      });
+    };
+
+    const togglePlanStatus = (plan) => {
+      const newStatus = plan.status === 'Active' ? 'Inactive' : 'Active';
+      savePlan({ ...plan, status: newStatus });
     };
 
     const promptAddAnnouncement = () => {
@@ -119,38 +173,59 @@ createApp({
 
     const logout = () => {
       if (confirm('Are you sure you want to logout?')) {
+        sessionStorage.removeItem('admin_password');
+        isAuthenticated.value = false;
         window.top.location.href = window.location.href.split('?')[0];
       }
     };
 
-    const callBackend = (method, args = []) => {
+    const callBackend = (method, args = [], pass = null) => {
+      const password = pass || sessionStorage.getItem('admin_password');
       return new Promise((resolve, reject) => {
-        // In GAS web apps, we use google.script.run for RPC
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           google.script.run
-            .withSuccessHandler(resolve)
+            .withSuccessHandler((res) => {
+              if (res && res.error) reject(new Error(res.error));
+              else resolve(res);
+            })
             .withFailureHandler(reject)
-            .handleRpcManual(method, args); // We'll need a wrapper in Code.js if not using google.script.run directly
+            .handleRpcManual(method, args, password);
         } else {
-          // Mock for local testing
           console.log('Mock RPC:', method, args);
-          setTimeout(() => resolve({ sales: [], users: [], plans: [] }), 500);
+          setTimeout(() => resolve({ sales: [], users: [], plans: [], announcements: [], settings: [] }), 500);
         }
       });
     };
 
-    onMounted(refreshData);
+    onMounted(() => {
+      // Check for password in URL as a one-time convenience for setup
+      const urlParams = new URLSearchParams(window.location.search);
+      const pw = urlParams.get('pw');
+      if (pw) {
+        sessionStorage.setItem('admin_password', pw);
+        // Clean URL without reload
+        const newUrl = window.location.href.split('?')[0] + '?page=admin';
+        window.history.replaceState({}, '', newUrl);
+      }
+      refreshData();
+    });
 
     return {
       currentPage,
       loading,
+      isAuthenticated,
+      loginPassword,
+      loginError,
       lastRefresh,
       dashboardData,
+      login,
       refreshData,
       saveUser,
       savePlan,
       promptAddUser,
       promptAddPlan,
+      promptEditPlan,
+      togglePlanStatus,
       promptAddAnnouncement,
       saveAnnouncement,
       deleteAnnouncement,

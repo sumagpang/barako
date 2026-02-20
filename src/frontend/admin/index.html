@@ -13,7 +13,28 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-  <div id="app" v-cloak class="min-h-screen flex flex-col md:flex-row">
+  <div id="app" v-cloak class="min-h-screen flex flex-col md:flex-row relative">
+    <!-- Login Overlay -->
+    <div v-if="!isAuthenticated" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-90">
+      <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+          <div class="text-4xl mb-2">🌴</div>
+          <h1 class="text-2xl font-bold text-slate-900">WiFi sa Bukid Admin</h1>
+          <p class="text-slate-500">Please enter your password to continue</p>
+        </div>
+        <form @submit.prevent="login">
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+            <input v-model="loginPassword" type="password" class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="••••••••">
+          </div>
+          <button type="submit" :disabled="loading" class="w-full bg-blue-600 text-white p-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50">
+            {{ loading ? 'Authenticating...' : 'Sign In' }}
+          </button>
+          <p v-if="loginError" class="mt-4 text-red-500 text-sm text-center">{{ loginError }}</p>
+        </form>
+      </div>
+    </div>
+
     <!-- Sidebar -->
     <div class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
       <div class="p-6">
