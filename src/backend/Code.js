@@ -79,7 +79,7 @@ function doGet(e) {
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
     // IMPORTANT: Only return READY users (those who paid). NEVER 'Pending'.
-    const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready' && u.connectionStatus !== 'Synced');
+    const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready');
     const plans = DB.getData('Plans');
 
     // Format: username,passcode,durationHours,speedLimit;...
