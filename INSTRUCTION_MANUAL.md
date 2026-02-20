@@ -100,9 +100,9 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 
 ---
 
-## Gateway Selection (PHP 1.00 Minimum Support)
-- **Paymongo** enforces a minimum transaction of **PHP 100.00**.
-- **Xendit** supports transactions as low as **PHP 1.00**.
+## Gateway Selection (GCash 1 PHP Minimum Support)
+- **Xendit (Recommended)**: Supports **GCash and Maya** transactions as low as **PHP 1.00**. This is the best choice for low-cost internet plans.
+- **Paymongo**: Enforces a minimum transaction of **PHP 100.00**.
 - You can switch between them in the **Admin Portal** -> **Update Keys**.
 
 ---

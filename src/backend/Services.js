@@ -38,6 +38,7 @@ var XenditService = {
         description: description,
         currency: 'PHP',
         success_redirect_url: PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') + '?page=payment_success&refId=' + referenceId,
+        payment_methods: ["GCASH", "PAYMAYA", "GRABPAY", "SHOPEEPAY", "QRIS", "LINKAJA", "DANA"],
         items: [{ name: 'Internet Plan', quantity: 1, price: Math.round(amount) }]
       }),
       muteHttpExceptions: true
