@@ -85,11 +85,12 @@ function doGet(e) {
     const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready' && u.connectionStatus !== 'Synced');
     const plans = DB.getData('Plans');
 
-    // Format: username,passcode,durationHours;username2,passcode2,durationHours2
+    // Format: username,passcode,durationHours,speedLimit;...
     const result = users.map(u => {
       const plan = plans.find(p => p.id === u.planId);
       const hours = plan ? plan.durationHours : 0;
-      return `${u.username},${u.passcode},${hours}`;
+      const speed = plan ? (plan.speedLimit || '') : '';
+      return `${u.username},${u.passcode},${hours},${speed}`;
     }).join(';');
 
     return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);

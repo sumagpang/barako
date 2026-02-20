@@ -37,7 +37,8 @@ createApp({
       if (!price) return;
       const durationHours = prompt('Duration (Hours):');
       if (!durationHours) return;
-      savePlan({ id: 'p' + Date.now(), name, price: Number(price), durationHours: Number(durationHours), status: 'Active' });
+      const speedLimit = prompt('Speed Limit (e.g., 1M/1M or 512k/2M):', '1M/1M');
+      savePlan({ id: 'p' + Date.now(), name, price: Number(price), durationHours: Number(durationHours), speedLimit, status: 'Active' });
     };
 
     const promptAddAnnouncement = () => {

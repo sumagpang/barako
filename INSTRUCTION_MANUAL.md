@@ -14,7 +14,7 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 1. Create a new Google Sheet.
 2. Create 5 tabs with the following headers (Row 1):
    - **Users**: `username`, `passcode`, `planId`, `mobileNumber`, `referenceId`, `syncStatus`, `expirationDate`, `connectionStatus`
-   - **Plans**: `id`, `name`, `price`, `durationHours`, `status`
+   - **Plans**: `id`, `name`, `price`, `durationHours`, `speedLimit`, `status`
    - **Transactions**: `referenceId`, `mobileNumber`, `planId`, `amount`, `status`, `timestamp`
    - **Announcements**: `id`, `title`, `message`, `status`
    - **Settings**: `key`, `value`

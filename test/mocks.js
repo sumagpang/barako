@@ -70,7 +70,7 @@ global.HtmlService = {
 // SpreadsheetApp Mock
 let mockData = {
   'Users': [['username', 'passcode', 'planId', 'mobileNumber', 'referenceId', 'syncStatus', 'expirationDate', 'connectionStatus']],
-  'Plans': [['id', 'name', 'price', 'durationHours', 'status'], ['p1', '1 Hour', 10, 1, 'Active']],
+  'Plans': [['id', 'name', 'price', 'durationHours', 'speedLimit', 'status'], ['p1', '1 Hour', 10, 1, '1M/1M', 'Active']],
   'Transactions': [['referenceId', 'mobileNumber', 'planId', 'amount', 'status', 'timestamp']],
   'Announcements': [['id', 'title', 'message', 'status']],
   'Settings': [['key', 'value']]

@@ -21,6 +21,8 @@ console.log('--- TEST START ---');
 
 // 1. Test getNewUsers (Should be CSV)
 console.log('Testing getNewUsers (CSV output)...');
+// Pre-populate a plan with speed limit
+DB.insert('Plans', { id: 'p1', name: 'Plan 1', durationHours: 1, speedLimit: '1M/1M', status: 'Active' });
 // Pre-populate a user
 DB.insert('Users', { username: 'sync_test', passcode: '111', syncStatus: 'Ready', planId: 'p1', connectionStatus: 'Offline' });
 DB.insert('Users', { username: 'unpaid_user', passcode: '222', syncStatus: 'Pending', planId: 'p1', connectionStatus: 'Offline' });
@@ -35,8 +37,8 @@ const e = {
 const usersResponse = doGet(e).getContent();
 console.log('getNewUsers Response:', usersResponse);
 
-if (usersResponse.includes('sync_test') && !usersResponse.includes('unpaid_user')) {
-  console.log('✅ getNewUsers SUCCESS (Ready users only, CSV format)');
+if (usersResponse.includes('sync_test,111,1,1M/1M') && !usersResponse.includes('unpaid_user')) {
+  console.log('✅ getNewUsers SUCCESS (Ready users only, CSV format with speed)');
 } else {
   console.error('❌ getNewUsers FAILED');
   process.exit(1);
