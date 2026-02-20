@@ -91,6 +91,20 @@ var DB = {
     return data.find(item => item[key] == value);
   },
 
+  getSetting: function(key) {
+    const setting = this.findBy('Settings', 'key', key);
+    return setting ? setting.value : null;
+  },
+
+  setSetting: function(key, value) {
+    const setting = this.findBy('Settings', 'key', key);
+    if (setting) {
+      this.update('Settings', setting._row, { value: value });
+    } else {
+      this.insert('Settings', { key: key, value: value });
+    }
+  },
+
   // Batch update for connection status
   updateConnectionStatuses: function(updates) {
     if (updates.length === 0) return;

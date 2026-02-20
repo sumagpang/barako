@@ -8,6 +8,7 @@ global.PropertiesService = {
       const props = {
         'SPREADSHEET_ID': 'mock-ss-id',
         'PAYMONGO_SECRET_KEY': 'mock-paymongo-key',
+        'XENDIT_SECRET_KEY': 'mock-xendit-key',
         'SEMAPHORE_API_KEY': 'mock-semaphore-key',
         'ADMIN_PASSWORD': 'admin',
         'MIKROTIK_TOKEN': 'secret'
@@ -32,10 +33,22 @@ global.LockService = {
 global.UrlFetchApp = {
   fetch: (url, options) => {
     console.log('Mock Fetch:', url, options.method);
+    if (url.includes('paymongo')) {
+      return {
+        getContentText: () => JSON.stringify({
+          data: { attributes: { checkout_url: 'http://paymongo.checkout.mock' } }
+        })
+      };
+    }
+    if (url.includes('xendit')) {
+      return {
+        getContentText: () => JSON.stringify({
+          invoice_url: 'http://xendit.checkout.mock'
+        })
+      };
+    }
     return {
-      getContentText: () => JSON.stringify({
-        data: { attributes: { checkout_url: 'http://checkout.mock' } }
-      })
+      getContentText: () => JSON.stringify({ status: 'success' })
     };
   }
 };
@@ -86,6 +99,7 @@ global.SpreadsheetApp = {
         getValues: () => [mockData[name][0]], // headers
         setValue: (val) => {
           if (row > 1) {
+            if (!mockData[name][row-1]) mockData[name][row-1] = [];
             mockData[name][row-1][col-1] = val;
           }
         }

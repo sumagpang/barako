@@ -66,6 +66,8 @@ set [ find default=yes ] shared-users=1
 # We avoid broad *.google.com to ensure "Captive Portal Detection" (auto-popup) works.
 /ip hotspot walled-garden
 add dst-host=*.paymongo.com
+add dst-host=*.xendit.co
+add dst-host=*.xendit.ph
 add dst-host=*.semaphore.co
 add dst-host=script.google.com
 add dst-host=script.googleusercontent.com

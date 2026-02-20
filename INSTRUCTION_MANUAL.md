@@ -29,7 +29,8 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
    - **IMPORTANT:** Name the HTML files exactly as they are in the folder, but without the `.html` extension (e.g., `index.html` becomes `index`, `dashboard.html` becomes `dashboard`, `app-js.html` becomes `app-js`).
 4. Go to **Project Settings** (gear icon) and add the following **Script Properties**:
    - `SPREADSHEET_ID`: (Your Spreadsheet ID)
-   - `PAYMONGO_SECRET_KEY`: (From Paymongo Dashboard)
+   - `PAYMONGO_SECRET_KEY`: (Optional, from Paymongo Dashboard)
+   - `XENDIT_SECRET_KEY`: (Recommended for 1 PHP minimum, from Xendit Dashboard)
    - `SEMAPHORE_API_KEY`: (From Semaphore Dashboard)
    - `ADMIN_PASSWORD`: (Your desired admin portal password)
    - `MIKROTIK_TOKEN`: (A self-generated secret key. You create this yourself, e.g., `MySecret123`. It ensures only your router can fetch users from your script.)
@@ -86,10 +87,23 @@ Follow these steps to ensure a clean installation on your Mikrotik hEX S:
 
 ---
 
-## Step 6: Paymongo Webhook
+## Step 6: Webhook Configuration
+### For Xendit (Recommended)
+1. Go to Xendit Dashboard -> Developers -> Webhooks.
+2. Register a new webhook for **Invoice Paid/Settled** pointing to your **Web App URL**.
+3. Ensure the event is triggered on `invoice.paid`.
+
+### For Paymongo
 1. Go to Paymongo Dashboard -> Developers -> Webhooks.
 2. Register a new webhook pointing to your **Web App URL**.
-3. Enable the event: `link.payment.paid`.
+3. Enable the event: `checkout_session.payment.paid`.
+
+---
+
+## Gateway Selection (PHP 1.00 Minimum Support)
+- **Paymongo** enforces a minimum transaction of **PHP 100.00**.
+- **Xendit** supports transactions as low as **PHP 1.00**.
+- You can switch between them in the **Admin Portal** -> **Update Keys**.
 
 ---
 

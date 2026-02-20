@@ -146,27 +146,34 @@ function doPost(e) {
       return handleRpc(e);
     }
 
-    // Handle Paymongo Webhook (Checkout Sessions & Links)
+    // Handle Payment Webhooks (Xendit and Paymongo)
     try {
       const postData = JSON.parse(e.postData.contents);
-      const type = postData.data.attributes.type;
 
-      if (type === 'checkout_session.payment.paid') {
-        const checkoutSession = postData.data.attributes.data.attributes;
-        const referenceId = checkoutSession.reference_number;
-        if (referenceId) processSuccessfulPayment(referenceId);
-        return ContentService.createTextOutput('OK');
+      // Paymongo Webhook Format
+      if (postData.data && postData.data.attributes && postData.data.attributes.type) {
+        const type = postData.data.attributes.type;
+        if (type === 'checkout_session.payment.paid') {
+          const referenceId = postData.data.attributes.data.attributes.reference_number;
+          if (referenceId) processSuccessfulPayment(referenceId);
+          return ContentService.createTextOutput('OK');
+        }
       }
 
-      if (type === 'link.payment.paid') {
-        const linkPayment = postData.data.attributes.data.attributes;
-        const referenceId = linkPayment.remarks; // Link API uses remarks for our refId
-        if (referenceId) processSuccessfulPayment(referenceId);
-        return ContentService.createTextOutput('OK');
+      // Xendit Webhook Format
+      if (postData.external_id && postData.status) {
+        const status = postData.status;
+        const referenceId = postData.external_id;
+        if ((status === 'SETTLED' || status === 'PAID') && referenceId) {
+          processSuccessfulPayment(referenceId);
+          return ContentService.createTextOutput('OK');
+        }
       }
     } catch (err) {
       return ContentService.createTextOutput('Error: ' + err.toString());
     }
+
+    return ContentService.createTextOutput('No action');
   } catch (err) {
     return ContentService.createTextOutput('Global Error: ' + err.toString());
   }
@@ -264,7 +271,7 @@ function initiatePurchase(data) {
       connectionStatus: 'Offline'
     });
 
-    const checkoutUrl = PaymongoService.createPaymentLink(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
+    const checkoutUrl = PaymentService.createPayment(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
     return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
   } catch (err) {
     console.error('initiatePurchase Error:', err);
@@ -360,11 +367,13 @@ function handleRpcManual(method, args, password) {
   }
 
   if (method === 'updateKeys') {
-    const { paymongo, semaphore, token } = args[0];
+    const { paymongo, xendit, semaphore, token, gateway } = args[0];
     const props = PropertiesService.getScriptProperties();
     if (paymongo) props.setProperty('PAYMONGO_SECRET_KEY', paymongo);
+    if (xendit) props.setProperty('XENDIT_SECRET_KEY', xendit);
     if (semaphore) props.setProperty('SEMAPHORE_API_KEY', semaphore);
     if (token) props.setProperty('MIKROTIK_TOKEN', token);
+    if (gateway) DB.setSetting('GATEWAY', gateway);
     return { success: true };
   }
 

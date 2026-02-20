@@ -135,15 +135,24 @@ createApp({
     };
 
     const updateKeys = async () => {
+      const gateway = prompt('Select Gateway (Paymongo or Xendit):', 'Xendit');
+      if (gateway && gateway !== 'Paymongo' && gateway !== 'Xendit') {
+        alert('Invalid Gateway. Please use Paymongo or Xendit.');
+        return;
+      }
+
       const paymongo = prompt('New Paymongo Secret Key (leave blank to keep current):');
+      const xendit = prompt('New Xendit Secret Key (leave blank to keep current):');
       const semaphore = prompt('New Semaphore API Key (leave blank to keep current):');
       const token = prompt('New Mikrotik Token (leave blank to keep current):');
-      if (!paymongo && !semaphore && !token) return;
+
+      if (!gateway && !paymongo && !xendit && !semaphore && !token) return;
 
       loading.value = true;
       try {
-        await callBackend('updateKeys', [{ paymongo, semaphore, token }]);
-        alert('Keys updated successfully!');
+        await callBackend('updateKeys', [{ gateway, paymongo, xendit, semaphore, token }]);
+        alert('Settings updated successfully!');
+        await refreshData();
       } finally {
         loading.value = false;
       }
