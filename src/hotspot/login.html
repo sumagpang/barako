@@ -76,7 +76,7 @@
           <button type="button" onclick="setTopUpAmount(200)" class="topup-amt bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-orange-500 transition" id="amt-200">₱200</button>
           <button type="button" onclick="setTopUpAmount(300)" class="topup-amt bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-orange-500 transition" id="amt-300">₱300</button>
         </div>
-        <button id="topupBtn" onclick="processTopUp()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Proceed to Payment (₱100)</button>
+        <button id="topupBtn" onclick="processTopUp()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Pay with GCash/Maya/QR (₱100)</button>
         <button onclick="closeModal('topupModal')" class="w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
       </div>
     </div>
@@ -139,7 +139,7 @@
       const selected = document.getElementById('amt-' + amt);
       selected.classList.remove('border-slate-700');
       selected.classList.add('border-orange-500');
-      document.getElementById('topupBtn').innerText = `Proceed to Payment (₱${amt})`;
+      document.getElementById('topupBtn').innerText = `Pay with GCash/Maya/QR (₱${amt})`;
     }
 
     function closeModal(id) {
@@ -198,14 +198,14 @@
       if (!selectedPlan) return;
 
       if (selectedPlan.price >= 100) {
-        btn.innerText = 'Pay with GCash/Maya';
+        btn.innerText = `Pay with GCash/Maya/QR (₱${selectedPlan.price})`;
         btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition';
       } else {
         if (currentBalance >= selectedPlan.price) {
-          btn.innerText = 'Buy with Balance';
+          btn.innerText = `Buy with Balance (₱${selectedPlan.price})`;
           btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition';
         } else {
-          btn.innerText = 'Top Up Wallet (₱100)';
+          btn.innerText = 'Top Up via GCash/Maya/QR (₱100)';
           btn.className = 'w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition';
         }
       }
@@ -231,7 +231,7 @@
         alert('Error: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerText = 'Proceed to Payment (₱100)';
+        btn.innerText = `Pay with GCash/Maya/QR (₱${topUpAmount})`;
       }
     }
 
