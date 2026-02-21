@@ -38,7 +38,7 @@ if (!resSmallFail.success && resSmallFail.needsTopUp) {
 
 // 3. Test Top Up
 console.log('Testing Top Up (₱100)...');
-const resTop = initiateTopUp('091');
+const resTop = initiateTopUp('091', 100);
 if (resTop.success && resTop.checkoutUrl.includes('paymongo')) {
   console.log('✅ Top Up Link Generation SUCCESS');
 } else {

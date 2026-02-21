@@ -63,12 +63,18 @@
     <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
       <div class="text-center mb-4">
         <h2 class="text-xl font-bold text-white">Wallet Top Up</h2>
-        <p class="text-orange-400 font-medium">Add ₱100 to your account</p>
+        <p class="text-orange-400 font-medium">Select Amount</p>
       </div>
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-1 text-slate-300">Enter Mobile Number</label>
           <input type="text" id="topupMobile" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" onclick="setTopUpAmount(100)" class="topup-amt bg-slate-800 border border-orange-500 p-3 rounded-xl transition" id="amt-100">₱100</button>
+          <button type="button" onclick="setTopUpAmount(150)" class="topup-amt bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-orange-500 transition" id="amt-150">₱150</button>
+          <button type="button" onclick="setTopUpAmount(200)" class="topup-amt bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-orange-500 transition" id="amt-200">₱200</button>
+          <button type="button" onclick="setTopUpAmount(300)" class="topup-amt bg-slate-800 border border-slate-700 p-3 rounded-xl hover:border-orange-500 transition" id="amt-300">₱300</button>
         </div>
         <button id="topupBtn" onclick="processTopUp()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Proceed to Payment (₱100)</button>
         <button onclick="closeModal('topupModal')" class="w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
@@ -104,6 +110,7 @@
   <script>
     let API_URL = 'YOUR_FULL_WEB_APP_URL';
     let selectedPlan = null;
+    let topUpAmount = 100;
     let currentBalance = 0;
     let balanceDebounce = null;
 
@@ -120,6 +127,19 @@
 
     function openTopUp() {
       document.getElementById('topupModal').classList.remove('hidden');
+      setTopUpAmount(100);
+    }
+
+    function setTopUpAmount(amt) {
+      topUpAmount = amt;
+      document.querySelectorAll('.topup-amt').forEach(el => {
+        el.classList.remove('border-orange-500');
+        el.classList.add('border-slate-700');
+      });
+      const selected = document.getElementById('amt-' + amt);
+      selected.classList.remove('border-slate-700');
+      selected.classList.add('border-orange-500');
+      document.getElementById('topupBtn').innerText = `Proceed to Payment (₱${amt})`;
     }
 
     function closeModal(id) {
@@ -200,7 +220,7 @@
       btn.innerText = 'Processing...';
 
       try {
-        const res = await fetch(`${API_URL}?action=topUp&mobileNumber=${mobile}`);
+        const res = await fetch(`${API_URL}?action=topUp&mobileNumber=${mobile}&amount=${topUpAmount}`);
         const result = await res.json();
         if (result.success && result.checkoutUrl) {
           window.location.href = result.checkoutUrl;

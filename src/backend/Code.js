@@ -52,7 +52,8 @@ function doGet(e) {
   }
 
   if (action === 'topUp') {
-    return jsonResponse(initiateTopUp(e.parameter.mobileNumber));
+    const amount = Number(e.parameter.amount) || 100;
+    return jsonResponse(initiateTopUp(e.parameter.mobileNumber, amount));
   }
 
   if (page === 'payment_success') {
@@ -230,19 +231,19 @@ function handleRpc(e) {
   }
 }
 
-function initiateTopUp(mobileNumber) {
+function initiateTopUp(mobileNumber, amount) {
   try {
     const referenceId = 'TOP' + new Date().getTime();
     DB.insert('Transactions', {
       referenceId: referenceId,
       mobileNumber: mobileNumber,
       planId: 'TOPUP',
-      amount: TOP_UP_AMOUNT,
+      amount: amount,
       status: 'Pending',
       timestamp: new Date()
     });
 
-    const checkoutUrl = PaymongoService.createPaymentLink(TOP_UP_AMOUNT, 'Wallet Top Up: ₱' + TOP_UP_AMOUNT, referenceId);
+    const checkoutUrl = PaymongoService.createPaymentLink(amount, 'Wallet Top Up: ₱' + amount, referenceId);
     return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
   } catch (err) {
     return { success: false, error: err.message };
