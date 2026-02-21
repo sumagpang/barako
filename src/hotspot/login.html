@@ -31,7 +31,10 @@
       <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Connect to Internet</button>
       <div class="text-center py-2">
         <p class="text-slate-400 text-sm">Walang account?</p>
-        <button type="button" onclick="openPlans()" class="mt-2 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">WiFi Plan</button>
+        <div class="grid grid-cols-2 gap-3 mt-2">
+          <button type="button" onclick="openPlans()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">WiFi Plan</button>
+          <button type="button" onclick="openTopUp()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Top Up</button>
+        </div>
       </div>
       <div class="text-center text-sm text-slate-400">$(if error)<span class="text-red-400">$(error)</span>$(endif)</div>
     </form>
@@ -52,6 +55,24 @@
         <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
       </div>
       <button onclick="closeModal('plansModal')" class="mt-6 w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Top Up Modal -->
+  <div id="topupModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
+      <div class="text-center mb-4">
+        <h2 class="text-xl font-bold text-white">Wallet Top Up</h2>
+        <p class="text-orange-400 font-medium">Add ₱100 to your account</p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1 text-slate-300">Enter Mobile Number</label>
+          <input type="text" id="topupMobile" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+        <button id="topupBtn" onclick="processTopUp()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Proceed to Payment (₱100)</button>
+        <button onclick="closeModal('topupModal')" class="w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -95,6 +116,10 @@
     function openPlans() {
       document.getElementById('plansModal').classList.remove('hidden');
       fetchPlans();
+    }
+
+    function openTopUp() {
+      document.getElementById('topupModal').classList.remove('hidden');
     }
 
     function closeModal(id) {
@@ -163,6 +188,30 @@
           btn.innerText = 'Top Up Wallet (₱100)';
           btn.className = 'w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition';
         }
+      }
+    }
+
+    async function processTopUp() {
+      const mobile = document.getElementById('topupMobile').value;
+      if (!mobile || mobile.length < 11) return alert('Enter valid mobile number');
+
+      const btn = document.getElementById('topupBtn');
+      btn.disabled = true;
+      btn.innerText = 'Processing...';
+
+      try {
+        const res = await fetch(`${API_URL}?action=topUp&mobileNumber=${mobile}`);
+        const result = await res.json();
+        if (result.success && result.checkoutUrl) {
+          window.location.href = result.checkoutUrl;
+        } else {
+          alert(result.error || 'Failed to initialize top up.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Proceed to Payment (₱100)';
       }
     }
 
