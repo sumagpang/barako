@@ -17,43 +17,29 @@
       <p class="text-emerald-200/60 mt-1">Malakas na koneksyon sa bukid</p>
     </div>
 
-    <!-- Login Form -->
     <form id="loginForm" action="$(link-login-only)" method="post" class="space-y-4">
       <input type="hidden" name="dst" value="$(link-orig)" />
       <input type="hidden" name="popup" value="true" />
-
       <div>
         <label class="block text-sm font-medium mb-1 text-slate-300">Mobile Number (Username)</label>
         <input type="text" name="username" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
       </div>
-
       <div>
         <label class="block text-sm font-medium mb-1 text-slate-300">6-Digit Passcode</label>
         <input type="password" name="password" placeholder="******" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required>
       </div>
-
-      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
-        Connect to Internet
-      </button>
-
+      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Connect to Internet</button>
       <div class="text-center py-2">
         <p class="text-slate-400 text-sm">Walang account?</p>
-        <button type="button" onclick="openPlans()" class="mt-2 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
-          WiFi Plan
-        </button>
+        <button type="button" onclick="openPlans()" class="mt-2 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">WiFi Plan</button>
       </div>
-
-      <div class="text-center text-sm text-slate-400">
-        $(if error)<span class="text-red-400">$(error)</span>$(endif)
-      </div>
+      <div class="text-center text-sm text-slate-400">$(if error)<span class="text-red-400">$(error)</span>$(endif)</div>
     </form>
-
     <div class="mt-6 text-center">
       <p class="text-[10px] text-emerald-900 uppercase tracking-widest">WiFi sa Bukid Project</p>
       <a href="#" onclick="openAdmin()" class="text-[10px] text-emerald-800 hover:text-emerald-700 mt-2 inline-block">Admin Login</a>
     </div>
   </div>
-
 
   <!-- Plans Modal -->
   <div id="plansModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -63,8 +49,6 @@
         <button onclick="closeModal('plansModal')" class="text-slate-400 hover:text-white">✕</button>
       </div>
       <div id="planList" class="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto pr-2">
-        <!-- Plans will be loaded here automatically -->
-        <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
         <div class="animate-pulse bg-slate-800 h-20 rounded-xl"></div>
       </div>
       <button onclick="closeModal('plansModal')" class="mt-6 w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
@@ -74,22 +58,23 @@
   <!-- Purchase Modal -->
   <div id="purchaseModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
-      <div class="text-center mb-6">
-        <h2 class="text-xl font-bold text-white">Mobile Number</h2>
-        <p id="selectedPlanDisplay" class="text-blue-400 font-medium"></p>
+      <div class="text-center mb-4">
+        <h2 class="text-xl font-bold text-white">Purchase Plan</h2>
+        <p id="selectedPlanDisplay" class="text-emerald-400 font-medium"></p>
       </div>
-
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-1 text-slate-300">Enter Number</label>
-          <input type="text" id="buyerMobile" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-          <p class="text-[10px] text-slate-500 mt-1">Saan ise-send ang passcode?</p>
+          <input type="text" id="buyerMobile" oninput="checkBalance()" placeholder="09xxxxxxxxx" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
         </div>
-
-        <button id="payButton" onclick="processPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">
-          Pay with GCash/Maya
-        </button>
-
+        <div id="balanceInfo" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+          <span class="text-slate-400 text-sm">Wallet Balance:</span>
+          <span id="userBalance" class="text-lg font-bold text-emerald-400">₱0.00</span>
+        </div>
+        <div id="actionButtons" class="space-y-3">
+          <!-- Dynamically filled -->
+          <button id="mainBtn" onclick="processAction()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200">Buy Plan</button>
+        </div>
         <button onclick="closeModal('purchaseModal')" class="w-full text-slate-400 text-sm py-2 hover:text-white transition">Cancel</button>
       </div>
     </div>
@@ -98,16 +83,13 @@
   <script>
     let API_URL = 'YOUR_FULL_WEB_APP_URL';
     let selectedPlan = null;
+    let currentBalance = 0;
+    let balanceDebounce = null;
 
     function openAdmin() {
-      if (API_URL.indexOf('script.google.com') === -1) {
-        alert('SETUP ERROR: Please configure your FULL Web App URL in login.html');
-        return;
-      }
-      const pw = prompt('Enter Admin Password:');
-      if (pw) {
-        window.location.href = `${API_URL}?page=admin&pw=${pw}`;
-      }
+      if (API_URL.indexOf('script.google.com') === -1) return alert('SETUP REQUIRED');
+      const pw = prompt('Admin Password:');
+      if (pw) window.location.href = `${API_URL}?page=admin&pw=${pw}`;
     }
 
     function openPlans() {
@@ -119,53 +101,22 @@
       document.getElementById(id).classList.add('hidden');
     }
 
-    async function fetchPlans(retryCount = 0) {
+    async function fetchPlans() {
       if (API_URL.indexOf('script.google.com') === -1) return;
-
       try {
         const res = await fetch(`${API_URL}?action=getPlans`);
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Server error (${res.status}): ${text.substring(0, 100)}`);
-        }
-
         const plans = await res.json();
         const container = document.getElementById('planList');
-
-        if (plans && Array.isArray(plans)) {
-          if (plans.length > 0) {
-            container.innerHTML = plans.map(plan => `
-              <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition flex justify-between items-center group">
-                <div>
-                  <div class="text-emerald-400 font-bold">${plan.name}</div>
-                  <div class="text-xs text-emerald-500/50">${plan.durationHours} Hours • ${plan.speedLimit || 'Unlimited'}</div>
-                </div>
-                <div class="text-xl font-black text-white">₱${plan.price}</div>
-              </div>
-            `).join('');
-          } else {
-            container.innerHTML = '<div class="col-span-full text-center p-8 text-slate-500">No active plans found in database.</div>';
-          }
-        } else if (plans && plans.error) {
-          throw new Error(`Backend Error: ${plans.error}`);
-        } else {
-          throw new Error('Invalid response format from server');
-        }
-      } catch (err) {
-        console.error('Fetch plans failed', err);
-        if (retryCount < 2) {
-          console.log('Retrying fetchPlans...');
-          setTimeout(() => fetchPlans(retryCount + 1), 3000);
-        } else {
-          document.getElementById('planList').innerHTML = `
-            <div class="col-span-full text-center p-8">
-              <p class="text-red-400 text-sm mb-2">Error: ${err.message}</p>
-              <p class="text-slate-500 text-[10px] mb-4 break-all">URL: ${API_URL}</p>
-              <button onclick="fetchPlans()" class="px-4 py-2 bg-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-500 transition">Try Again</button>
+        container.innerHTML = plans.map(plan => `
+          <div onclick='selectPlan(${JSON.stringify(plan)})' class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-emerald-500 cursor-pointer transition flex justify-between items-center">
+            <div>
+              <div class="text-emerald-400 font-bold">${plan.name}</div>
+              <div class="text-xs text-slate-500">${plan.durationHours} Hours</div>
             </div>
-          `;
-        }
-      }
+            <div class="text-xl font-black text-white">₱${plan.price}</div>
+          </div>
+        `).join('');
+      } catch (err) { console.error(err); }
     }
 
     function selectPlan(plan) {
@@ -173,50 +124,89 @@
       document.getElementById('selectedPlanDisplay').innerText = `${plan.name} - ₱${plan.price}`;
       closeModal('plansModal');
       document.getElementById('purchaseModal').classList.remove('hidden');
+      updateUI();
+      checkBalance();
     }
 
-    async function processPayment() {
+    async function checkBalance() {
       const mobile = document.getElementById('buyerMobile').value;
-      if (!mobile) return alert('Please enter mobile number');
+      if (mobile.length < 11) {
+        document.getElementById('balanceInfo').classList.add('hidden');
+        updateUI();
+        return;
+      }
+      clearTimeout(balanceDebounce);
+      balanceDebounce = setTimeout(async () => {
+        try {
+          const res = await fetch(`${API_URL}?action=getUserInfo&mobileNumber=${mobile}`);
+          const data = await res.json();
+          currentBalance = data.balance || 0;
+          document.getElementById('userBalance').innerText = `₱${currentBalance.toFixed(2)}`;
+          document.getElementById('balanceInfo').classList.remove('hidden');
+          updateUI();
+        } catch(e) {}
+      }, 500);
+    }
 
-      const btn = document.getElementById('payButton');
-      btn.disabled = true;
-      btn.innerText = 'Redirecting...';
+    function updateUI() {
+      const btn = document.getElementById('mainBtn');
+      if (!selectedPlan) return;
 
-      try {
-        // We use GET for buyPlan to avoid CORS issues with POST in Google Apps Script
-        const res = await fetch(`${API_URL}?action=buyPlan&planId=${selectedPlan.id}&mobileNumber=${mobile}`);
-        const result = await res.json();
-
-        if (result.success && result.checkoutUrl) {
-          // Store for auto-sync logic
-          localStorage.setItem('pendingRef', result.referenceId);
-          window.location.href = result.checkoutUrl;
-        } else {
-          throw new Error(result.error || 'Failed to generate payment link.');
-        }
-      } catch (err) {
-        alert('Payment Error: ' + err.message);
-        btn.disabled = false;
+      if (selectedPlan.price >= 100) {
         btn.innerText = 'Pay with GCash/Maya';
+        btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition';
+      } else {
+        if (currentBalance >= selectedPlan.price) {
+          btn.innerText = 'Buy with Balance';
+          btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition';
+        } else {
+          btn.innerText = 'Top Up Wallet (₱100)';
+          btn.className = 'w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition';
+        }
       }
     }
 
-    // Initial load
-    window.onload = function() {
-      // 1. Fetch plans in background to make modal instant
-      fetchPlans();
+    async function processAction() {
+      const mobile = document.getElementById('buyerMobile').value;
+      if (!mobile) return alert('Enter mobile number');
 
-      // 2. Auto-login logic from payment redirect
+      const btn = document.getElementById('mainBtn');
+      btn.disabled = true;
+      const originalText = btn.innerText;
+      btn.innerText = 'Processing...';
+
+      try {
+        let action = (selectedPlan.price >= 100) ? 'buyPlan' :
+                     (currentBalance >= selectedPlan.price) ? 'buyPlan' : 'topUp';
+
+        const res = await fetch(`${API_URL}?action=${action}&planId=${selectedPlan.id}&mobileNumber=${mobile}`);
+        const result = await res.json();
+
+        if (result.success) {
+          if (result.checkoutUrl) {
+            window.location.href = result.checkoutUrl;
+          } else if (result.passcode) {
+            alert(`Success! Your passcode is: ${result.passcode}. You are now being connected.`);
+            window.location.href = `http://hotspot.bukid.net/login?action=from_payment&user=${result.username}&pass=${result.passcode}`;
+          }
+        } else {
+          alert(result.error || 'Failed to process.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+      }
+    }
+
+    window.onload = function() {
+      fetchPlans();
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('action') === 'from_payment') {
-        const username = urlParams.get('user');
-        const passcode = urlParams.get('pass');
-        if (username && passcode) {
-          document.getElementsByName('username')[0].value = username;
-          document.getElementsByName('password')[0].value = passcode;
-          document.getElementById('loginForm').submit();
-        }
+        document.getElementsByName('username')[0].value = urlParams.get('user');
+        document.getElementsByName('password')[0].value = urlParams.get('pass');
+        document.getElementById('loginForm').submit();
       }
     };
   </script>

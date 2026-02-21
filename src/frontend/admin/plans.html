@@ -29,11 +29,12 @@
                 {{ plan.status }}
               </span>
             </td>
-            <td class="px-6 py-4 text-sm">
+            <td class="px-6 py-4 text-sm whitespace-nowrap">
               <button @click="promptEditPlan(plan)" class="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
-              <button @click="togglePlanStatus(plan)" :class="plan.status === 'Active' ? 'text-red-400 hover:text-red-600' : 'text-green-400 hover:text-green-600'">
+              <button @click="togglePlanStatus(plan)" :class="plan.status === 'Active' ? 'text-red-400 hover:text-red-600' : 'text-green-400 hover:text-green-600'" class="mr-3">
                 {{ plan.status === 'Active' ? 'Disable' : 'Enable' }}
               </button>
+              <button @click="deletePlan(plan)" class="text-red-600 hover:text-red-800">Delete</button>
             </td>
           </tr>
         </tbody>

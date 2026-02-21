@@ -13,113 +13,66 @@ This guide will walk you through setting up the WiFi sa Bukid Captive Portal sys
 ## Step 1: Google Sheets Setup
 1. Create a new Google Sheet.
 2. Create 5 tabs with the following headers (Row 1):
-   - **Users**: `username`, `passcode`, `planId`, `mobileNumber`, `referenceId`, `syncStatus`, `expirationDate`, `connectionStatus`
+   - **Users**: `username`, `passcode`, `planId`, `mobileNumber`, `referenceId`, `syncStatus`, `expirationDate`, `connectionStatus`, `balance`
    - **Plans**: `id`, `name`, `price`, `durationHours`, `speedLimit`, `status`
    - **Transactions**: `referenceId`, `mobileNumber`, `planId`, `amount`, `status`, `timestamp`
    - **Announcements**: `id`, `title`, `message`, `status`
    - **Settings**: `key`, `value`
-3. Note the **Spreadsheet ID** from the URL: `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
+3. Note the **Spreadsheet ID** from the URL.
 
 ---
 
 ## Step 2: Google Apps Script Deployment
 1. Open the Sheet -> Extensions -> Apps Script.
-2. Copy all files from `src/backend/` into the script editor (maintain file names like `Code.gs`, `Database.gs`, `Services.gs`, etc.).
+2. Copy all files from `src/backend/` into the script editor.
 3. Copy all files from `src/frontend/admin/` into the script editor as **HTML** files.
-   - **IMPORTANT:** Name the HTML files exactly as they are in the folder, but without the `.html` extension (e.g., `index.html` becomes `index`, `dashboard.html` becomes `dashboard`, `app-js.html` becomes `app-js`).
-4. Go to **Project Settings** (gear icon) and add the following **Script Properties**:
+4. Add the following **Script Properties**:
    - `SPREADSHEET_ID`: (Your Spreadsheet ID)
-   - `PAYMONGO_SECRET_KEY`: (Optional, from Paymongo Dashboard)
-   - `XENDIT_SECRET_KEY`: (Recommended for 1 PHP minimum, from Xendit Dashboard)
+   - `PAYMONGO_SECRET_KEY`: (From Paymongo Dashboard)
    - `SEMAPHORE_API_KEY`: (From Semaphore Dashboard)
    - `ADMIN_PASSWORD`: (Your desired admin portal password)
-   - `MIKROTIK_TOKEN`: (A self-generated secret key. You create this yourself, e.g., `MySecret123`. It ensures only your router can fetch users from your script.)
-   - `WEB_APP_URL`: (You will get this in the next step. After deploying, come back here and paste the URL.)
-5. Click **Deploy** -> **New Deployment**.
-   - Select **Web App**.
-   - Set "Execute as" to **Me**.
-   - Set "Who has access" to **Anyone**.
-6. Copy the **Web App URL**. This is your `API_URL`.
+   - `MIKROTIK_TOKEN`: (A self-generated secret key)
+   - `WEB_APP_URL`: (The URL you get after deploying)
+5. Click **Deploy** -> **New Deployment** (Web App, Execute as Me, Access Anyone).
+
+---
+
+## The Wallet System (Small Plan Support)
+Paymongo enforces a **PHP 100.00 minimum** for GCash/Maya. To support smaller plans (₱1, ₱5, ₱10), this system uses a **Wallet/Credit** mechanism:
+1. **Direct Purchase**: If a plan costs ₱100 or more, the user can pay directly via Paymongo.
+2. **Top Up**: Users can Top Up their balance with ₱100 (via Paymongo).
+3. **Wallet Purchase**: Once a user has balance, they can purchase any small plan instantly. The cost is deducted from their wallet.
+
+Admins can also manually add balance to users via the **Admin Portal** if they pay in cash.
 
 ---
 
 ## Step 3: Accessing the Admin Portal
-1. Visit your **Web App URL** and add `?page=admin` to the end.
-   - Example: `https://script.google.com/macros/s/ABC...XYZ/exec?page=admin`
-2. You will see a login screen. Enter the **ADMIN_PASSWORD** you set in Step 2.
-3. **Tip:** You can use the URL `...exec?page=admin&pw=yourpassword` once; the system will save the password in your browser and hide it from the URL automatically.
+Visit your **Web App URL** and add `?page=admin` to the end. Enter your password.
 
 ---
 
 ## Step 4: Hotspot Page Upload
 1. Open `src/hotspot/login.html`.
-2. Update the `API_URL` variable with your **FULL Web App URL** (e.g., `https://script.google.com/macros/s/ABC...XYZ/exec`).
-   - **DO NOT** use just the ID. It must be the complete URL.
-3. Access your Mikrotik via Winbox.
-4. Go to **Files**.
-5. Find the `hotspot` folder. Replace the existing `login.html` with your edited one.
+2. Update the `API_URL` variable with your **FULL Web App URL**.
+3. Upload to Mikrotik `hotspot` folder.
 
 ---
 
-## Step 5: Mikrotik Reset & Setup Walkthrough
-Follow these steps to ensure a clean installation on your Mikrotik hEX S:
-
-### 4.1 Reset to Clean State
-1. Connect your PC to **ether2** of the Mikrotik.
-2. Open **Winbox** and connect to your router.
-3. Go to **System** -> **Reset Configuration**.
-4. Check the following boxes:
-   - **[x] No Default Configuration**
-   - **[x] Do Not Backup**
-5. Click **Reset Configuration**. The router will reboot and be completely empty (no IP, no password).
-
-### 4.2 Apply New Configuration
-1. After the reboot, connect via Winbox again (use the **MAC Address** in the Neighbors tab, username `admin`, no password).
-2. Open `mikrotik_complete.rsc` from this project on your computer.
-3. **IMPORTANT**: Look at the top of the file (**Section 0**). Update the `apiUrl` and `apiToken` with your own values from Step 2.
-4. In Winbox, open a **New Terminal**.
-5. Copy the entire content of your updated `mikrotik_complete.rsc` and **Paste** it into the terminal.
-6. The router will automatically configure:
-   - **ether1**: ISP Internet (Connect your ISP Modem here)
-   - **ether2 & ether3**: Direct Internet (No login required. Connect PCs or non-hotspot devices here)
-   - **ether4 & ether5**: Hotspot (Requires Mobile & Passcode. **Connect your WiFi Access Point here**)
-7. Your PC might lose connection temporarily. Reconnect to ether2 or ether3 to continue.
+## Step 5: Mikrotik Setup
+1. Reset Mikrotik (No Default, Do Not Backup).
+2. Open `mikrotik_complete.rsc`, update `apiUrl` and `apiToken` at the top.
+3. Paste content into Mikrotik **New Terminal**.
 
 ---
 
 ## Step 6: Webhook Configuration
-### For Xendit (Recommended)
-1. Go to Xendit Dashboard -> Developers -> Webhooks.
-2. Register a new webhook for **Invoice Paid/Settled** pointing to your **Web App URL**.
-3. Ensure the event is triggered on `invoice.paid`.
-
-### For Paymongo
 1. Go to Paymongo Dashboard -> Developers -> Webhooks.
-2. Register a new webhook pointing to your **Web App URL**.
-3. Enable the event: `checkout_session.payment.paid`.
-
----
-
-## Gateway Selection (GCash 1 PHP Minimum Support)
-- **Xendit (Recommended)**: Supports **GCash and Maya** transactions as low as **PHP 1.00**. This is the best choice for low-cost internet plans.
-- **Paymongo**: Enforces a minimum transaction of **PHP 100.00**.
-- You can switch between them in the **Admin Portal** -> **Update Keys**.
+2. Register your **Web App URL**.
+3. Enable event: `checkout_session.payment.paid`.
 
 ---
 
 ## Troubleshooting
-- **Auto-Popup not showing?**
-  - Ensure the **Walled Garden** is not too open. Broad wildcards like `*.google.com` or `*.gstatic.com` can trick mobile phones into thinking they have full internet, preventing the "Sign in to network" popup.
-  - Test by visiting an **HTTP** site (e.g., `http://fixme.it`) in your browser; it should redirect to the login page.
-  - **HTTPS Redirection:** Modern browsers block redirection of HTTPS sites (like Facebook or YouTube) to prevent security attacks. The system relies on the phone's built-in detection (CPD) which uses HTTP.
-- **Login fails?** Check if the user exists in the `Users` tab and if `syncStatus` is `Synced`.
-- **Payment not recording?** Check the Web App's execution logs in Google Apps Script.
-- **SMS not sending?** Ensure your Semaphore account has balance and the API key is correct.
-- **Payment initialization failed?**
-  - Ensure `PAYMONGO_SECRET_KEY` is correct.
-  - Check if the selected payment method is enabled in your Paymongo Dashboard.
-  - Verify that `WEB_APP_URL` is correctly set in Script Properties.
-- **Admin Page shows ERR_CONNECTION_CLOSED?**
-  - This usually means the Mikrotik is blocking the connection to Google. Ensure the **Walled Garden** in Step 4 is fully applied.
-  - Verify that your `API_URL` in `login.html` starts with `https://`.
-  - Try clearing your browser cache or opening in Incognito.
+- **Payment Error 100 PHP?** Ensure the user is topping up or buying a plan >= 100. Small plans must use the wallet balance.
+- **SMS not sending?** Check Semaphore balance.

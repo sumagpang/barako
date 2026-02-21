@@ -1,14 +1,11 @@
 /**
- * backend_test_v3.js - Test for Multi-Gateway support
+ * backend_test_v3.js - Test for Wallet System
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Load mocks
 require('./mocks.js');
-
-// Load backend files
 const DatabaseCode = fs.readFileSync(path.join(__dirname, '../src/backend/Database.js'), 'utf8');
 const ServicesCode = fs.readFileSync(path.join(__dirname, '../src/backend/Services.js'), 'utf8');
 const MainCode = fs.readFileSync(path.join(__dirname, '../src/backend/Code.js'), 'utf8');
@@ -17,68 +14,63 @@ eval(DatabaseCode);
 eval(ServicesCode);
 eval(MainCode);
 
-console.log('--- TEST START ---');
+console.log('--- WALLET TEST START ---');
 
-// Setup
-DB.insert('Plans', { id: 'p1', name: 'Plan 1', price: 50, durationHours: 1, speedLimit: '1M/1M', status: 'Active' });
-
-// 1. Test Xendit (Default)
-console.log('Testing Xendit Gateway (Default)...');
-DB.setSetting('GATEWAY', 'Xendit');
-const resX = initiatePurchase({ planId: 'p1', mobileNumber: '09123' });
-console.log('Xendit Checkout URL:', resX.checkoutUrl);
-if (resX.checkoutUrl && resX.checkoutUrl.includes('xendit')) {
-  console.log('✅ Xendit Integration SUCCESS');
+// 1. Test Big Plan (Direct Paymongo)
+console.log('Testing Big Plan (₱150)...');
+const resBig = initiatePurchase({ planId: 'p2', mobileNumber: '091' });
+if (resBig.success && resBig.checkoutUrl.includes('paymongo')) {
+  console.log('✅ Direct Paymongo SUCCESS');
 } else {
-  console.error('❌ Xendit Integration FAILED');
+  console.error('❌ Direct Paymongo FAILED');
   process.exit(1);
 }
 
-// 2. Test Paymongo
-console.log('Testing Paymongo Gateway...');
-DB.setSetting('GATEWAY', 'Paymongo');
-const resP = initiatePurchase({ planId: 'p1', mobileNumber: '09123' });
-console.log('Paymongo Checkout URL:', resP.checkoutUrl);
-if (resP.checkoutUrl && resP.checkoutUrl.includes('paymongo')) {
-  console.log('✅ Paymongo Integration SUCCESS');
+// 2. Test Small Plan (Insufficient Balance)
+console.log('Testing Small Plan (₱5) - Insufficient...');
+const resSmallFail = initiatePurchase({ planId: 'p1', mobileNumber: '091' });
+if (!resSmallFail.success && resSmallFail.needsTopUp) {
+  console.log('✅ Insufficient Balance Detection SUCCESS');
 } else {
-  console.error('❌ Paymongo Integration FAILED');
+  console.error('❌ Insufficient Balance Detection FAILED', resSmallFail);
   process.exit(1);
 }
 
-// 3. Test Webhooks
-console.log('Testing Webhooks...');
-
-// Xendit Webhook
-console.log(' - Testing Xendit Webhook...');
-DB.insert('Transactions', { referenceId: 'REF_X', status: 'Pending' });
-DB.insert('Users', { username: 'user_x', referenceId: 'REF_X', syncStatus: 'Pending', planId: 'p1', mobileNumber: '091' });
-doPost({
-  parameter: {},
-  postData: { contents: JSON.stringify({ status: 'PAID', external_id: 'REF_X' }) }
-});
-if (DB.findBy('Users', 'username', 'user_x').syncStatus === 'Ready') {
-  console.log('   ✅ Xendit Webhook SUCCESS');
+// 3. Test Top Up
+console.log('Testing Top Up (₱100)...');
+const resTop = initiateTopUp('091');
+if (resTop.success && resTop.checkoutUrl.includes('paymongo')) {
+  console.log('✅ Top Up Link Generation SUCCESS');
 } else {
-  console.error('   ❌ Xendit Webhook FAILED');
+  console.error('❌ Top Up Link Generation FAILED');
   process.exit(1);
 }
 
-// Paymongo Webhook
-console.log(' - Testing Paymongo Webhook...');
-DB.insert('Transactions', { referenceId: 'REF_P', status: 'Pending' });
-DB.insert('Users', { username: 'user_p', referenceId: 'REF_P', syncStatus: 'Pending', planId: 'p1', mobileNumber: '092' });
+// 4. Test Top Up Webhook Success
+console.log('Testing Top Up Webhook...');
 doPost({
   parameter: {},
   postData: { contents: JSON.stringify({
-    data: { attributes: { type: 'checkout_session.payment.paid', data: { attributes: { reference_number: 'REF_P' } } } }
+    data: { attributes: { type: 'checkout_session.payment.paid', data: { attributes: { reference_number: resTop.referenceId } } } }
   }) }
 });
-if (DB.findBy('Users', 'username', 'user_p').syncStatus === 'Ready') {
-  console.log('   ✅ Paymongo Webhook SUCCESS');
+const user = DB.findBy('Users', 'mobileNumber', '091');
+if (user && user.balance === 100) {
+  console.log('✅ Wallet Credit SUCCESS (Balance: ₱100)');
 } else {
-  console.error('   ❌ Paymongo Webhook FAILED');
+  console.error('❌ Wallet Credit FAILED', user);
   process.exit(1);
 }
 
-console.log('--- ALL TESTS PASSED ---');
+// 5. Test Small Plan (Sufficient Balance)
+console.log('Testing Small Plan (₱5) - Sufficient...');
+const resSmallSuccess = initiatePurchase({ planId: 'p1', mobileNumber: '091' });
+const userAfter = DB.findBy('Users', 'mobileNumber', '091');
+if (resSmallSuccess.success && resSmallSuccess.passcode && userAfter.balance === 95) {
+  console.log('✅ Balance Purchase SUCCESS (Passcode generated, Balance: ₱95)');
+} else {
+  console.error('❌ Balance Purchase FAILED', resSmallSuccess, userAfter);
+  process.exit(1);
+}
+
+console.log('--- ALL WALLET TESTS PASSED ---');

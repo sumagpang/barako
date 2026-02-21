@@ -1,6 +1,8 @@
 /**
- * Code.js - Main entry point and request handling
+ * Code.js - Main entry point and request handling (Paymongo + Wallet System)
  */
+
+const TOP_UP_AMOUNT = 100;
 
 function doGet(e) {
   try {
@@ -23,6 +25,15 @@ function doGet(e) {
     return jsonResponse(DB.getData('Announcements').filter(a => a.status === 'Active'));
   }
 
+  if (action === 'getUserInfo') {
+    const mobile = e.parameter.mobileNumber;
+    const user = DB.findBy('Users', 'mobileNumber', mobile);
+    if (user) {
+      return jsonResponse({ success: true, balance: user.balance || 0 });
+    }
+    return jsonResponse({ success: true, balance: 0 });
+  }
+
   if (action === 'checkPayment') {
     const refId = e.parameter.refId;
     const transaction = DB.findBy('Transactions', 'referenceId', refId);
@@ -40,6 +51,10 @@ function doGet(e) {
     }));
   }
 
+  if (action === 'topUp') {
+    return jsonResponse(initiateTopUp(e.parameter.mobileNumber));
+  }
+
   if (page === 'payment_success') {
     const refId = (e.parameter.refId || '').replace(/[^a-zA-Z0-9_-]/g, '');
     return HtmlService.createHtmlOutput(`
@@ -49,15 +64,14 @@ function doGet(e) {
           <div class="max-w-md w-full text-center space-y-6">
             <div class="text-6xl text-emerald-500">✅</div>
             <h1 class="text-2xl font-bold">Payment Successful!</h1>
-            <p class="text-slate-400">Please wait while we prepare your connection. You will be redirected shortly.</p>
-            <div class="animate-pulse text-sm text-blue-400">Syncing with router...</div>
+            <p class="text-slate-400">Please wait while we prepare your connection.</p>
+            <div class="animate-pulse text-sm text-blue-400">Processing...</div>
             <script>
               async function checkSync() {
                 try {
                   const res = await fetch('?action=checkPayment&refId=${refId}');
                   const data = await res.json();
                   if (data.success) {
-                    // Redirect back to Mikrotik with credentials
                     window.location.href = 'http://hotspot.bukid.net/login?action=from_payment&user=' + data.username + '&pass=' + data.passcode;
                   } else {
                     setTimeout(checkSync, 2000);
@@ -78,11 +92,9 @@ function doGet(e) {
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
-    // IMPORTANT: Only return READY users (those who paid). NEVER 'Pending'.
     const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready');
     const plans = DB.getData('Plans');
 
-    // Format: username,passcode,durationHours,speedLimit;...
     const result = users.map(u => {
       const plan = plans.find(p => p.id === u.planId);
       let durationStr = '00:00:00';
@@ -141,33 +153,16 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    // Handle RPC or other POSTs from the Admin Portal or Hotspot
     if (e.parameter.rpc) {
       return handleRpc(e);
     }
 
-    // Handle Payment Webhooks (Xendit and Paymongo)
     try {
       const postData = JSON.parse(e.postData.contents);
-
-      // Paymongo Webhook Format
-      if (postData.data && postData.data.attributes && postData.data.attributes.type) {
-        const type = postData.data.attributes.type;
-        if (type === 'checkout_session.payment.paid') {
-          const referenceId = postData.data.attributes.data.attributes.reference_number;
-          if (referenceId) processSuccessfulPayment(referenceId);
-          return ContentService.createTextOutput('OK');
-        }
-      }
-
-      // Xendit Webhook Format
-      if (postData.external_id && postData.status) {
-        const status = postData.status;
-        const referenceId = postData.external_id;
-        if ((status === 'SETTLED' || status === 'PAID') && referenceId) {
-          processSuccessfulPayment(referenceId);
-          return ContentService.createTextOutput('OK');
-        }
+      if (postData.data && postData.data.attributes && postData.data.attributes.type === 'checkout_session.payment.paid') {
+        const referenceId = postData.data.attributes.data.attributes.reference_number;
+        if (referenceId) processSuccessfulPayment(referenceId);
+        return ContentService.createTextOutput('OK');
       }
     } catch (err) {
       return ContentService.createTextOutput('Error: ' + err.toString());
@@ -184,7 +179,6 @@ function handleRpc(e) {
   const method = payload.method;
   const args = payload.args || [];
 
-  // Basic security for Admin RPC and Mikrotik RPC
   const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
   const mToken = PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN');
 
@@ -204,10 +198,6 @@ function handleRpc(e) {
       announcements: DB.getData('Announcements'),
       settings: DB.getData('Settings')
     });
-  }
-
-  if (method === 'buyPlan') {
-    return jsonResponse(initiatePurchase(args[0]));
   }
 
   if (method === 'saveUser') {
@@ -240,39 +230,107 @@ function handleRpc(e) {
   }
 }
 
+function initiateTopUp(mobileNumber) {
+  try {
+    const referenceId = 'TOP' + new Date().getTime();
+    DB.insert('Transactions', {
+      referenceId: referenceId,
+      mobileNumber: mobileNumber,
+      planId: 'TOPUP',
+      amount: TOP_UP_AMOUNT,
+      status: 'Pending',
+      timestamp: new Date()
+    });
+
+    const checkoutUrl = PaymongoService.createPaymentLink(TOP_UP_AMOUNT, 'Wallet Top Up: ₱' + TOP_UP_AMOUNT, referenceId);
+    return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 function initiatePurchase(data) {
   try {
     const plan = DB.findBy('Plans', 'id', data.planId);
     if (!plan) throw new Error('Selected plan not found.');
 
-    const referenceId = 'REF' + new Date().getTime();
-    const passcode = Math.floor(100000 + Math.random() * 900000).toString();
-    const username = data.mobileNumber;
+    const mobileNumber = data.mobileNumber;
+    let user = DB.findBy('Users', 'mobileNumber', mobileNumber);
 
-    // Save pending transaction
-    DB.insert('Transactions', {
-      referenceId: referenceId,
-      mobileNumber: data.mobileNumber,
-      planId: data.planId,
-      amount: plan.price,
-      status: 'Pending',
-      timestamp: new Date()
-    });
+    if (!user) {
+      // Auto-create user with 0 balance
+      DB.insert('Users', {
+        username: mobileNumber,
+        mobileNumber: mobileNumber,
+        balance: 0,
+        syncStatus: 'None',
+        connectionStatus: 'Offline'
+      });
+      user = DB.findBy('Users', 'mobileNumber', mobileNumber);
+    }
 
-    // Save pending user
-    DB.insert('Users', {
-      username: username,
-      passcode: passcode,
-      planId: data.planId,
-      mobileNumber: data.mobileNumber,
-      referenceId: referenceId,
-      syncStatus: 'Pending',
-      expirationDate: '',
-      connectionStatus: 'Offline'
-    });
+    // Case 1: Plan is >= 100 PHP, use Paymongo directly
+    if (plan.price >= 100) {
+      const referenceId = 'REF' + new Date().getTime();
+      const passcode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const checkoutUrl = PaymentService.createPayment(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
-    return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
+      DB.insert('Transactions', {
+        referenceId: referenceId,
+        mobileNumber: mobileNumber,
+        planId: data.planId,
+        amount: plan.price,
+        status: 'Pending',
+        timestamp: new Date()
+      });
+
+      DB.update('Users', user._row, {
+        passcode: passcode,
+        planId: data.planId,
+        referenceId: referenceId,
+        syncStatus: 'Pending'
+      });
+
+      const checkoutUrl = PaymongoService.createPaymentLink(plan.price, 'WiFi Plan: ' + plan.name, referenceId);
+      return { success: true, checkoutUrl: checkoutUrl, referenceId: referenceId };
+    }
+
+    // Case 2: Plan is < 100 PHP, must use Balance
+    if ((user.balance || 0) >= plan.price) {
+      const referenceId = 'BAL' + new Date().getTime();
+      const passcode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Deduct balance
+      DB.update('Users', user._row, { balance: (user.balance || 0) - plan.price });
+
+      // Record transaction
+      DB.insert('Transactions', {
+        referenceId: referenceId,
+        mobileNumber: mobileNumber,
+        planId: data.planId,
+        amount: plan.price,
+        status: 'Success',
+        timestamp: new Date()
+      });
+
+      // Activate plan immediately
+      const now = new Date();
+      const expiration = new Date(now.getTime() + (plan.durationHours * 60 * 60 * 1000));
+
+      DB.update('Users', user._row, {
+        passcode: passcode,
+        planId: data.planId,
+        referenceId: referenceId,
+        syncStatus: 'Ready',
+        expirationDate: expiration.toISOString()
+      });
+
+      const message = 'Success! Your passcode for WiFi sa Bukid is: ' + passcode + '. Balance: ₱' + (user.balance - plan.price);
+      SemaphoreService.sendSMS(mobileNumber, message);
+
+      return { success: true, passcode: passcode, username: mobileNumber, isBalance: true };
+    } else {
+      return { success: false, error: 'Insufficient Balance. Please Top Up at least ₱100.', needsTopUp: true };
+    }
   } catch (err) {
     console.error('initiatePurchase Error:', err);
     return { success: false, error: err.message };
@@ -284,21 +342,31 @@ function processSuccessfulPayment(referenceId) {
   if (transaction && transaction.status === 'Pending') {
     DB.update('Transactions', transaction._row, { status: 'Success' });
 
-    const user = DB.findBy('Users', 'referenceId', referenceId);
-    const plan = DB.findBy('Plans', 'id', user.planId);
+    if (referenceId.startsWith('TOP')) {
+      // Handle Top Up
+      const user = DB.findBy('Users', 'mobileNumber', transaction.mobileNumber);
+      if (user) {
+        DB.update('Users', user._row, { balance: (user.balance || 0) + transaction.amount });
+      }
+      // Create a dummy user record for checkPayment to succeed if they are waiting
+      DB.update('Users', user._row, { referenceId: referenceId });
+      SemaphoreService.sendSMS(user.mobileNumber, 'Top Up Successful! Your new balance is ₱' + (user.balance + transaction.amount));
+    } else {
+      // Handle Direct Purchase
+      const user = DB.findBy('Users', 'referenceId', referenceId);
+      const plan = DB.findBy('Plans', 'id', user.planId);
 
-    // Calculate expiration
-    const now = new Date();
-    const expiration = new Date(now.getTime() + (plan.durationHours * 60 * 60 * 1000));
+      const now = new Date();
+      const expiration = new Date(now.getTime() + (plan.durationHours * 60 * 60 * 1000));
 
-    DB.update('Users', user._row, {
-      syncStatus: 'Ready',
-      expirationDate: expiration.toISOString()
-    });
+      DB.update('Users', user._row, {
+        syncStatus: 'Ready',
+        expirationDate: expiration.toISOString()
+      });
 
-    // Send SMS
-    const message = 'Thank you for your purchase! Your passcode for WiFi sa Bukid is: ' + user.passcode + '. Valid for ' + plan.durationHours + ' hours.';
-    SemaphoreService.sendSMS(user.mobileNumber, message);
+      const message = 'Thank you for your purchase! Your passcode for WiFi sa Bukid is: ' + user.passcode + '. Valid for ' + plan.durationHours + ' hours.';
+      SemaphoreService.sendSMS(user.mobileNumber, message);
+    }
   }
 }
 
@@ -311,16 +379,9 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-/**
- * Wrapper for google.script.run calls from the Admin Portal
- * Requires adminPassword as the first argument for all sensitive operations.
- */
 function handleRpcManual(method, args, password) {
   const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
-
-  if (password !== adminPassword) {
-    throw new Error('Unauthorized: Invalid Admin Password');
-  }
+  if (password !== adminPassword) throw new Error('Unauthorized');
 
   if (method === 'getDashboardData') {
     return {
@@ -334,46 +395,33 @@ function handleRpcManual(method, args, password) {
 
   if (method === 'saveUser') {
     const user = args[0];
-    if (user._row) {
-      return DB.update('Users', user._row, user);
-    } else {
-      return DB.insert('Users', user);
-    }
+    if (user._row) return DB.update('Users', user._row, user);
+    else return DB.insert('Users', user);
   }
 
   if (method === 'savePlan') {
     const plan = args[0];
-    if (plan._row) {
-      return DB.update('Plans', plan._row, plan);
-    } else {
-      return DB.insert('Plans', plan);
-    }
+    if (plan._row) return DB.update('Plans', plan._row, plan);
+    else return DB.insert('Plans', plan);
   }
 
   if (method === 'saveAnnouncement') {
     const ann = args[0];
-    if (ann._row) {
-      return DB.update('Announcements', ann._row, ann);
-    } else {
-      return DB.insert('Announcements', ann);
-    }
+    if (ann._row) return DB.update('Announcements', ann._row, ann);
+    else return DB.insert('Announcements', ann);
   }
 
-  if (method === 'deleteAnnouncement') {
-    const ann = args[0];
-    if (ann._row) {
-      return DB.delete('Announcements', ann._row);
-    }
+  if (method === 'deleteRecord') {
+    const { table, row } = args[0];
+    return DB.deleteRow(table, row);
   }
 
   if (method === 'updateKeys') {
-    const { paymongo, xendit, semaphore, token, gateway } = args[0];
+    const { paymongo, semaphore, token } = args[0];
     const props = PropertiesService.getScriptProperties();
     if (paymongo) props.setProperty('PAYMONGO_SECRET_KEY', paymongo);
-    if (xendit) props.setProperty('XENDIT_SECRET_KEY', xendit);
     if (semaphore) props.setProperty('SEMAPHORE_API_KEY', semaphore);
     if (token) props.setProperty('MIKROTIK_TOKEN', token);
-    if (gateway) DB.setSetting('GATEWAY', gateway);
     return { success: true };
   }
 

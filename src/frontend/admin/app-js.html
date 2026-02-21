@@ -58,7 +58,13 @@ createApp({
       if (!username) return;
       const passcode = prompt('Enter 6-digit Passcode:');
       if (!passcode) return;
-      saveUser({ username, passcode, connectionStatus: 'Offline', syncStatus: 'Ready' });
+      saveUser({ username, passcode, connectionStatus: 'Offline', syncStatus: 'Ready', balance: 0 });
+    };
+
+    const promptEditBalance = (user) => {
+      const newBalance = prompt(`Enter new balance for ${user.username}:`, user.balance || 0);
+      if (newBalance === null) return;
+      saveUser({ ...user, balance: Number(newBalance) });
     };
 
     const promptAddPlan = () => {
@@ -127,7 +133,40 @@ createApp({
       if (!confirm('Are you sure you want to delete this announcement?')) return;
       loading.value = true;
       try {
-        await callBackend('deleteAnnouncement', [ann]);
+        await callBackend('deleteRecord', [{ table: 'Announcements', row: ann._row }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const kickUser = async (user) => {
+      if (!confirm(`Are you sure you want to kick/disable ${user.username}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('saveUser', [{ ...user, syncStatus: 'Disabled' }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteUser = async (user) => {
+      if (!confirm(`Are you sure you want to permanently delete user ${user.username}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteRecord', [{ table: 'Users', row: user._row }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deletePlan = async (plan) => {
+      if (!confirm(`Are you sure you want to delete plan ${plan.name}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteRecord', [{ table: 'Plans', row: plan._row }]);
         await refreshData();
       } finally {
         loading.value = false;
@@ -135,22 +174,15 @@ createApp({
     };
 
     const updateKeys = async () => {
-      const gateway = prompt('Select Gateway (Paymongo or Xendit):', 'Xendit');
-      if (gateway && gateway !== 'Paymongo' && gateway !== 'Xendit') {
-        alert('Invalid Gateway. Please use Paymongo or Xendit.');
-        return;
-      }
-
       const paymongo = prompt('New Paymongo Secret Key (leave blank to keep current):');
-      const xendit = prompt('New Xendit Secret Key (leave blank to keep current):');
       const semaphore = prompt('New Semaphore API Key (leave blank to keep current):');
       const token = prompt('New Mikrotik Token (leave blank to keep current):');
 
-      if (!gateway && !paymongo && !xendit && !semaphore && !token) return;
+      if (!paymongo && !semaphore && !token) return;
 
       loading.value = true;
       try {
-        await callBackend('updateKeys', [{ gateway, paymongo, xendit, semaphore, token }]);
+        await callBackend('updateKeys', [{ paymongo, semaphore, token }]);
         alert('Settings updated successfully!');
         await refreshData();
       } finally {
@@ -230,6 +262,7 @@ createApp({
       login,
       refreshData,
       saveUser,
+      promptEditBalance,
       savePlan,
       promptAddUser,
       promptAddPlan,
@@ -238,6 +271,9 @@ createApp({
       promptAddAnnouncement,
       saveAnnouncement,
       deleteAnnouncement,
+      kickUser,
+      deleteUser,
+      deletePlan,
       updateKeys,
       changePassword,
       logout

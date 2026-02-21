@@ -105,6 +105,21 @@ var DB = {
     }
   },
 
+  deleteRow: function(tableName, rowNumber) {
+    const lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(30000);
+      const sheet = this.getTable(tableName);
+      sheet.deleteRow(rowNumber);
+      return true;
+    } catch (e) {
+      console.error('Delete error:', e);
+      return false;
+    } finally {
+      lock.releaseLock();
+    }
+  },
+
   // Batch update for connection status
   updateConnectionStatuses: function(updates) {
     if (updates.length === 0) return;
