@@ -6,8 +6,9 @@
 /system identity set name="WiFi-sa-Bukid"
 
 # 0. CONFIGURATION - CHANGE THESE VALUES
-:global apiUrl "YOUR_API_URL"
-:global apiToken "YOUR_MIKROTIK_TOKEN"
+# These will be stored in a script to persist across reboots.
+/system script
+add name=LoadConfig source=":global apiUrl \"YOUR_API_URL\"; :global apiToken \"YOUR_MIKROTIK_TOKEN\";"
 
 # 1. Bridges
 /interface bridge
@@ -63,31 +64,31 @@ add address-pool=pool-Hotspot disabled=no interface=bridge-Hotspot name=hotspot1
 set [ find default=yes ] shared-users=1
 
 # 7. Walled Garden (Allow Paymongo, Semaphore, and Google Apps Script)
-# We avoid broad *.google.com to ensure "Captive Portal Detection" (auto-popup) works.
 /ip hotspot walled-garden
 add dst-host=*.paymongo.com
 add dst-host=*.semaphore.co
 add dst-host=script.google.com
 add dst-host=script.googleusercontent.com
-add dst-host=accounts.google.com comment="Required for Google Script redirects"
-add dst-host=ssl.gstatic.com comment="Required for Google Script UI"
+add dst-host=accounts.google.com
+add dst-host=ssl.gstatic.com
 add dst-host=fonts.googleapis.com
 add dst-host=fonts.gstatic.com
-add dst-host=cdn.jsdelivr.net comment="Required for Tailwind/Vue/CDNs"
+add dst-host=cdn.jsdelivr.net
 add dst-host=cdn.tailwindcss.com
 add dst-host=unpkg.com
 
 # 8. Sync Scripts
 /system script
-add name=SyncUsers policy=read,write,policy,test,api source=":global apiUrl; :global apiToken; :if ([:len \$apiUrl] = 0 || [:len \$apiToken] = 0) do={ :log error \"SyncUsers: Global variables not set\"; :error \"Missing config\" }; :local syncedUsers \"\"; :do { /tool fetch url=(\$apiUrl . \"?action=getNewUsers&token=\" . \$apiToken) mode=http check-certificate=no keep-result=yes dst-path=users.txt; :if ([:len [/file find name=users.txt]] > 0) do={ :local content [/file get users.txt contents]; :if ([:len \$content] > 0) do={ :local pos 0; :while (\$pos < [:len \$content]) do={ :local end [:find \$content \"|\" \$pos]; :if ([:typeof \$end] = \"nil\") do={ :set end [:len \$content] }; :local record [:pick \$content \$pos \$end]; :set pos (\$end + 1); :if ([:len \$record] > 0) do={ :local fields [:toarray \$record]; :local uname (\$fields->0); :local pass (\$fields->1); :local duration (\$fields->2); :local speed (\$fields->3); :if ([:len [/ip hotspot user find name=\$uname]] = 0) do={ /ip hotspot user add name=\$uname password=\$pass limit-uptime=\$duration rate-limit=\$speed comment=\"Synced\"; :log info \"SyncUsers: Added user \$uname\"; } else={ /ip hotspot user set [find name=\$uname] password=\$pass limit-uptime=\$duration rate-limit=\$speed; }; :set syncedUsers (\$syncedUsers . \$uname . \",\"); }; }; :if ([:len \$syncedUsers] > 0) do={ /tool fetch url=(\$apiUrl . \"?action=markSynced&token=\" . \$apiToken . \"&usernames=\" . \$syncedUsers) mode=http check-certificate=no keep-result=no; }; }; /file remove users.txt; }; } on-error={ :log error \"SyncUsers: Script failed\" }"
+add name=SyncUsers policy=read,write,policy,test,api source="/system script run LoadConfig; :global apiUrl; :global apiToken; :if ([:len \$apiUrl] = 0 || [:len \$apiToken] = 0) do={ :log error \"SyncUsers: Global variables not set. Check LoadConfig script.\"; :error \"Missing config\" }; :local syncedUsers \"\"; :do { :log info \"SyncUsers: Fetching new users...\"; /tool fetch url=(\$apiUrl . \"?action=getNewUsers&token=\" . \$apiToken) check-certificate=no keep-result=yes dst-path=users.txt; :local fileObj [/file find name=users.txt]; :if ([:len \$fileObj] > 0) do={ :local content [/file get users.txt contents]; :if ([:len \$content] > 0) do={ :log info \"SyncUsers: Processing users data...\"; :local pos 0; :while (\$pos < [:len \$content]) do={ :local end [:find \$content \"|\" \$pos]; :if ([:typeof \$end] = \"nil\") do={ :set end [:len \$content] }; :local record [:pick \$content \$pos \$end]; :set pos (\$end + 1); :if ([:len \$record] > 0) do={ :local fields [:toarray \$record]; :local uname (\$fields->0); :local pass (\$fields->1); :local duration (\$fields->2); :local speed (\$fields->3); :if ([:len [/ip hotspot user find name=\$uname]] = 0) do={ /ip hotspot user add name=\$uname password=\$pass limit-uptime=\$duration rate-limit=\$speed comment=\"Synced\"; :log info \"SyncUsers: Added user \$uname\"; } else={ /ip hotspot user set [find name=\$uname] password=\$pass limit-uptime=\$duration rate-limit=\$speed; :log info \"SyncUsers: Updated user \$uname\"; }; :set syncedUsers (\$syncedUsers . \$uname . \",\"); }; }; :if ([:len \$syncedUsers] > 0) do={ :log info \"SyncUsers: Marking users as synced...\"; /tool fetch url=(\$apiUrl . \"?action=markSynced&token=\" . \$apiToken . \"&usernames=\" . \$syncedUsers) check-certificate=no keep-result=no; }; } else={ :log info \"SyncUsers: No new users found.\"; }; /file remove users.txt; } else={ :log error \"SyncUsers: users.txt not created. Fetch might have failed.\"; }; } on-error={ :log error \"SyncUsers: Script execution failed. Check network/URL.\"; }"
 
-add name=KickUsers policy=read,write,policy,test,api source=":global apiUrl; :global apiToken; :if ([:len \$apiUrl] = 0 || [:len \$apiToken] = 0) do={ :log error \"KickUsers: Global variables not set\"; :error \"Missing config\" }; :do { /tool fetch url=(\$apiUrl . \"?action=getKickList&token=\" . \$apiToken) mode=http check-certificate=no keep-result=yes dst-path=kick.txt; :if ([:len [/file find name=kick.txt]] > 0) do={ :local content [/file get kick.txt contents]; :if ([:len \$content] > 0) do={ :local pos 0; :while (\$pos < [:len \$content]) do={ :local end [:find \$content \"|\" \$pos]; :if ([:typeof \$end] = \"nil\") do={ :set end [:len \$content] }; :local uname [:pick \$content \$pos \$end]; :set pos (\$end + 1); :if ([:len \$uname] > 0) do={ :if ([:len [/ip hotspot user find name=\$uname]] > 0) do={ /ip hotspot user remove [find name=\$uname]; :log info \"KickUsers: Removed user \$uname\"; }; /ip hotspot active remove [find user=\$uname]; }; }; }; /file remove kick.txt; }; } on-error={ :log error \"KickUsers: Script failed\" }"
+add name=KickUsers policy=read,write,policy,test,api source="/system script run LoadConfig; :global apiUrl; :global apiToken; :if ([:len \$apiUrl] = 0 || [:len \$apiToken] = 0) do={ :log error \"KickUsers: Global variables not set. Check LoadConfig script.\"; :error \"Missing config\" }; :do { :log info \"KickUsers: Fetching kick list...\"; /tool fetch url=(\$apiUrl . \"?action=getKickList&token=\" . \$apiToken) check-certificate=no keep-result=yes dst-path=kick.txt; :local fileObj [/file find name=kick.txt]; :if ([:len \$fileObj] > 0) do={ :local content [/file get kick.txt contents]; :if ([:len \$content] > 0) do={ :log info \"KickUsers: Processing kick list...\"; :local pos 0; :while (\$pos < [:len \$content]) do={ :local end [:find \$content \"|\" \$pos]; :if ([:typeof \$end] = \"nil\") do={ :set end [:len \$content] }; :local uname [:pick \$content \$pos \$end]; :set pos (\$end + 1); :if ([:len \$uname] > 0) do={ :if ([:len [/ip hotspot user find name=\$uname]] > 0) do={ /ip hotspot user remove [find name=\$uname]; :log info \"KickUsers: Removed user \$uname\"; }; /ip hotspot active remove [find user=\$uname]; }; }; } else={ :log info \"KickUsers: Kick list is empty.\"; }; /file remove kick.txt; } else={ :log error \"KickUsers: kick.txt not created. Fetch might have failed.\"; }; } on-error={ :log error \"KickUsers: Script execution failed. Check network/URL.\"; }"
 
 # 9. Real-time Status Sync (on-login/on-logout)
 /ip hotspot user profile
-set [ find default=yes ] on-login=":global apiUrl; :global apiToken; /tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Online\\\"}]}\" keep-result=no" \
-    on-logout=":global apiUrl; :global apiToken; /tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Offline\\\"}]}\" keep-result=no"
+set [ find default=yes ] on-login="/system script run LoadConfig; :global apiUrl; :global apiToken; /tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Online\\\"}]}\" keep-result=no" \
+    on-logout="/system script run LoadConfig; :global apiUrl; :global apiToken; /tool fetch url=(\$apiUrl . \"?rpc=true\") check-certificate=no http-method=post http-data=\"{\\\"method\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"\$apiToken\\\",\\\"args\\\":[{\\\"username\\\":\\\"\$user\\\",\\\"status\\\":\\\"Offline\\\"}]}\" keep-result=no"
 
 /system scheduler
-add interval=10s name=SyncTask on-event=SyncUsers policy=read,write,policy,test,api start-time=startup
-add interval=10s name=KickTask on-event=KickUsers policy=read,write,policy,test,api start-time=startup
+add interval=30s name=SyncTask on-event=SyncUsers policy=read,write,policy,test,api start-time=startup
+add interval=30s name=KickTask on-event=KickUsers policy=read,write,policy,test,api start-time=startup
+add name=StartupTask on-event=LoadConfig policy=read,write,policy,test,api start-time=startup

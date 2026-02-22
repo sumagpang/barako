@@ -89,8 +89,10 @@ function doGet(e) {
 
   // Mikrotik Sync Endpoints
   if (action === 'getNewUsers') {
+    console.log('Router: Fetching new users');
     const token = e.parameter.token;
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      console.warn('Router: Unauthorized getNewUsers attempt');
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
     const users = DB.getData('Users').filter(u => u.syncStatus === 'Ready');
@@ -112,8 +114,10 @@ function doGet(e) {
   }
 
   if (action === 'getKickList') {
+    console.log('Router: Fetching kick list');
     const token = e.parameter.token;
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      console.warn('Router: Unauthorized getKickList attempt');
       return ContentService.createTextOutput('Unauthorized').setMimeType(ContentService.MimeType.TEXT);
     }
 
@@ -131,8 +135,10 @@ function doGet(e) {
   }
 
   if (action === 'markSynced') {
+    console.log('Router: Marking users as synced');
     const token = e.parameter.token;
     if (token !== PropertiesService.getScriptProperties().getProperty('MIKROTIK_TOKEN')) {
+      console.warn('Router: Unauthorized markSynced attempt');
       return jsonResponse({ error: 'Unauthorized' });
     }
     const usernames = (e.parameter.usernames || '').split(',');
@@ -223,6 +229,7 @@ function handleRpc(e) {
 
   if (method === 'updateConnection') {
     const { username, status } = args[0];
+    console.log('Router: Update connection status', username, status);
     const user = DB.findBy('Users', 'username', username);
     if (user) {
       DB.update('Users', user._row, { connectionStatus: status });

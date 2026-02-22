@@ -76,3 +76,16 @@ Visit your **Web App URL** and add `?page=admin` to the end. Enter your password
 ## Troubleshooting
 - **Payment Error 100 PHP?** Ensure the user is topping up or buying a plan >= 100. Small plans must use the wallet balance.
 - **SMS not sending?** Check Semaphore balance.
+
+### Troubleshooting MikroTik Scripts
+If `SyncTask` or `KickTask` show as **failed** in the Scheduler:
+1. **Check the Logs**: Go to **System -> Log** in Winbox. Look for errors from `SyncUsers` or `KickUsers`.
+2. **Verify Global Variables**:
+   - Open **System -> Scripts**.
+   - Check the `LoadConfig` script. Ensure `YOUR_API_URL` and `YOUR_MIKROTIK_TOKEN` are correct.
+   - Run `/system script run LoadConfig` in the terminal and then `:put $apiUrl` to see if it is set.
+3. **Common Errors**:
+   - **Fetch Failed**: Check if the router has internet access. Ensure DNS is working (try `ping google.com`).
+   - **Unauthorized**: Your `MIKROTIK_TOKEN` on the router does not match the one in Google Apps Script properties.
+   - **Where is users.txt?**: The script removes `users.txt` immediately after processing for security and space. To debug, you can temporarily comment out `/file remove users.txt` in the script.
+   - **4KB Limit**: MikroTik has a 4KB limit when reading file contents via script. If you have hundreds of users waiting to sync at once, it might fail. Clear your database or sync more frequently.
