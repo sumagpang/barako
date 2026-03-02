@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi sa Bukid | Hotspot Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        [v-cloak] { display: none; }
+        .gradient-bg { background: linear-gradient(135deg, #065f46 0%, #059669 100%); }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+    <div id="app" v-cloak>
+        <!-- Header -->
+        <header class="gradient-bg text-white p-6 shadow-lg">
+            <h1 class="text-2xl font-bold">WiFi sa Bukid</h1>
+            <p class="text-emerald-100 text-sm">Fast & Reliable Internet Connection</p>
+        </header>
+
+        <main class="p-6 max-w-md mx-auto">
+            <!-- Announcements -->
+            <div v-if="announcement" class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded shadow-sm">
+                <p class="text-yellow-700 text-sm">{{ announcement }}</p>
+            </div>
+
+            <!-- Login Form -->
+            <div class="bg-white p-6 rounded-xl shadow-md mb-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Existing User?</h2>
+                <form :action="loginUrl" method="post">
+                    <input type="hidden" name="dst" :value="dst">
+                    <input type="hidden" name="popup" value="true">
+
+                    <div class="mb-4">
+                        <label class="block text-gray-600 text-sm mb-1">Username</label>
+                        <input name="username" type="text" placeholder="Enter username" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-600 text-sm mb-1">Password</label>
+                        <input name="password" type="password" placeholder="Enter password" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full gradient-bg text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition">
+                        Connect Now
+                    </button>
+                </form>
+                <div v-if="error" class="mt-4 text-red-500 text-center text-sm">{{ error }}</div>
+            </div>
+
+            <!-- Purchase Plans -->
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Buy a Plan</h2>
+                <div class="grid grid-cols-1 gap-4">
+                    <div v-for="plan in plans" :key="plan.id" @click="selectPlan(plan)" class="bg-white p-4 rounded-xl shadow-sm border-2 border-transparent hover:border-emerald-500 cursor-pointer transition flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-lg text-gray-800">{{ plan.name }}</div>
+                            <div class="text-gray-500 text-sm">{{ plan.duration }} • {{ plan.speedLimit }}</div>
+                        </div>
+                        <div class="text-emerald-600 font-bold text-xl">₱{{ plan.price }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="text-center text-gray-400 text-xs mt-8">
+                <p>&copy; 2024 ARASU WiFi sa Bukid</p>
+                <a :href="adminUrl" class="mt-2 block hover:text-gray-600">Admin Login</a>
+            </footer>
+        </main>
+
+        <!-- Purchase Modal -->
+        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-end sm:items-center justify-center z-50 p-4">
+            <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Confirm Purchase</h3>
+                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="bg-emerald-50 p-4 rounded-lg mb-6">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-emerald-800">Selected Plan:</span>
+                        <span class="font-bold text-emerald-900">{{ selectedPlan.name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-emerald-800">Total Price:</span>
+                        <span class="font-bold text-emerald-900 text-lg">₱{{ selectedPlan.price }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Your Mobile Number (for SMS)</label>
+                    <input v-model="mobile" type="tel" placeholder="09123456789" class="w-full p-3 border-2 rounded-lg focus:border-emerald-500 outline-none text-lg">
+                    <p class="text-gray-400 text-xs mt-1">We will send your login details to this number.</p>
+                </div>
+
+                <button @click="payNow" :disabled="loading" class="w-full gradient-bg text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition disabled:opacity-50">
+                    <span v-if="loading">Processing...</span>
+                    <span v-else>Pay with GCash / Maya / QRPH</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp } = Vue;
+        // Configuration - replace with your actual Web App URL
+        const API_URL = 'YOUR_FULL_WEB_APP_URL';
+
+        createApp({
+            data() {
+                return {
+                    plans: [],
+                    announcement: '',
+                    showModal: false,
+                    selectedPlan: {},
+                    mobile: '',
+                    loading: false,
+                    error: '',
+                    loginUrl: '$(link-login-only)',
+                    dst: '$(link-orig)',
+                    adminUrl: API_URL + '?page=index'
+                }
+            },
+            methods: {
+                async fetchPlans() {
+                    try {
+                        const res = await fetch(API_URL + '?action=getPlans'); // We need to add this endpoint to Code.js or use RPC
+                        // For simplicity in this demo, we'll use a mocked RPC-like call if needed or just a public endpoint
+                        const data = await res.json();
+                        this.plans = data.plans;
+                        if (data.announcement) this.announcement = data.announcement;
+                    } catch (e) {
+                        console.error("Failed to load plans");
+                    }
+                },
+                selectPlan(plan) {
+                    this.selectedPlan = plan;
+                    this.showModal = true;
+                },
+                async payNow() {
+                    if (!/^09\d{9}$/.test(this.mobile)) {
+                        alert("Please enter a valid 11-digit mobile number (e.g., 09123456789)");
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        // We'll use a public endpoint for initiatePurchase to avoid complex auth for users
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'public_initiatePurchase',
+                                planId: this.selectedPlan.id,
+                                mobile: this.mobile
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.checkoutUrl) {
+                            window.location.href = data.checkoutUrl;
+                        } else {
+                            throw new Error(data.message || "Failed to create payment session");
+                        }
+                    } catch (e) {
+                        alert("Error: " + e.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            },
+            mounted() {
+                // If on Mikrotik, we can parse error from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('error')) this.error = urlParams.get('error');
+
+                this.fetchPlans();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

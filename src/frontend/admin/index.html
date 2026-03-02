@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ARASU Admin Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .sidebar-link.active { background-color: #059669; color: white; }
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <div id="app" class="flex min-h-screen">
+    <!-- Login Overlay -->
+    <div v-if="!authenticated" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+        <h2 class="text-2xl font-bold mb-6 text-emerald-800">Admin Login</h2>
+        <input type="password" v-model="password" placeholder="Admin Password" class="w-full p-3 border rounded mb-4 focus:ring-2 focus:ring-emerald-500 outline-none">
+        <button @click="login" class="w-full bg-emerald-600 text-white p-3 rounded font-bold hover:bg-emerald-700">Login</button>
+        <p v-if="loginError" class="text-red-500 mt-2 text-sm">{{ loginError }}</p>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside v-if="authenticated" class="w-64 bg-emerald-900 text-white flex-shrink-0">
+      <div class="p-6 text-2xl font-bold">WiFi sa Bukid</div>
+      <nav class="mt-4">
+        <a href="#" @click="currentTab = 'dashboard'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'dashboard' }]">Dashboard</a>
+        <a href="#" @click="currentTab = 'users'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'users' }]">Users</a>
+        <a href="#" @click="currentTab = 'plans'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'plans' }]">Plans</a>
+        <a href="#" @click="currentTab = 'reports'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'reports' }]">Sales Reports</a>
+        <a href="#" @click="currentTab = 'announcements'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'announcements' }]">Announcements</a>
+        <a href="#" @click="currentTab = 'settings'" :class="['sidebar-link block py-3 px-6 hover:bg-emerald-800', { active: currentTab === 'settings' }]">Settings</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main v-if="authenticated" class="flex-1 p-8 overflow-y-auto">
+      <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 capitalize">{{ currentTab }}</h1>
+        <button @click="fetchData" class="bg-white border p-2 rounded shadow-sm hover:bg-gray-50">Refresh Data</button>
+      </div>
+
+      <!-- Dashboard -->
+      <div v-if="currentTab === 'dashboard'" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div class="text-gray-500 text-sm">Active Users</div>
+          <div class="text-3xl font-bold">{{ activeUsers.length }}</div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div class="text-gray-500 text-sm">Today's Sales</div>
+          <div class="text-3xl font-bold">₱{{ todaySales }}</div>
+        </div>
+        <!-- Chart placeholder -->
+        <div class="md:col-span-4 bg-white p-6 rounded-lg shadow mt-6">
+          <h3 class="font-bold mb-4">Daily Sales (Last 30 Days)</h3>
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div v-if="currentTab === 'users'">
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3 text-left">User</th>
+              <th class="px-6 py-3 text-left">Mobile</th>
+              <th class="px-6 py-3 text-left">Expiration</th>
+              <th class="px-6 py-3 text-left">Status</th>
+              <th class="px-6 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in users" :key="user.username" class="border-b">
+              <td class="px-6 py-4">{{ user.username }}</td>
+              <td class="px-6 py-4">{{ user.mobile }}</td>
+              <td class="px-6 py-4">{{ formatDate(user.expirationDate) }}</td>
+              <td class="px-6 py-4">
+                <span :class="['px-2 py-1 rounded text-xs', user.status === 'Connected' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800']">
+                  {{ user.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <button @click="deleteRecord('Users', user._row)" class="text-red-600 hover:underline">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Plans -->
+      <div v-if="currentTab === 'plans'">
+        <button @click="showPlanModal = true; editingPlan = {}" class="mb-4 bg-emerald-600 text-white px-4 py-2 rounded">Add Plan</button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div v-for="plan in plans" :key="plan.id" class="bg-white p-6 rounded-lg shadow relative">
+            <h3 class="text-xl font-bold">{{ plan.name }}</h3>
+            <div class="text-2xl text-emerald-600 font-bold">₱{{ plan.price }}</div>
+            <div class="text-gray-500">{{ plan.duration }} - {{ plan.speedLimit }}</div>
+            <div class="mt-4 flex space-x-2">
+              <button @click="editPlan(plan)" class="text-blue-600 hover:underline">Edit</button>
+              <button @click="deleteRecord('Plans', plan._row)" class="text-red-600 hover:underline">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports -->
+      <div v-if="currentTab === 'reports'">
+        <div class="flex space-x-4 mb-6">
+          <select v-model="reportMonth" class="border p-2 rounded">
+            <option v-for="m in months" :value="m.val">{{ m.label }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+           <div class="bg-white p-6 rounded-lg shadow">
+              <h3 class="font-bold mb-4">Sales per Plan</h3>
+              <table class="w-full text-sm">
+                <thead><tr class="border-b"><th class="text-left pb-2">Plan</th><th class="text-right pb-2">Total</th></tr></thead>
+                <tbody>
+                  <tr v-for="(total, plan) in salesPerPlan" class="border-b">
+                    <td class="py-2">{{ plan }}</td>
+                    <td class="py-2 text-right font-bold">₱{{ total }}</td>
+                  </tr>
+                </tbody>
+              </table>
+           </div>
+           <div class="bg-white p-6 rounded-lg shadow">
+              <h3 class="font-bold mb-4">Top 5 Users</h3>
+              <table class="w-full text-sm">
+                <thead><tr class="border-b"><th class="text-left pb-2">User</th><th class="text-right pb-2">Spend</th></tr></thead>
+                <tbody>
+                  <tr v-for="u in topUsers" class="border-b">
+                    <td class="py-2">{{ u.name }}</td>
+                    <td class="py-2 text-right font-bold">₱{{ u.total }}</td>
+                  </tr>
+                </tbody>
+              </table>
+           </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="font-bold mb-4">Detailed Transactions</h3>
+          <table class="w-full">
+            <thead>
+              <tr class="border-b">
+                <th class="text-left py-2">Date</th>
+                <th class="text-left py-2">User</th>
+                <th class="text-left py-2">Amount</th>
+                <th class="text-left py-2">Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="tx in filteredTransactions" class="border-b">
+                <td class="py-2">{{ formatDate(tx.date) }}</td>
+                <td class="py-2">{{ tx.userId }}</td>
+                <td class="py-2">₱{{ tx.amount }}</td>
+                <td class="py-2 text-xs text-gray-500">{{ tx.refId }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="2" class="py-4">Total</td>
+                <td colspan="2" class="py-4">₱{{ reportTotal }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div v-if="currentTab === 'announcements'">
+        <button @click="showAnnModal = true; editingAnn = { enabled: true }" class="mb-4 bg-emerald-600 text-white px-4 py-2 rounded">Add Announcement</button>
+        <div class="grid grid-cols-1 gap-4">
+          <div v-for="ann in announcements" :key="ann._row" class="bg-white p-6 rounded-lg shadow">
+            <div class="flex justify-between items-start">
+              <div>
+                <span :class="['px-2 py-0.5 rounded text-xs mb-2 inline-block', ann.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
+                  {{ (ann.enabled === true || ann.enabled === 'TRUE') ? 'Active' : 'Inactive' }}
+                </span>
+                <p class="text-gray-800">{{ ann.content }}</p>
+                <p class="text-gray-400 text-xs mt-2">{{ formatDate(ann.date) }}</p>
+              </div>
+              <div class="flex space-x-2 text-sm">
+                <button @click="editAnn(ann)" class="text-blue-600 hover:underline">Edit</button>
+                <button @click="deleteRecord('Announcements', ann._row)" class="text-red-600 hover:underline">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div v-if="currentTab === 'settings'" class="max-w-2xl bg-white p-8 rounded-lg shadow">
+         <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium">Mikrotik API Token (Secret Key)</label>
+              <input type="text" v-model="settings.MIKROTIK_TOKEN" class="w-full border p-2 rounded mt-1">
+            </div>
+            <button @click="saveSettings" class="bg-emerald-600 text-white px-4 py-2 rounded">Save Settings</button>
+            <p class="text-sm text-gray-500 mt-4">Note: These settings are stored in Apps Script Properties. Changing them here will update the backend.</p>
+         </div>
+      </div>
+    </main>
+
+    <!-- Announcement Modal -->
+    <div v-if="showAnnModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+        <h2 class="text-xl font-bold mb-4">{{ editingAnn._row ? 'Edit' : 'Add' }} Announcement</h2>
+        <textarea v-model="editingAnn.content" placeholder="Announcement content..." class="w-full border p-2 mb-4 rounded h-32"></textarea>
+        <div class="flex items-center mb-4">
+          <input type="checkbox" v-model="editingAnn.enabled" id="annEnabled" class="mr-2">
+          <label for="annEnabled">Enabled</label>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button @click="showAnnModal = false" class="px-4 py-2 text-gray-600">Cancel</button>
+          <button @click="saveAnn" class="px-4 py-2 bg-emerald-600 text-white rounded">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan Modal -->
+    <div v-if="showPlanModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+        <h2 class="text-xl font-bold mb-4">{{ editingPlan._row ? 'Edit' : 'Add' }} Plan</h2>
+        <input v-model="editingPlan.id" placeholder="ID (e.g. p1)" class="w-full border p-2 mb-2 rounded">
+        <input v-model="editingPlan.name" placeholder="Name" class="w-full border p-2 mb-2 rounded">
+        <input v-model="editingPlan.price" placeholder="Price" type="number" class="w-full border p-2 mb-2 rounded">
+        <input v-model="editingPlan.duration" placeholder="Duration (e.g. 1h, 1d)" class="w-full border p-2 mb-2 rounded">
+        <input v-model="editingPlan.speedLimit" placeholder="Speed Limit (e.g. 5M/5M)" class="w-full border p-2 mb-4 rounded">
+        <div class="flex justify-end space-x-2">
+          <button @click="showPlanModal = false" class="px-4 py-2 text-gray-600">Cancel</button>
+          <button @click="savePlan" class="px-4 py-2 bg-emerald-600 text-white rounded">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          authenticated: false,
+          password: '',
+          loginError: '',
+          currentTab: 'dashboard',
+          users: [],
+          plans: [],
+          transactions: [],
+          announcements: [],
+          settings: {},
+          showPlanModal: false,
+          editingPlan: {},
+          showAnnModal: false,
+          editingAnn: {},
+          reportMonth: new Date().getMonth(),
+          months: [
+            {val: 0, label: 'January'}, {val: 1, label: 'February'}, {val: 2, label: 'March'},
+            {val: 3, label: 'April'}, {val: 4, label: 'May'}, {val: 5, label: 'June'},
+            {val: 6, label: 'July'}, {val: 7, label: 'August'}, {val: 8, label: 'September'},
+            {val: 9, label: 'October'}, {val: 10, label: 'November'}, {val: 11, label: 'December'}
+          ]
+        }
+      },
+      computed: {
+        activeUsers() {
+          return this.users.filter(u => u.status === 'Connected');
+        },
+        todaySales() {
+          const today = new Date().toISOString().split('T')[0];
+          return this.transactions
+            .filter(t => t.date && t.date.split('T')[0] === today)
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        },
+        filteredTransactions() {
+          return this.transactions.filter(t => {
+            if (!t.date) return false;
+            return new Date(t.date).getMonth() === this.reportMonth;
+          });
+        },
+        reportTotal() {
+          return this.filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        },
+        salesPerPlan() {
+           const report = {};
+           this.filteredTransactions.forEach(tx => {
+              const user = this.users.find(u => u.username === tx.userId);
+              const planId = user ? user.planId : 'Unknown';
+              const plan = this.plans.find(p => p.id === planId);
+              const planName = plan ? plan.name : 'Unknown';
+              report[planName] = (report[planName] || 0) + (parseFloat(tx.amount) || 0);
+           });
+           return report;
+        },
+        topUsers() {
+           const users = {};
+           this.filteredTransactions.forEach(tx => {
+              users[tx.userId] = (users[tx.userId] || 0) + (parseFloat(tx.amount) || 0);
+           });
+           return Object.keys(users).map(u => ({ name: u, total: users[u] }))
+             .sort((a,b) => b.total - a.total).slice(0, 5);
+        }
+      },
+      methods: {
+        login() {
+          sessionStorage.setItem('admin_pass', this.password);
+          this.fetchData();
+        },
+        async fetchData() {
+          const pass = sessionStorage.getItem('admin_pass');
+          if (!pass) return;
+
+          google.script.run
+            .withSuccessHandler((res) => {
+              const data = JSON.parse(res);
+              if (data.status === 'success') {
+                this.users = data.users;
+                this.plans = data.plans;
+                this.transactions = data.transactions;
+                this.announcements = data.announcements;
+                this.settings = data.settings || {};
+                this.authenticated = true;
+                this.loginError = '';
+                this.$nextTick(() => this.renderChart());
+              } else {
+                this.loginError = 'Invalid password';
+                this.authenticated = false;
+              }
+            })
+            .withFailureHandler(err => {
+               this.loginError = err.message;
+            })
+            .getDashboardData(pass);
+        },
+        savePlan() {
+           const pass = sessionStorage.getItem('admin_pass');
+           google.script.run.withSuccessHandler(() => {
+             this.showPlanModal = false;
+             this.fetchData();
+           }).saveDatabaseRecord(pass, 'Plans', this.editingPlan);
+        },
+        saveAnn() {
+           const pass = sessionStorage.getItem('admin_pass');
+           if (!this.editingAnn.date) this.editingAnn.date = new Date().toISOString();
+           google.script.run.withSuccessHandler(() => {
+             this.showAnnModal = false;
+             this.fetchData();
+           }).saveDatabaseRecord(pass, 'Announcements', this.editingAnn);
+        },
+        saveSettings() {
+           const pass = sessionStorage.getItem('admin_pass');
+           google.script.run.withSuccessHandler(() => {
+             alert("Settings saved!");
+           }).saveSettings(pass, this.settings);
+        },
+        editPlan(plan) {
+          this.editingPlan = { ...plan };
+          this.showPlanModal = true;
+        },
+        editAnn(ann) {
+          this.editingAnn = { ...ann };
+          this.showAnnModal = true;
+        },
+        deleteRecord(sheet, row) {
+          if (confirm('Are you sure?')) {
+             const pass = sessionStorage.getItem('admin_pass');
+             google.script.run.withSuccessHandler(() => this.fetchData()).deleteDatabaseRecord(pass, sheet, row);
+          }
+        },
+        formatDate(dateStr) {
+          if (!dateStr) return 'N/A';
+          return new Date(dateStr).toLocaleString();
+        },
+        renderChart() {
+          const ctx = document.getElementById('salesChart');
+          if (!ctx) return;
+
+          if (this.chart) this.chart.destroy();
+
+          const dailyData = {};
+          const last30Days = [...Array(30)].map((_, i) => {
+             const d = new Date();
+             d.setDate(d.getDate() - i);
+             return d.toISOString().split('T')[0];
+          }).reverse();
+
+          last30Days.forEach(date => dailyData[date] = 0);
+          this.transactions.forEach(tx => {
+             const date = tx.date.split('T')[0];
+             if (dailyData.hasOwnProperty(date)) dailyData[date] += parseFloat(tx.amount) || 0;
+          });
+
+          this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: last30Days.map(d => d.split('-').slice(1).join('/')),
+              datasets: [{
+                label: 'Daily Revenue',
+                data: last30Days.map(date => dailyData[date]),
+                borderColor: '#059669',
+                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                fill: true,
+                tension: 0.3
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
+      },
+      mounted() {
+        if (sessionStorage.getItem('admin_pass')) {
+          this.fetchData();
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
