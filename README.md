@@ -70,5 +70,14 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
 *   **Direct Access Ports:** Ports 2 and 3 provide bypass access for owner devices or stationary PCs.
 *   **Sales Tracking:** Monthly and daily sales reports per plan and user.
 
+## Troubleshooting
+
+### ERR_CONNECTION_CLOSED
+If you see this error when accessing the Admin Portal or Hotspot:
+1.  **Check Internet:** Ensure your Mikrotik actually has internet on `ether1`.
+2.  **DNS Check:** Ensure `allow-remote-requests` is set to `yes` in Mikrotik DNS settings.
+3.  **Walled Garden:** Ensure you have applied the Walled Garden rules in Step 2.
+4.  **Test Link:** Try opening your Google Web App URL in a browser on your phone/PC while **NOT** connected to the hotspot (use mobile data) to verify the script is online.
+
 ## Support
 Branded as **ARASU WiFi sa Bukid**. Designed for ease of use and maximum performance on Mikrotik hardware.

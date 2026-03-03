@@ -7,6 +7,9 @@ function doGet(e) {
   const db = new Database();
 
   // Public router endpoints
+  if (e.parameter.action === 'test') {
+    return ContentService.createTextOutput("ARASU_OK");
+  }
   if (e.parameter.action === 'getPlans') {
     return handleGetPlans();
   }
