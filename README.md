@@ -20,7 +20,8 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
 2.  **Open Apps Script:** From your Google Sheet, go to `Extensions` > `Apps Script`.
 3.  **Copy Files:** Copy the contents of all `.js` and `.html` files from the `src/backend` and `src/frontend/admin` directories into the Apps Script editor.
     *   Note: In GAS, keep all files in the root folder.
-4.  **Set Script Properties:** Go to `Project Settings` (gear icon) > `Script Properties` and add:
+4.  **Authorize & Setup:** Refresh your Google Sheet. Go to the new menu `ARASU WiFi Settings` > `Perform Initial Setup`. Click **"Authorize"** and **"Allow"** on the popup. This will automatically create all required tabs and set permissions.
+5.  **Set Script Properties:** Go to `Project Settings` (gear icon) > `Script Properties` and add:
     *   `SPREADSHEET_ID`: (The ID of your Google Sheet)
     *   `PAYMONGO_SECRET_KEY`: (From your Paymongo Dashboard)
     *   `SEMAPHORE_API_KEY`: (From your Semaphore Dashboard)
@@ -32,6 +33,8 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
     *   `Execute as`: Me
     *   `Who has access`: Anyone
 6.  **Copy the Web App URL** and update the `WEB_APP_URL` script property.
+
+> **IMPORTANT:** Access the Admin Portal from a normal web browser on a device that is already connected to the internet (not the limited Mikrotik login window) to ensure Google login works.
 
 ---
 

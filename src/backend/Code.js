@@ -28,14 +28,15 @@ function doGet(e) {
   }
 
   // Admin and Hotspot Frontends
-  // In GAS, all HTML files are in the root of the project, so we use their names directly.
+  // In GAS, all HTML files are in the root folder, so use their names directly.
   try {
-    return HtmlService.createTemplateFromFile(page).evaluate()
+    const template = HtmlService.createTemplateFromFile(page);
+    return template.evaluate()
       .setTitle('ARASU WiFi sa Bukid')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
-    return HtmlService.createHtmlOutput('Page not found: ' + page);
+    return HtmlService.createHtmlOutput('<h2>Page not found or Authorization required</h2><p>Please make sure you have authorized the script by running the "initialSetup" function in the editor first.</p>');
   }
 }
 
@@ -187,6 +188,36 @@ function handleUpdateConnection(data) {
     });
   }
   return ContentService.createTextOutput("OK");
+}
+
+/**
+ * INITIAL SETUP AND PERMISSIONS HANDLER
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('ARASU WiFi Settings')
+    .addItem('Perform Initial Setup', 'initialSetup')
+    .addToUi();
+}
+
+function initialSetup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ['Users', 'Plans', 'Transactions', 'Announcements', 'Settings'];
+
+  sheets.forEach(name => {
+    if (!ss.getSheetByName(name)) {
+      const sheet = ss.insertSheet(name);
+      if (name === 'Users') sheet.appendRow(['id', 'username', 'password', 'expirationDate', 'status', 'syncStatus', 'mobile', 'planId', 'duration', 'balance', 'macAddress']);
+      if (name === 'Plans') sheet.appendRow(['id', 'name', 'price', 'duration', 'speedLimit']);
+      if (name === 'Transactions') sheet.appendRow(['id', 'userId', 'amount', 'type', 'status', 'date', 'refId']);
+      if (name === 'Announcements') sheet.appendRow(['id', 'content', 'enabled', 'date']);
+      if (name === 'Settings') sheet.appendRow(['key', 'value']);
+    }
+  });
+
+  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+
+  Browser.msgBox("Initial Setup Complete! Please deploy as a Web App and update the WEB_APP_URL in Script Properties.");
 }
 
 /**
