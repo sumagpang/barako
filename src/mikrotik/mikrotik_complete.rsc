@@ -1,6 +1,10 @@
 # Mikrotik hEX S Complete Configuration for ARASU WiFi sa Bukid
 # For RouterOS v7+
 # -----------------------------------------------------------
+# NOTE: If you see "failure: not allowed by device-mode", run:
+# /system device-mode update allow-http-fetch=yes
+# (You may need to press a button on the router or reboot to confirm)
+# -----------------------------------------------------------
 
 /system identity set name="ARASU_WiFi_Bukid"
 
@@ -66,12 +70,12 @@ add dst-host=unpkg.com
 
 # 8. Automation Scripts
 /system script
-add name=LoadConfig source={
+add name=LoadConfig policy=read,write,policy,test,api source={
   :global apiUrl "YOUR_FULL_WEB_APP_URL"
   :global apiToken "YOUR_MIKROTIK_TOKEN"
 }
 
-add name=SyncUsers source={
+add name=SyncUsers policy=read,write,policy,test,api source={
   /system script run LoadConfig
   :global apiUrl
   :global apiToken
@@ -99,7 +103,7 @@ add name=SyncUsers source={
   } on-error={ :log error "SyncUsers failed" }
 }
 
-add name=KickUsers source={
+add name=KickUsers policy=read,write,policy,test,api source={
   /system script run LoadConfig
   :global apiUrl
   :global apiToken
@@ -121,8 +125,8 @@ add name=KickUsers source={
 
 # 9. Scheduler
 /system scheduler
-add interval=1m name=sched-Sync on-event=SyncUsers start-time=startup
-add interval=5m name=sched-Kick on-event=KickUsers start-time=startup
+add interval=1m name=sched-Sync on-event=SyncUsers start-time=startup policy=read,write,policy,test,api
+add interval=5m name=sched-Kick on-event=KickUsers start-time=startup policy=read,write,policy,test,api
 
 # 10. Connection Tracking
 /ip hotspot user profile

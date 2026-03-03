@@ -95,5 +95,11 @@ If you see this error when accessing the Admin Portal or Hotspot:
 3.  **Walled Garden:** Ensure you have applied the Walled Garden rules in Step 2.
 4.  **Test Link:** Try opening your Google Web App URL in a browser on your phone/PC while **NOT** connected to the hotspot (use mobile data) to verify the script is online.
 
+### failure: not allowed by device-mode
+If you see this error in your Mikrotik Log when scripts try to run:
+1.  Open the **Terminal** in Winbox.
+2.  Run this command: `/system device-mode update allow-http-fetch=yes`
+3.  The router will ask you to confirm by pressing a physical button on the router or by rebooting. Follow the on-screen instructions.
+
 ## Support
 Branded as **ARASU WiFi sa Bukid**. Designed for ease of use and maximum performance on Mikrotik hardware.
