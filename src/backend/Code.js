@@ -7,6 +7,9 @@ function doGet(e) {
   const db = new Database();
 
   // Public router endpoints
+  if (e.parameter.action === 'ping') {
+    return ContentService.createTextOutput("PONG_OK").setMimeType(ContentService.MimeType.TEXT);
+  }
   if (e.parameter.action === 'test') {
     return ContentService.createTextOutput("ARASU_OK");
   }
@@ -222,8 +225,9 @@ function initialSetup() {
   });
 
   PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  SpreadsheetApp.flush();
 
-  Browser.msgBox("Initial Setup Complete! Please deploy as a Web App and update the WEB_APP_URL in Script Properties.");
+  Browser.msgBox("INITIAL SETUP SUCCESS!", "All tables created. Authorization granted. 1. Deploy as Web App. 2. Update WEB_APP_URL property.", Browser.Buttons.OK);
 }
 
 /**

@@ -75,6 +75,19 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
 
 ## Troubleshooting
 
+### BLANK PAGE / REDIRECT LOOP / PERMISSION DENIED
+If the Admin Page or Hotspot login shows a blank white page, or redirects to a long "googleusercontent" URL:
+
+**Solution 1: Manual Authorization (FORCED)**
+1.  In your Google Sheet, go to **Extensions** > **Apps Script**.
+2.  At the top, look for the function dropdown (next to "Run" and "Debug"). Select **`initialSetup`**.
+3.  Click the **Run** button.
+4.  If a popup appears, click **Review Permissions**, choose your account, click **Advanced** > **Go to ARASU WiFi (unsafe)**, and then **Allow**.
+5.  After it finishes, you MUST **Redeploy**: Click **Deploy** > **Manage Deployments** > **Edit (Pencil Icon)** > Change version to **New Version** > **Deploy**.
+
+**Solution 2: Use Incognito Mode**
+Google Apps Script often breaks if you are logged into multiple Google accounts. Use **Private/Incognito Mode** in Chrome to open your Admin link.
+
 ### ERR_CONNECTION_CLOSED
 If you see this error when accessing the Admin Portal or Hotspot:
 1.  **Check Internet:** Ensure your Mikrotik actually has internet on `ether1`.
