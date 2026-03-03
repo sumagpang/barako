@@ -3,99 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WiFi sa Bukid | Hotspot Login</title>
+    <title>Connect to ARASU WiFi</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         [v-cloak] { display: none; }
-        .gradient-bg { background: linear-gradient(135deg, #065f46 0%, #059669 100%); }
+        .bg-hero { background: linear-gradient(180deg, #065f46 0%, #059669 100%); }
+        .card-blur { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.9); }
     </style>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen">
+<body class="bg-gray-50 font-sans min-h-screen pb-12">
     <div id="app" v-cloak>
-        <!-- Header -->
-        <header class="gradient-bg text-white p-6 shadow-lg">
-            <h1 class="text-2xl font-bold">WiFi sa Bukid</h1>
-            <p class="text-emerald-100 text-sm">Fast & Reliable Internet Connection</p>
+        <!-- Hero Header -->
+        <header class="bg-hero text-white pt-12 pb-24 px-8 rounded-b-[3rem] shadow-2xl relative">
+            <div class="max-w-md mx-auto">
+                <h1 class="text-4xl font-black tracking-tight">ARASU</h1>
+                <p class="text-emerald-100 font-bold opacity-80 mt-1 uppercase tracking-widest text-xs">WiFi sa Bukid</p>
+
+                <div v-if="announcement" class="mt-8 bg-white bg-opacity-10 p-4 rounded-2xl border border-white border-opacity-20">
+                    <p class="text-sm font-medium leading-relaxed">{{ announcement }}</p>
+                </div>
+            </div>
         </header>
 
-        <main class="p-6 max-w-md mx-auto">
-            <!-- Announcements -->
-            <div v-if="announcement" class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded shadow-sm">
-                <p class="text-yellow-700 text-sm">{{ announcement }}</p>
-            </div>
-
-            <!-- Login Form -->
-            <div class="bg-white p-6 rounded-xl shadow-md mb-6">
-                <h2 class="text-xl font-bold mb-4 text-gray-800">Existing User?</h2>
+        <main class="px-6 -mt-16 max-w-md mx-auto relative z-10">
+            <!-- Login Card -->
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl mb-8 border border-gray-100">
+                <h2 class="text-2xl font-black text-gray-800 mb-6">Welcome Back</h2>
                 <form :action="loginUrl" method="post">
                     <input type="hidden" name="dst" :value="dst">
                     <input type="hidden" name="popup" value="true">
 
-                    <div class="mb-4">
-                        <label class="block text-gray-600 text-sm mb-1">Mobile Number (Username)</label>
-                        <input name="username" type="text" placeholder="09123456789" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 ml-1 mb-1 tracking-widest">Mobile (Username)</label>
+                            <input name="username" type="text" placeholder="09xxxxxxxxx" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 ml-1 mb-1 tracking-widest">Passcode</label>
+                            <input name="password" type="password" placeholder="••••••" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold">
+                        </div>
                     </div>
-                    <div class="mb-6">
-                        <label class="block text-gray-600 text-sm mb-1">Password</label>
-                        <input name="password" type="password" placeholder="Enter password" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
-                    </div>
-                    <button type="submit" class="w-full gradient-bg text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition">
-                        Connect Now
+
+                    <button type="submit" class="w-full mt-8 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-emerald-700 transition-all active:scale-[0.98]">
+                        CONNECT INTERNET
                     </button>
                 </form>
-                <div v-if="error" class="mt-4 text-red-500 text-center text-sm">{{ error }}</div>
+                <div v-if="error" class="mt-4 p-3 bg-red-50 text-red-500 text-center text-xs font-bold rounded-xl">{{ error }}</div>
             </div>
 
-            <!-- Purchase Plans -->
-            <div class="mb-6">
-                <h2 class="text-xl font-bold mb-4 text-gray-800">Buy a Plan</h2>
-                <div class="grid grid-cols-1 gap-4">
-                    <div v-for="plan in plans" :key="plan.id" @click="selectPlan(plan)" class="bg-white p-4 rounded-xl shadow-sm border-2 border-transparent hover:border-emerald-500 cursor-pointer transition flex justify-between items-center">
+            <!-- Buy Section -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center px-2">
+                    <h2 class="text-lg font-black text-gray-800">Internet Plans</h2>
+                    <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded">GCASH / MAYA</span>
+                </div>
+
+                <div v-if="loadingPlans" class="flex justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                </div>
+
+                <div v-else class="grid grid-cols-1 gap-4">
+                    <div v-for="plan in plans" :key="plan.id" @click="selectPlan(plan)"
+                         class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 hover:border-emerald-500 cursor-pointer transition-all active:scale-[0.98] flex justify-between items-center group">
                         <div>
-                            <div class="font-bold text-lg text-gray-800">{{ plan.name }}</div>
-                            <div class="text-gray-500 text-sm">{{ plan.duration }} • {{ plan.speedLimit }}</div>
+                            <div class="font-black text-gray-800 text-lg group-hover:text-emerald-600 transition-colors">{{ plan.name }}</div>
+                            <div class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{{ plan.duration }} • {{ plan.speedLimit }}</div>
                         </div>
-                        <div class="text-emerald-600 font-bold text-xl">₱{{ plan.price }}</div>
+                        <div class="bg-emerald-50 text-emerald-600 font-black px-4 py-2 rounded-2xl">₱{{ plan.price }}</div>
                     </div>
                 </div>
             </div>
 
-            <footer class="text-center text-gray-400 text-xs mt-8">
-                <p>&copy; 2024 ARASU WiFi sa Bukid</p>
-                <a :href="adminUrl" class="mt-2 block hover:text-gray-600">Admin Login</a>
+            <footer class="mt-12 text-center">
+                <p class="text-gray-300 text-[10px] font-bold uppercase tracking-widest">&copy; 2024 ARASU WiFi Bukid</p>
+                <a :href="adminUrl" class="mt-4 inline-block text-gray-400 hover:text-emerald-600 text-xs font-medium transition-colors">Administrator Access</a>
             </footer>
         </main>
 
-        <!-- Purchase Modal -->
-        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-end sm:items-center justify-center z-50 p-4">
-            <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold">Confirm Purchase</h3>
-                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-600">
+        <!-- Modern Bottom Sheet Modal -->
+        <div v-if="showModal" class="fixed inset-0 bg-emerald-950 bg-opacity-60 z-50 flex items-end justify-center backdrop-filter backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl animate-bounce-in">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-2xl font-black text-gray-800">Confirmation</h3>
+                    <button @click="showModal = false" class="bg-gray-100 p-2 rounded-full text-gray-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
 
-                <div class="bg-emerald-50 p-4 rounded-lg mb-6">
-                    <div class="flex justify-between mb-1">
-                        <span class="text-emerald-800">Selected Plan:</span>
-                        <span class="font-bold text-emerald-900">{{ selectedPlan.name }}</span>
+                <div class="bg-gray-50 p-6 rounded-3xl mb-8">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-400 font-bold text-xs uppercase tracking-widest">Plan</span>
+                        <span class="font-black text-gray-800">{{ selectedPlan.name }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-emerald-800">Total Price:</span>
-                        <span class="font-bold text-emerald-900 text-lg">₱{{ selectedPlan.price }}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 font-bold text-xs uppercase tracking-widest">Total Cost</span>
+                        <span class="font-black text-emerald-600 text-2xl">₱{{ selectedPlan.price }}</span>
                     </div>
                 </div>
 
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Your Mobile Number (for SMS)</label>
-                    <input v-model="mobile" type="tel" placeholder="09123456789" class="w-full p-3 border-2 rounded-lg focus:border-emerald-500 outline-none text-lg">
-                    <p class="text-gray-400 text-xs mt-1">We will send your login details to this number.</p>
+                <div class="mb-8">
+                    <label class="block text-[10px] font-black uppercase text-gray-400 ml-1 mb-2 tracking-widest">Active Mobile Number</label>
+                    <input v-model="mobile" type="tel" placeholder="09xxxxxxxxx" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-xl font-black">
+                    <p class="text-gray-400 text-[10px] font-medium mt-2 px-1 leading-tight">Credentials will be sent via SMS to this number after payment.</p>
                 </div>
 
-                <button @click="payNow" :disabled="loading" class="w-full gradient-bg text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition disabled:opacity-50">
-                    <span v-if="loading">Processing...</span>
-                    <span v-else>Pay with GCash / Maya / QRPH</span>
+                <button @click="payNow" :disabled="processing" class="w-full bg-emerald-600 text-white font-black py-5 rounded-[2rem] shadow-xl hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center space-x-3">
+                    <div v-if="processing" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>{{ processing ? 'SECURE PAY...' : 'PROCEED TO PAYMENT' }}</span>
                 </button>
             </div>
         </div>
@@ -104,7 +118,6 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script>
         const { createApp } = Vue;
-        // Configuration - replace with your actual Web App URL
         const API_URL = 'YOUR_FULL_WEB_APP_URL';
 
         createApp({
@@ -115,7 +128,8 @@
                     showModal: false,
                     selectedPlan: {},
                     mobile: '',
-                    loading: false,
+                    processing: false,
+                    loadingPlans: true,
                     error: '',
                     loginUrl: '$(link-login-only)',
                     dst: '$(link-orig)',
@@ -125,13 +139,14 @@
             methods: {
                 async fetchPlans() {
                     try {
-                        const res = await fetch(API_URL + '?action=getPlans'); // We need to add this endpoint to Code.js or use RPC
-                        // For simplicity in this demo, we'll use a mocked RPC-like call if needed or just a public endpoint
+                        const res = await fetch(API_URL + '?action=getPlans');
                         const data = await res.json();
                         this.plans = data.plans;
-                        if (data.announcement) this.announcement = data.announcement;
+                        this.announcement = data.announcement;
                     } catch (e) {
-                        console.error("Failed to load plans");
+                        console.error("Link fail");
+                    } finally {
+                        this.loadingPlans = false;
                     }
                 },
                 selectPlan(plan) {
@@ -140,13 +155,12 @@
                 },
                 async payNow() {
                     if (!/^09\d{9}$/.test(this.mobile)) {
-                        alert("Please enter a valid 11-digit mobile number (e.g., 09123456789)");
+                        alert("Invalid mobile number format.");
                         return;
                     }
 
-                    this.loading = true;
+                    this.processing = true;
                     try {
-                        // We'll use a public endpoint for initiatePurchase to avoid complex auth for users
                         const response = await fetch(API_URL, {
                             method: 'POST',
                             body: JSON.stringify({
@@ -156,23 +170,17 @@
                             })
                         });
                         const data = await response.json();
-                        if (data.checkoutUrl) {
-                            window.location.href = data.checkoutUrl;
-                        } else {
-                            throw new Error(data.message || "Failed to create payment session");
-                        }
+                        if (data.checkoutUrl) window.location.href = data.checkoutUrl;
                     } catch (e) {
-                        alert("Error: " + e.message);
+                        alert("API Error");
                     } finally {
-                        this.loading = false;
+                        this.processing = false;
                     }
                 }
             },
             mounted() {
-                // If on Mikrotik, we can parse error from URL
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.has('error')) this.error = urlParams.get('error');
-
                 this.fetchPlans();
             }
         }).mount('#app');

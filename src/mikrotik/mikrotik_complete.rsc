@@ -52,8 +52,13 @@ add address-pool=pool-Hotspot disabled=no interface=bridge-Hotspot name=hotspot1
 /ip hotspot walled-garden
 add dst-host=*.paymongo.com
 add dst-host=*.semaphore.co
+add dst-host=script.google.com
+add dst-host=script.googleusercontent.com
+add dst-host=accounts.google.com
+add dst-host=ssl.gstatic.com
+add dst-host=fonts.googleapis.com
+add dst-host=fonts.gstatic.com
 add dst-host=*.google.com
-add dst-host=*.googleusercontent.com
 add dst-host=*.gstatic.com
 add dst-host=cdn.jsdelivr.net
 add dst-host=cdn.tailwindcss.com
