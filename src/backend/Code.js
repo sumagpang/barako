@@ -39,7 +39,10 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
-    return HtmlService.createHtmlOutput('<h2>Page not found or Authorization required</h2><p>Please make sure you have authorized the script by running the "initialSetup" function in the editor first.</p>');
+    console.error("Error evaluating page: " + page + " - " + err.message);
+    return HtmlService.createHtmlOutput('<h2>Page not found or Authorization required</h2>' +
+       '<p>Please ensure you have authorized the script using the "Perform Initial Setup" menu in your Google Sheet.</p>' +
+       '<p>If you see a blank page, try <b>Incognito Mode</b> or <b>Logging out of other Google accounts</b>.</p>');
   }
 }
 

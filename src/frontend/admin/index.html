@@ -12,7 +12,15 @@
   </style>
 </head>
 <body class="bg-gray-50 font-sans">
-  <div id="app" class="flex min-h-screen">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-[100]">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+      <p class="mt-4 text-gray-600">Loading ARASU Admin Portal...</p>
+      <p id="error-display" class="mt-2 text-red-500 text-xs hidden"></p>
+    </div>
+  </div>
+
+  <div id="app" v-cloak class="flex min-h-screen">
     <!-- Login Overlay -->
     <div v-if="!authenticated" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white p-8 rounded-lg shadow-xl w-96">
@@ -238,6 +246,16 @@
 
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error(msg, url, lineNo, columnNo, error);
+      const display = document.getElementById('error-display');
+      if (display) {
+        display.innerText = "Error: " + msg;
+        display.classList.remove('hidden');
+      }
+      return false;
+    };
+
     const { createApp } = Vue;
 
     createApp({
@@ -414,6 +432,7 @@
         }
       },
       mounted() {
+        document.getElementById('app-loading').style.display = 'none';
         if (sessionStorage.getItem('admin_pass')) {
           this.fetchData();
         }

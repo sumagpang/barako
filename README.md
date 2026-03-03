@@ -34,7 +34,10 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
     *   `Who has access`: Anyone
 6.  **Copy the Web App URL** and update the `WEB_APP_URL` script property.
 
-> **IMPORTANT:** Access the Admin Portal from a normal web browser on a device that is already connected to the internet (not the limited Mikrotik login window) to ensure Google login works.
+> **IMPORTANT:**
+> 1. Access the Admin Portal from a normal web browser (Chrome/Edge) on a device that is already connected to internet.
+> 2. **Avoid Multiple Google Accounts:** If you are logged into multiple Gmail accounts, Google Script may show a blank page. Use **Incognito Mode** or log out of other accounts if this happens.
+> 3. **Enable Third-Party Cookies:** Google Apps Script requires cookies to load the dashboard correctly.
 
 ---
 
