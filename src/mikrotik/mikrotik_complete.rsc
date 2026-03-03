@@ -32,6 +32,8 @@ add address-pool=pool-Hotspot interface=bridge-Hotspot name=dhcp-Hotspot
 add address=10.5.10.0/24 dns-server=8.8.8.8,1.1.1.1 gateway=10.5.10.1
 add address=10.5.50.0/24 dns-server=10.5.50.1 gateway=10.5.50.1
 
+/ip dns set allow-remote-requests=yes
+
 # 4. WAN Client (Port 1)
 /ip dhcp-client add interface=ether1 disabled=no
 
@@ -73,7 +75,7 @@ add name=SyncUsers source={
   :global apiToken
 
   :do {
-    /tool fetch url=($apiUrl . "?action=getNewUsers&token=" . $apiToken) mode=http dst-path=users.txt
+    /tool fetch url=($apiUrl . "?action=getNewUsers&token=" . $apiToken) mode=http dst-path=users.txt check-certificate=no
     :delay 2s
     :local content [/file get users.txt contents]
     :if ([:len $content] > 0) do={
@@ -86,10 +88,10 @@ add name=SyncUsers source={
         :local uTime ($fields->2)
         :local uSpeed ($fields->3)
 
-        /ip hotspot user add name=$uName password=$uPass limit-uptime=$uTime profile=default comment=$uSpeed
+        /ip hotspot user add name=$uName password=$uPass limit-uptime=$uTime profile=default limit-rate=$uSpeed
         :set synced ($synced . $uName . ",")
       }
-      /tool fetch url=($apiUrl . "?action=markSynced&token=" . $apiToken . "&usernames=" . [:url-encode $synced]) mode=http
+      /tool fetch url=($apiUrl . "?action=markSynced&token=" . $apiToken . "&usernames=" . [:url-encode $synced]) mode=http check-certificate=no
     }
     /file remove users.txt
   } on-error={ :log error "SyncUsers failed" }
@@ -101,7 +103,7 @@ add name=KickUsers source={
   :global apiToken
 
   :do {
-    /tool fetch url=($apiUrl . "?action=getKickList&token=" . $apiToken) mode=http dst-path=kick.txt
+    /tool fetch url=($apiUrl . "?action=getKickList&token=" . $apiToken) mode=http dst-path=kick.txt check-certificate=no
     :delay 2s
     :local content [/file get kick.txt contents]
     :if ([:len $content] > 0) do={
@@ -122,5 +124,5 @@ add interval=5m name=sched-Kick on-event=KickUsers start-time=startup
 
 # 10. Connection Tracking
 /ip hotspot user profile
-set [ find default=yes ] on-login=":global apiUrl; :global apiToken; /tool fetch url=\"$apiUrl\" http-method=post http-data=\"{\\\"action\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"$apiToken\\\",\\\"username\\\":\\\"$user\\\",\\\"status\\\":\\\"Connected\\\",\\\"mac\\\":\\\"$address\\\"}\" keep-result=no" \
-    on-logout=":global apiUrl; :global apiToken; /tool fetch url=\"$apiUrl\" http-method=post http-data=\"{\\\"action\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"$apiToken\\\",\\\"username\\\":\\\"$user\\\",\\\"status\\\":\\\"Disconnected\\\"}\" keep-result=no"
+set [ find default=yes ] on-login=":global apiUrl; :global apiToken; /tool fetch url=\"$apiUrl\" http-method=post http-data=\"{\\\"action\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"$apiToken\\\",\\\"username\\\":\\\"$user\\\",\\\"status\\\":\\\"Connected\\\",\\\"mac\\\":\\\"$mac-address\\\"}\" keep-result=no check-certificate=no" \
+    on-logout=":global apiUrl; :global apiToken; /tool fetch url=\"$apiUrl\" http-method=post http-data=\"{\\\"action\\\":\\\"updateConnection\\\",\\\"token\\\":\\\"$apiToken\\\",\\\"username\\\":\\\"$user\\\",\\\"status\\\":\\\"Disconnected\\\"}\" keep-result=no check-certificate=no"

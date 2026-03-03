@@ -34,7 +34,7 @@ function handlePaymongoWebhook(payload) {
 
 function activatePlan(mobile, plan, refId) {
   const db = new Database();
-  const username = 'u' + Math.random().toString(36).substr(2, 6);
+  const username = mobile;
   const password = Math.random().toString(36).substr(2, 6);
 
   // Calculate expiration date
