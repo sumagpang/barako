@@ -188,15 +188,24 @@
                 }
             },
             methods: {
-                async fetchInitialData() {
+                async fetchInitialData(retries = 2) {
                     if (this.isUnconfigured) return;
                     try {
                         const res = await fetch(API_URL + '?action=getPlans');
+                        if (!res.ok) throw new Error("HTTP error");
                         const data = await res.json();
-                        this.plans = data.plans;
-                        this.announcement = data.announcement;
-                    } catch (e) { console.error("API Link Error"); }
-                    finally { this.loadingPlans = false; }
+                        this.plans = data.plans || [];
+                        this.announcement = data.announcement || '';
+                        this.loadingPlans = false;
+                    } catch (e) {
+                        console.error("Fetch attempt failed", e);
+                        if (retries > 0) {
+                            setTimeout(() => this.fetchInitialData(retries - 1), 2000);
+                        } else {
+                            this.error = "Connection timeout. Please check your internet or retry.";
+                            this.loadingPlans = false;
+                        }
+                    }
                 },
                 selectPlan(plan) {
                     this.selectedPlan = plan;

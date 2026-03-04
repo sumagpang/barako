@@ -4,7 +4,11 @@
 
 function doGet(e) {
   const page = e.parameter.page || 'index';
-  const db = new Database();
+
+  // Check for Setup Page first to allow authorization
+  if (page === 'setup') {
+    return HtmlService.createHtmlOutput('<h2>Authorization Triggered</h2><p>You have successfully triggered the authorization flow. Now use the "ARASU WiFi Settings" menu in your Google Sheet to complete setup.</p>');
+  }
 
   // Public router endpoints
   if (e.parameter.action === 'ping') {
@@ -43,15 +47,36 @@ function doGet(e) {
   // In GAS, all HTML files are in the root folder, so use their names directly.
   try {
     const template = HtmlService.createTemplateFromFile(page);
+
+    // Pass basic config to template
+    template.WEB_APP_URL = ScriptApp.getService().getUrl();
+
     return template.evaluate()
       .setTitle('ARASU WiFi sa Bukid')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
     console.error("Error evaluating page: " + page + " - " + err.message);
-    return HtmlService.createHtmlOutput('<h2>Page not found or Authorization required</h2>' +
-       '<p>Please ensure you have authorized the script using the "Perform Initial Setup" menu in your Google Sheet.</p>' +
-       '<p>If you see a blank page, try <b>Incognito Mode</b> or <b>Logging out of other Google accounts</b>.</p>');
+
+    // Create a robust error page that explains the Blank Page issue
+    const html = `
+      <div style="font-family: sans-serif; padding: 40px; text-align: center; color: #374151;">
+        <h1 style="color: #059669;">Setup Required</h1>
+        <p style="font-size: 18px;">The Admin Dashboard could not load because Google requires your permission.</p>
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 12px; display: inline-block; text-align: left; margin: 20px 0;">
+          <h3 style="margin-top: 0;">How to fix this:</h3>
+          <ol>
+            <li>Go to your <b>Google Sheet</b>.</li>
+            <li>Click <b>Extensions</b> &gt; <b>Apps Script</b>.</li>
+            <li>Select <b>initialSetup</b> from the function list and click <b>Run</b>.</li>
+            <li>Authorize the popup (Advanced &gt; Go to ARASU WiFi).</li>
+            <li><b>Redeploy:</b> Deploy &gt; Manage &gt; Edit (Pencil) &gt; New Version &gt; Deploy.</li>
+          </ol>
+        </div>
+        <p style="color: #9ca3af; font-size: 12px;">Technical Error: ${err.message}</p>
+      </div>
+    `;
+    return HtmlService.createHtmlOutput(html);
   }
 }
 

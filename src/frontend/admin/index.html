@@ -374,6 +374,7 @@
       methods: {
         login() {
           sessionStorage.setItem('admin_pass', this.password);
+          this.authenticated = true; // Visual transition first
           this.fetchData();
         },
         logout() {
@@ -387,14 +388,16 @@
              return;
           }
 
-          google.script.run
-            .withSuccessHandler((res) => {
-              if (!res) {
-                 this.loginError = "Critical Error: No data received from server. Check script authorization.";
-                 this.authenticated = false;
-                 return;
-              }
-              const data = JSON.parse(res);
+          // Force a small timeout to ensure UI elements are ready
+          setTimeout(() => {
+            google.script.run
+              .withSuccessHandler((res) => {
+                if (!res) {
+                  this.loginError = "Connection Error: Check script authorization.";
+                  this.authenticated = false;
+                  return;
+                }
+                const data = JSON.parse(res);
               if (data.status === 'success') {
                 this.users = data.users;
                 this.plans = data.plans;
@@ -408,11 +411,14 @@
                 this.loginError = 'Unauthorized: Access Denied';
                 this.authenticated = false;
               }
-            })
-            .withFailureHandler(err => {
-               this.loginError = err.message;
-            })
-            .getDashboardData(pass);
+              })
+              .withFailureHandler(err => {
+                 console.error("RPC Failure:", err);
+                 this.loginError = "Backend Error: " + err.message;
+                 this.authenticated = false;
+              })
+              .getDashboardData(pass);
+          }, 100);
         },
         savePlan() {
            const pass = sessionStorage.getItem('admin_pass');

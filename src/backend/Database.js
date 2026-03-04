@@ -25,9 +25,10 @@ class Database {
   }
 
   getSheet(name) {
+    if (!this.ss) throw new Error("Spreadsheet not initialized. Please run Initial Setup.");
     let sheet = this.ss.getSheetByName(name);
     if (!sheet) {
-      throw new Error(`Sheet "${name}" not found.`);
+      throw new Error(`Sheet "${name}" not found. Please run Initial Setup.`);
     }
     return sheet;
   }
@@ -47,7 +48,9 @@ class Database {
 
   addRow(sheetName, data) {
     const sheet = this.getSheet(sheetName);
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const lastCol = sheet.getLastColumn();
+    if (lastCol === 0) return false;
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     const row = headers.map(header => data[header] || "");
     sheet.appendRow(row);
     return true;
