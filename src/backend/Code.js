@@ -13,6 +13,12 @@ function doGet(e) {
   if (e.parameter.action === 'test') {
     return ContentService.createTextOutput("ARASU_OK");
   }
+  if (e.parameter.action === 'getBalance') {
+    const db = new Database();
+    const user = db.findByField('Users', 'username', e.parameter.mobile);
+    return ContentService.createTextOutput(JSON.stringify({ balance: user ? user.balance : 0 }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   if (e.parameter.action === 'getPlans') {
     return handleGetPlans();
   }
@@ -74,8 +80,20 @@ function doPost(e) {
   // Public Purchase
   if (data.action === 'public_initiatePurchase') {
     try {
-      const checkoutUrl = initiatePurchase(data.planId, data.mobile);
+      // Support for both plan purchase and wallet top-up
+      const checkoutUrl = initiatePurchase(data.planId, data.mobile, data.amount);
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', checkoutUrl: checkoutUrl }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  if (data.action === 'public_buyWithBalance') {
+    try {
+      buyPlanWithBalance(data.planId, data.mobile);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
         .setMimeType(ContentService.MimeType.JSON);
     } catch (err) {
       return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
