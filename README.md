@@ -34,10 +34,23 @@ A complete captive portal solution for Mikrotik hEX S, integrated with Google Sh
     *   `Who has access`: Anyone
 6.  **Copy the Web App URL** and update the `WEB_APP_URL` script property.
 
-> **IMPORTANT:**
-> 1. Access the Admin Portal from a normal web browser (Chrome/Edge) on a device that is already connected to internet.
-> 2. **Avoid Multiple Google Accounts:** If you are logged into multiple Gmail accounts, Google Script may show a blank page. Use **Incognito Mode** or log out of other accounts if this happens.
-> 3. **Enable Third-Party Cookies:** Google Apps Script requires cookies to load the dashboard correctly.
+> **CRITICAL SETUP WARNING:**
+> 1. **DO NOT** use the Mikrotik "Auto-Popup" window to set up your Admin page. It will fail with a blank page.
+> 2. **USE A STANDARD BROWSER:** Open Chrome or Safari on a laptop or phone while connected to regular internet/data.
+> 3. **INCOGNITO MODE RECOMMENDED:** If you are logged into multiple Gmail accounts, Google Script will show a blank page. Use **Incognito Mode**.
+> 4. **ENABLE COOKIES:** Ensure "Block third-party cookies" is turned **OFF**.
+
+---
+
+## Step 1.5: Paymongo Webhook Setup (MANDATORY)
+For payments to record in your Google Sheet, you **MUST** create a webhook:
+1. Log in to your **Paymongo Dashboard**.
+2. Go to **Developers** > **Webhooks**.
+3. Click **Add Webhook**.
+4. **URL:** Paste your Google Web App URL.
+5. **Events:** Select `checkout_session.payment.paid` and `link.payment.paid`.
+6. Click **Save**.
+7. Copy the **Webhook Signing Secret** and add it to your GAS **Script Properties** as `PAYMONGO_WEBHOOK_SECRET`.
 
 ---
 

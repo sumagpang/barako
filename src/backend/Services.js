@@ -7,16 +7,19 @@ function handlePaymongoWebhook(payload) {
   const data = payload.data.attributes.data;
   const db = new Database();
 
-  if (event === 'checkout_session.payment.paid') {
-    const sessionId = data.id;
-    const checkoutSession = new PaymongoService().getCheckoutSession(sessionId);
-    const refId = checkoutSession.attributes.reference_number || sessionId;
+  console.log("Processing Webhook Event: " + event);
 
-    // We store the planId and mobile in the description or custom fields
-    // For this implementation, we parse it from the description: "WiFi Plan: PlanName for 09123456789"
+  if (event === 'checkout_session.payment.paid' || event === 'link.payment.paid') {
+    const checkoutSession = event === 'checkout_session.payment.paid'
+      ? new PaymongoService().getCheckoutSession(data.id)
+      : data; // For link payments, the data is sometimes the actual payload
+
+    const refId = checkoutSession.attributes.reference_number || checkoutSession.id;
     const description = checkoutSession.attributes.description;
-    const planMatch = description.match(/WiFi Plan: (.*) for (09\d{9})/);
 
+    console.log("Webhook Metadata: " + description);
+
+    const planMatch = description.match(/WiFi Plan: (.*) for (09\d{9})/);
     if (planMatch) {
       const planName = planMatch[1];
       const mobile = planMatch[2];
@@ -24,7 +27,11 @@ function handlePaymongoWebhook(payload) {
 
       if (plan) {
         activatePlan(mobile, plan, refId);
+      } else {
+        console.warn("Plan not found during webhook processing: " + planName);
       }
+    } else {
+      console.warn("Could not parse mobile/plan from description: " + description);
     }
   }
 

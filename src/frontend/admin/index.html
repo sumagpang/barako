@@ -382,10 +382,18 @@
         },
         async fetchData() {
           const pass = sessionStorage.getItem('admin_pass');
-          if (!pass) return;
+          if (!pass) {
+             document.getElementById('app-loading').style.display = 'none';
+             return;
+          }
 
           google.script.run
             .withSuccessHandler((res) => {
+              if (!res) {
+                 this.loginError = "Critical Error: No data received from server. Check script authorization.";
+                 this.authenticated = false;
+                 return;
+              }
               const data = JSON.parse(res);
               if (data.status === 'success') {
                 this.users = data.users;

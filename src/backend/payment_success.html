@@ -11,12 +11,16 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
       </svg>
     </div>
-    <h1 class="text-2xl font-bold mb-2">Payment Successful!</h1>
-    <p class="text-gray-600 mb-4">Your WiFi plan is now active. You will receive an SMS with your login credentials shortly.</p>
+    <h1 class="text-2xl font-bold mb-2 text-emerald-800">Processing Your Plan...</h1>
+    <p class="text-gray-600 mb-4 font-medium">Payment verification is in progress. Please wait a few moments for your account to be provisioned.</p>
 
-    <div class="bg-gray-50 p-4 rounded mb-6 text-sm text-left">
-      <p><strong>Reference:</strong> <?= refId ?></p>
-      <p class="mt-2">If you don't receive an SMS within 5 minutes, please contact support.</p>
+    <div class="bg-emerald-50 p-6 rounded-2xl mb-8 text-sm text-left border border-emerald-100">
+      <div class="flex items-center space-x-3 mb-3">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+          <span class="font-bold text-emerald-800 uppercase tracking-widest text-[10px]">Security Check</span>
+      </div>
+      <p class="text-emerald-700">We are generating your credentials. You will receive an **SMS notification** with your Login & Passcode shortly.</p>
+      <p class="mt-4 text-xs text-emerald-600 italic">Reference: <?= refId ?></p>
     </div>
 
     <a href="http://10.5.50.1/login" class="block w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700 transition">
