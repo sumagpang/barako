@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARASU WiFi | Captive Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        [v-cloak] { display: none; }
+        .bg-emerald-grad { background: linear-gradient(135deg, #064e3b 0%, #059669 100%); }
+        .bottom-sheet { border-radius: 2.5rem 2.5rem 0 0; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+    <div id="app" v-cloak>
+        <!-- Setup Warning -->
+        <div v-if="isUnconfigured" class="fixed inset-0 z-[200] bg-red-600 text-white p-10 flex items-center justify-center text-center">
+            <div>
+                <h1 class="text-4xl font-black mb-4 tracking-tighter">SETUP REQUIRED</h1>
+                <p class="text-xl opacity-90">Please set your <code class="bg-black bg-opacity-20 px-2 py-1 rounded">API_URL</code> in <code class="bg-black bg-opacity-20 px-2 py-1 rounded">login.html</code></p>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="bg-emerald-grad text-white pt-12 pb-24 px-8 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+            <div class="max-w-md mx-auto relative z-10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-4xl font-black tracking-tight">ARASU</h1>
+                        <p class="text-emerald-100 font-bold opacity-80 uppercase tracking-widest text-[10px]">WiFi sa Bukid</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 p-3 rounded-2xl border border-white border-opacity-20 text-right">
+                        <div class="text-[10px] font-black uppercase opacity-60">Your Balance</div>
+                        <div class="text-xl font-black">₱{{ walletBalance }}</div>
+                    </div>
+                </div>
+
+                <div v-if="announcement" class="mt-8 bg-white bg-opacity-10 p-4 rounded-2xl border border-white border-opacity-20">
+                    <p class="text-sm font-medium leading-relaxed italic">"{{ announcement }}"</p>
+                </div>
+            </div>
+            <!-- Decorative circle -->
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-5 rounded-full"></div>
+        </header>
+
+        <main class="px-6 -mt-12 max-w-md mx-auto relative z-20 pb-12">
+            <!-- Login/Action Card -->
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl mb-8 border border-gray-100">
+                <div class="flex space-x-2 mb-8 p-1 bg-gray-50 rounded-2xl">
+                    <button @click="mode = 'login'" :class="['flex-1 py-3 rounded-xl font-black text-xs transition-all', mode === 'login' ? 'bg-white shadow-md text-emerald-600' : 'text-gray-400']">CONNECT</button>
+                    <button @click="mode = 'purchase'" :class="['flex-1 py-3 rounded-xl font-black text-xs transition-all', mode === 'purchase' ? 'bg-white shadow-md text-emerald-600' : 'text-gray-400']">BUY PLAN</button>
+                </div>
+
+                <!-- Connect UI -->
+                <div v-if="mode === 'login'">
+                    <form :action="loginUrl" method="post" class="space-y-4">
+                        <input type="hidden" name="dst" :value="dst">
+                        <input type="hidden" name="popup" value="true">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 ml-2 mb-1 tracking-widest">Username (Mobile)</label>
+                            <input name="username" type="text" placeholder="09xxxxxxxxx" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 ml-2 mb-1 tracking-widest">Password</label>
+                            <input name="password" type="password" placeholder="••••••" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold">
+                        </div>
+                        <button type="submit" class="w-full mt-4 bg-emerald-600 text-white font-black py-5 rounded-2xl shadow-lg hover:bg-emerald-700 transition-all active:scale-[0.98]">
+                            GO ONLINE NOW
+                        </button>
+                    </form>
+                    <div v-if="error" class="mt-4 p-3 bg-red-50 text-red-500 text-center text-xs font-bold rounded-xl">{{ error }}</div>
+                </div>
+
+                <!-- Fast Purchase UI -->
+                <div v-if="mode === 'purchase'" class="space-y-6">
+                    <h3 class="font-black text-gray-800">Choose your duration</h3>
+                    <div v-if="loadingPlans" class="flex justify-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div></div>
+                    <div v-else class="grid grid-cols-1 gap-3">
+                        <div v-for="plan in plans" :key="plan.id" @click="selectPlan(plan)"
+                             class="bg-gray-50 p-5 rounded-3xl border border-transparent hover:border-emerald-500 hover:bg-white cursor-pointer transition-all flex justify-between items-center group">
+                            <div>
+                                <div class="font-black text-gray-800 group-hover:text-emerald-600">{{ plan.name }}</div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ plan.duration }} • {{ plan.speedLimit }}</div>
+                            </div>
+                            <div class="text-emerald-600 font-black text-lg">₱{{ plan.price }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Section -->
+            <div class="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-lg font-black text-emerald-900 leading-tight">Top Up Wallet</h2>
+                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">GCash / Maya / QRPH</p>
+                    </div>
+                    <div class="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button v-for="amt in [100, 150, 200, 300]" @click="initTopUp(amt)" class="bg-white py-4 rounded-2xl font-black text-emerald-800 shadow-sm hover:shadow-md transition-all border border-emerald-100">
+                        ₱{{ amt }}
+                    </button>
+                </div>
+                <p class="text-[10px] text-emerald-600 font-medium text-center leading-relaxed">Paymongo requires PHP 100 minimum. Load your wallet once to buy cheap 1-peso or 5-peso plans anytime!</p>
+            </div>
+
+            <footer class="mt-12 text-center">
+                <p class="text-gray-300 text-[10px] font-bold uppercase tracking-widest">&copy; 2024 ARASU WiFi Bukid</p>
+                <a :href="adminUrl" class="mt-4 inline-block text-gray-400 hover:text-emerald-600 text-xs font-medium transition-colors">Admin Portal</a>
+            </footer>
+        </main>
+
+        <!-- Dynamic Bottom Sheet Modal -->
+        <div v-if="showModal" class="fixed inset-0 bg-emerald-950 bg-opacity-60 z-50 flex items-end justify-center backdrop-filter backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-md bottom-sheet p-10 shadow-2xl animate-slide-up">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-2xl font-black text-gray-800">{{ modalTitle }}</h3>
+                    <button @click="showModal = false" class="bg-gray-100 p-2 rounded-full text-gray-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-3xl mb-8">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-400 font-bold text-xs uppercase tracking-widest">Transaction</span>
+                        <span class="font-black text-gray-800">{{ modalTarget }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 font-bold text-xs uppercase tracking-widest">Amount</span>
+                        <span class="font-black text-emerald-600 text-2xl">₱{{ modalAmount }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-[10px] font-black uppercase text-gray-400 ml-2 mb-2 tracking-widest">Your Mobile Number</label>
+                    <input v-model="mobile" type="tel" placeholder="09xxxxxxxxx" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-xl font-black">
+                </div>
+
+                <div class="space-y-3">
+                    <button v-if="canPayWithBalance" @click="payWithBalance" :disabled="processing" class="w-full bg-emerald-100 text-emerald-800 font-black py-5 rounded-[2rem] hover:bg-emerald-200 transition-all">
+                        BUY USING WALLET
+                    </button>
+                    <button @click="payWithPaymongo" :disabled="processing" class="w-full bg-emerald-600 text-white font-black py-5 rounded-[2rem] shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center space-x-3">
+                        <div v-if="processing" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>{{ processing ? 'PROCESSING...' : 'PAY VIA GCASH / MAYA' }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp } = Vue;
+        // REPLACE WITH YOUR ACTUAL URL
+        const API_URL = 'YOUR_FULL_WEB_APP_URL';
+
+        createApp({
+            data() {
+                return {
+                    mode: 'purchase',
+                    plans: [],
+                    announcement: '',
+                    walletBalance: 0,
+                    showModal: false,
+                    modalType: 'purchase',
+                    selectedPlan: {},
+                    topUpAmount: 0,
+                    mobile: '',
+                    processing: false,
+                    loadingPlans: true,
+                    error: '',
+                    loginUrl: '$(link-login-only)',
+                    dst: '$(link-orig)',
+                    adminUrl: API_URL + '?page=index'
+                }
+            },
+            computed: {
+                isUnconfigured() { return API_URL.includes('YOUR_FULL_WEB_APP_URL'); },
+                modalTitle() { return this.modalType === 'purchase' ? 'Confirm Purchase' : 'Top Up Wallet'; },
+                modalTarget() { return this.modalType === 'purchase' ? this.selectedPlan.name : 'Load Credits'; },
+                modalAmount() { return this.modalType === 'purchase' ? this.selectedPlan.price : this.topUpAmount; },
+                canPayWithBalance() {
+                    return this.modalType === 'purchase' && parseFloat(this.walletBalance) >= parseFloat(this.selectedPlan.price);
+                }
+            },
+            methods: {
+                async fetchInitialData(retries = 2) {
+                    if (this.isUnconfigured) return;
+                    try {
+                        const res = await fetch(API_URL + '?action=getPlans');
+                        if (!res.ok) throw new Error("HTTP error");
+                        const data = await res.json();
+                        this.plans = data.plans || [];
+                        this.announcement = data.announcement || '';
+                        this.loadingPlans = false;
+                    } catch (e) {
+                        console.error("Fetch attempt failed", e);
+                        if (retries > 0) {
+                            setTimeout(() => this.fetchInitialData(retries - 1), 2000);
+                        } else {
+                            this.error = "Connection timeout. Please check your internet or retry.";
+                            this.loadingPlans = false;
+                        }
+                    }
+                },
+                selectPlan(plan) {
+                    this.selectedPlan = plan;
+                    this.modalType = 'purchase';
+                    this.showModal = true;
+                    this.checkBalance();
+                },
+                initTopUp(amt) {
+                    this.topUpAmount = amt;
+                    this.modalType = 'topup';
+                    this.showModal = true;
+                },
+                async checkBalance() {
+                    if (!this.mobile || !/^09\d{9}$/.test(this.mobile)) return;
+                    try {
+                        const res = await fetch(API_URL + '?action=getBalance&mobile=' + this.mobile);
+                        const data = await res.json();
+                        this.walletBalance = data.balance || 0;
+                    } catch (e) {}
+                },
+                async payWithPaymongo() {
+                    if (!/^09\d{9}$/.test(this.mobile)) { alert("Enter valid 09xxxxxxxxx number"); return; }
+                    if (this.modalType === 'purchase' && parseFloat(this.modalAmount) < 100) {
+                        alert("Paymongo minimum is PHP 100. Please Top Up your Wallet instead!");
+                        return;
+                    }
+
+                    this.processing = true;
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'public_initiatePurchase',
+                                planId: this.modalType === 'purchase' ? this.selectedPlan.id : 'topup',
+                                amount: this.modalAmount,
+                                mobile: this.mobile
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                        else alert(data.message);
+                    } catch (e) { alert("Server error"); }
+                    finally { this.processing = false; }
+                },
+                async payWithBalance() {
+                    this.processing = true;
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'public_buyWithBalance',
+                                planId: this.selectedPlan.id,
+                                mobile: this.mobile
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            alert("Success! Check SMS for your login code.");
+                            this.showModal = false;
+                            this.checkBalance();
+                        } else alert(data.message);
+                    } catch (e) { alert("Wallet error"); }
+                    finally { this.processing = false; }
+                }
+            },
+            watch: {
+                mobile(newVal) { if (newVal.length === 11) this.checkBalance(); }
+            },
+            mounted() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('error')) this.error = urlParams.get('error');
+                this.fetchInitialData();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+    <div class="text-green-500 mb-4">
+      <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+    </div>
+    <h1 class="text-2xl font-bold mb-2 text-emerald-800">Processing Your Plan...</h1>
+    <p class="text-gray-600 mb-4 font-medium">Payment verification is in progress. Please wait a few moments for your account to be provisioned.</p>
+
+    <div class="bg-emerald-50 p-6 rounded-2xl mb-8 text-sm text-left border border-emerald-100">
+      <div class="flex items-center space-x-3 mb-3">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+          <span class="font-bold text-emerald-800 uppercase tracking-widest text-[10px]">Security Check</span>
+      </div>
+      <p class="text-emerald-700">We are generating your credentials. You will receive an **SMS notification** with your Login & Passcode shortly.</p>
+      <p class="mt-4 text-xs text-emerald-600 italic">Reference: <?= refId ?></p>
+    </div>
+
+    <a href="http://10.5.50.1/login" class="block w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700 transition">
+      Go back to Hotspot
+    </a>
+  </div>
+</body>
+</html>

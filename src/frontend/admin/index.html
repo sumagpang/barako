@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ARASU | Admin Control Center</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .sidebar-active { border-right: 4px solid #10b981; background: rgba(16, 185, 129, 0.1); color: #065f46; }
+    .card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-900">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-[100]">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+      <p class="mt-4 text-gray-600 font-medium">Loading ARASU Admin Portal...</p>
+      <p id="error-display" class="mt-2 text-red-500 text-xs hidden"></p>
+    </div>
+  </div>
+
+  <div id="app" v-cloak class="flex min-h-screen">
+    <!-- Login Overlay -->
+    <div v-if="!authenticated" class="fixed inset-0 bg-emerald-900 bg-opacity-95 flex items-center justify-center z-50">
+      <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-extrabold text-emerald-800">WiFi sa Bukid</h2>
+            <p class="text-gray-500 text-sm mt-1">Admin Management Portal</p>
+        </div>
+        <div class="mb-6">
+          <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Access Password</label>
+          <input type="password" v-model="password" @keyup.enter="login" placeholder="••••••••" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+        </div>
+        <button @click="login" class="w-full bg-emerald-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transform hover:-translate-y-0.5 transition-all">
+          Unlock Dashboard
+        </button>
+        <p v-if="loginError" class="text-red-500 mt-4 text-center text-sm font-medium">{{ loginError }}</p>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside v-if="authenticated" class="w-72 bg-white border-r border-gray-100 flex-shrink-0 flex flex-col">
+      <div class="p-8">
+        <div class="text-emerald-600 text-2xl font-black tracking-tighter">ARASU</div>
+        <div class="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Management</div>
+      </div>
+
+      <nav class="flex-1 px-4 space-y-1">
+        <a href="#" v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
+           :class="['flex items-center space-x-3 py-3.5 px-4 rounded-xl font-medium transition-all hover:bg-gray-50', currentTab === tab.id ? 'sidebar-active' : 'text-gray-500']">
+          <span class="capitalize">{{ tab.label }}</span>
+        </a>
+      </nav>
+
+      <div class="p-8 border-t border-gray-50 text-center">
+        <button @click="logout" class="text-gray-400 text-sm hover:text-red-500 transition-colors">Log Out</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main v-if="authenticated" class="flex-1 p-12 overflow-y-auto">
+      <header class="flex justify-between items-center mb-10">
+        <div>
+          <h1 class="text-4xl font-black text-gray-800 tracking-tight capitalize">{{ currentTab }}</h1>
+          <p class="text-gray-400 mt-1">Real-time system overview and statistics</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">Live Sync Active</span>
+            <button @click="fetchData" class="bg-white border border-gray-100 p-2.5 rounded-xl shadow-sm hover:bg-gray-50 transition-colors">
+              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+        </div>
+      </header>
+
+      <!-- Dashboard -->
+      <div v-if="currentTab === 'dashboard'">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+            <div v-for="stat in stats" class="bg-white p-8 rounded-3xl card-shadow border border-white">
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">{{ stat.label }}</div>
+                <div class="text-3xl font-black text-gray-800">{{ stat.value }}</div>
+            </div>
+        </div>
+        <div class="bg-white p-10 rounded-3xl card-shadow border border-white">
+          <h3 class="text-xl font-bold mb-8">Revenue Projection (30 Days)</h3>
+          <canvas id="salesChart" height="100"></canvas>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div v-if="currentTab === 'users'">
+        <div class="bg-white rounded-3xl card-shadow border border-white overflow-hidden">
+          <table class="w-full text-left">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Subscriber</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Expiration</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Control</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="user in users" :key="user.username" class="hover:bg-gray-50 transition-colors">
+                <td class="px-8 py-6">
+                    <div class="font-bold text-gray-800">{{ user.username }}</div>
+                    <div class="text-gray-400 text-xs">{{ user.mobile }}</div>
+                </td>
+                <td class="px-8 py-6 text-sm text-gray-500 font-medium">{{ formatDate(user.expirationDate) }}</td>
+                <td class="px-8 py-6">
+                  <span :class="['px-3 py-1 rounded-full text-xs font-bold', user.status === 'Connected' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500']">
+                    {{ user.status }}
+                  </span>
+                </td>
+                <td class="px-8 py-6 text-right">
+                  <button @click="deleteRecord('Users', user._row)" class="text-red-400 hover:text-red-600 font-bold text-sm">Remove Access</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Plans -->
+      <div v-if="currentTab === 'plans'">
+        <div class="flex justify-end mb-8">
+            <button @click="showPlanModal = true; editingPlan = {}" class="bg-emerald-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg hover:bg-emerald-700 transition-all">
+                Create New Plan
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div v-for="plan in plans" :key="plan.id" class="bg-white p-10 rounded-3xl card-shadow border border-white relative transition-all hover:border-emerald-200">
+            <h3 class="text-2xl font-black text-gray-800 mb-2">{{ plan.name }}</h3>
+            <div class="text-4xl text-emerald-600 font-black mb-6">₱{{ plan.price }}</div>
+            <div class="space-y-2 mb-8">
+                <div class="flex items-center text-gray-400 text-sm font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ plan.duration }} Validity
+                </div>
+                <div class="flex items-center text-gray-400 text-sm font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    {{ plan.speedLimit }} Speed
+                </div>
+            </div>
+            <div class="flex space-x-4 pt-6 border-t border-gray-50">
+              <button @click="editPlan(plan)" class="text-emerald-600 font-bold text-sm hover:underline">Edit Plan</button>
+              <button @click="deleteRecord('Plans', plan._row)" class="text-red-400 font-bold text-sm hover:underline">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports -->
+      <div v-if="currentTab === 'reports'">
+        <div class="flex space-x-4 mb-10">
+          <select v-model="reportMonth" class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-700">
+            <option v-for="m in months" :value="m.val">{{ m.label }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+           <div class="bg-white p-10 rounded-3xl card-shadow border border-white">
+              <h3 class="text-xl font-bold mb-8">Sales by Product</h3>
+              <div class="space-y-6">
+                  <div v-for="(total, plan) in salesPerPlan" class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">{{ plan }}</span>
+                    <span class="text-lg font-black text-gray-800">₱{{ total }}</span>
+                  </div>
+              </div>
+           </div>
+           <div class="bg-white p-10 rounded-3xl card-shadow border border-white">
+              <h3 class="text-xl font-bold mb-8">Top Patrons</h3>
+              <div class="space-y-6">
+                  <div v-for="u in topUsers" class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">{{ u.name }}</span>
+                    <span class="text-lg font-black text-gray-800">₱{{ u.total }}</span>
+                  </div>
+              </div>
+           </div>
+        </div>
+        <div class="bg-white rounded-3xl card-shadow border border-white overflow-hidden">
+          <div class="p-8 border-b border-gray-50 flex justify-between items-center">
+              <h3 class="text-xl font-bold">Transaction History</h3>
+              <div class="text-emerald-600 font-black text-2xl">Total: ₱{{ reportTotal }}</div>
+          </div>
+          <table class="w-full text-left">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Date</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">User</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Amount</th>
+                <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Reference</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="tx in filteredTransactions" class="hover:bg-gray-50 transition-colors">
+                <td class="px-8 py-6 text-sm text-gray-500">{{ formatDate(tx.date) }}</td>
+                <td class="px-8 py-6 font-bold text-gray-800">{{ tx.userId }}</td>
+                <td class="px-8 py-6 font-black text-emerald-600">₱{{ tx.amount }}</td>
+                <td class="px-8 py-6 text-xs font-mono text-gray-400 uppercase tracking-tighter">{{ tx.refId }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div v-if="currentTab === 'announcements'">
+        <button @click="showAnnModal = true; editingAnn = { enabled: true }" class="mb-8 bg-emerald-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg hover:bg-emerald-700 transition-all">
+            Post Announcement
+        </button>
+        <div class="grid grid-cols-1 gap-6">
+          <div v-for="ann in announcements" :key="ann._row" class="bg-white p-10 rounded-3xl card-shadow border border-white group">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <span :class="['px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block', (ann.enabled === true || ann.enabled === 'TRUE') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700']">
+                  {{ (ann.enabled === true || ann.enabled === 'TRUE') ? 'Live' : 'Hidden' }}
+                </span>
+                <p class="text-gray-800 text-lg leading-relaxed">{{ ann.content }}</p>
+                <p class="text-gray-400 text-xs mt-4 font-medium">{{ formatDate(ann.date) }}</p>
+              </div>
+              <div class="flex space-x-6 pl-8">
+                <button @click="editAnn(ann)" class="text-emerald-600 font-bold text-sm hover:underline">Edit</button>
+                <button @click="deleteRecord('Announcements', ann._row)" class="text-red-400 font-bold text-sm hover:underline">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div v-if="currentTab === 'settings'" class="max-w-3xl bg-white p-12 rounded-3xl card-shadow border border-white">
+         <div class="space-y-8">
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Mikrotik Secret Key</label>
+              <input type="text" v-model="settings.MIKROTIK_TOKEN" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm">
+              <p class="text-[10px] text-gray-400 mt-2">Required for router-backend synchronization.</p>
+            </div>
+            <button @click="saveSettings" class="bg-emerald-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all">
+                Update Configuration
+            </button>
+         </div>
+      </div>
+    </main>
+
+    <!-- Modals (Enhanced) -->
+    <div v-if="showPlanModal || showAnnModal" class="fixed inset-0 bg-emerald-900 bg-opacity-40 flex items-center justify-center z-50 backdrop-filter backdrop-blur-sm p-4">
+      <!-- Plan Modal -->
+      <div v-if="showPlanModal" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">
+        <h2 class="text-2xl font-black mb-8 text-gray-800 tracking-tight">{{ editingPlan._row ? 'Edit' : 'Create' }} WiFi Plan</h2>
+        <div class="space-y-4 mb-10">
+            <input v-model="editingPlan.id" placeholder="Plan ID (p1, p2...)" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <input v-model="editingPlan.name" placeholder="Plan Name" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <input v-model="editingPlan.price" placeholder="Price (PHP)" type="number" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <input v-model="editingPlan.duration" placeholder="Duration (1h, 1d...)" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <input v-model="editingPlan.speedLimit" placeholder="Speed Limit (5M/5M)" class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div class="flex space-x-4">
+          <button @click="showPlanModal = false" class="flex-1 py-4 text-gray-400 font-bold">Discard</button>
+          <button @click="savePlan" class="flex-2 bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Ann Modal -->
+      <div v-if="showAnnModal" class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">
+        <h2 class="text-2xl font-black mb-8 text-gray-800 tracking-tight">{{ editingAnn._row ? 'Edit' : 'Post' }} Announcement</h2>
+        <textarea v-model="editingAnn.content" placeholder="Broadcast message..." class="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl h-48 outline-none focus:ring-2 focus:ring-emerald-500 mb-6"></textarea>
+        <div class="flex items-center mb-10">
+          <input type="checkbox" v-model="editingAnn.enabled" id="annEnabled" class="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+          <label for="annEnabled" class="ml-3 font-bold text-gray-600 text-sm">Visible to users</label>
+        </div>
+        <div class="flex space-x-4">
+          <button @click="showAnnModal = false" class="flex-1 py-4 text-gray-400 font-bold">Discard</button>
+          <button @click="saveAnn" class="flex-2 bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all">Publish</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error(msg, url, lineNo, columnNo, error);
+      const display = document.getElementById('error-display');
+      if (display) {
+        display.innerText = "Internal JS Error: " + msg;
+        display.classList.remove('hidden');
+      }
+      return false;
+    };
+
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          authenticated: false,
+          password: '',
+          loginError: '',
+          currentTab: 'dashboard',
+          tabs: [
+            {id: 'dashboard', label: 'Dashboard'},
+            {id: 'users', label: 'Subscribers'},
+            {id: 'plans', label: 'WiFi Plans'},
+            {id: 'reports', label: 'Sales Reports'},
+            {id: 'announcements', label: 'Bulletins'},
+            {id: 'settings', label: 'System'}
+          ],
+          users: [],
+          plans: [],
+          transactions: [],
+          announcements: [],
+          settings: {},
+          showPlanModal: false,
+          editingPlan: {},
+          showAnnModal: false,
+          editingAnn: {},
+          reportMonth: new Date().getMonth(),
+          months: [
+            {val: 0, label: 'January'}, {val: 1, label: 'February'}, {val: 2, label: 'March'},
+            {val: 3, label: 'April'}, {val: 4, label: 'May'}, {val: 5, label: 'June'},
+            {val: 6, label: 'July'}, {val: 7, label: 'August'}, {val: 8, label: 'September'},
+            {val: 9, label: 'October'}, {val: 10, label: 'November'}, {val: 11, label: 'December'}
+          ],
+          chart: null
+        }
+      },
+      computed: {
+        activeUsers() {
+          return this.users.filter(u => u.status === 'Connected');
+        },
+        todaySales() {
+          const today = new Date().toISOString().split('T')[0];
+          return this.transactions
+            .filter(t => t.date && t.date.split('T')[0] === today)
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        },
+        stats() {
+            return [
+                { label: 'Live Users', value: this.activeUsers.length },
+                { label: 'Today Revenue', value: '₱' + this.todaySales },
+                { label: 'Total Plans', value: this.plans.length },
+                { label: 'Total Sales', value: '₱' + this.transactions.reduce((s,t) => s + (parseFloat(t.amount) || 0), 0) }
+            ];
+        },
+        filteredTransactions() {
+          return this.transactions.filter(t => {
+            if (!t.date) return false;
+            return new Date(t.date).getMonth() === this.reportMonth;
+          });
+        },
+        reportTotal() {
+          return this.filteredTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        },
+        salesPerPlan() {
+           const report = {};
+           this.filteredTransactions.forEach(tx => {
+              const user = this.users.find(u => u.username === tx.userId);
+              const planId = user ? user.planId : 'Unknown';
+              const plan = this.plans.find(p => p.id === planId);
+              const planName = plan ? plan.name : 'Unknown';
+              report[planName] = (report[planName] || 0) + (parseFloat(tx.amount) || 0);
+           });
+           return report;
+        },
+        topUsers() {
+           const users = {};
+           this.filteredTransactions.forEach(tx => {
+              users[tx.userId] = (users[tx.userId] || 0) + (parseFloat(tx.amount) || 0);
+           });
+           return Object.keys(users).map(u => ({ name: u, total: users[u] }))
+             .sort((a,b) => b.total - a.total).slice(0, 5);
+        }
+      },
+      methods: {
+        login() {
+          sessionStorage.setItem('admin_pass', this.password);
+          this.authenticated = true; // Visual transition first
+          this.fetchData();
+        },
+        logout() {
+           sessionStorage.removeItem('admin_pass');
+           this.authenticated = false;
+        },
+        async fetchData() {
+          const pass = sessionStorage.getItem('admin_pass');
+          if (!pass) {
+             document.getElementById('app-loading').style.display = 'none';
+             return;
+          }
+
+          // Force a small timeout to ensure UI elements are ready
+          setTimeout(() => {
+            google.script.run
+              .withSuccessHandler((res) => {
+                if (!res) {
+                  this.loginError = "Connection Error: Check script authorization.";
+                  this.authenticated = false;
+                  return;
+                }
+                const data = JSON.parse(res);
+              if (data.status === 'success') {
+                this.users = data.users;
+                this.plans = data.plans;
+                this.transactions = data.transactions;
+                this.announcements = data.announcements;
+                this.settings = data.settings || {};
+                this.authenticated = true;
+                this.loginError = '';
+                this.$nextTick(() => this.renderChart());
+              } else {
+                this.loginError = 'Unauthorized: Access Denied';
+                this.authenticated = false;
+              }
+              })
+              .withFailureHandler(err => {
+                 console.error("RPC Failure:", err);
+                 this.loginError = "Backend Error: " + err.message;
+                 this.authenticated = false;
+              })
+              .getDashboardData(pass);
+          }, 100);
+        },
+        savePlan() {
+           const pass = sessionStorage.getItem('admin_pass');
+           google.script.run.withSuccessHandler(() => {
+             this.showPlanModal = false;
+             this.fetchData();
+           }).saveDatabaseRecord(pass, 'Plans', this.editingPlan);
+        },
+        saveAnn() {
+           const pass = sessionStorage.getItem('admin_pass');
+           if (!this.editingAnn.date) this.editingAnn.date = new Date().toISOString();
+           google.script.run.withSuccessHandler(() => {
+             this.showAnnModal = false;
+             this.fetchData();
+           }).saveDatabaseRecord(pass, 'Announcements', this.editingAnn);
+        },
+        saveSettings() {
+           const pass = sessionStorage.getItem('admin_pass');
+           google.script.run.withSuccessHandler(() => {
+             alert("System Configuration Updated!");
+           }).saveSettings(pass, this.settings);
+        },
+        editPlan(plan) {
+          this.editingPlan = { ...plan };
+          this.showPlanModal = true;
+        },
+        editAnn(ann) {
+          this.editingAnn = { ...ann };
+          this.showAnnModal = true;
+        },
+        deleteRecord(sheet, row) {
+          if (confirm('Permanently remove this record?')) {
+             const pass = sessionStorage.getItem('admin_pass');
+             google.script.run.withSuccessHandler(() => this.fetchData()).deleteDatabaseRecord(pass, sheet, row);
+          }
+        },
+        formatDate(dateStr) {
+          if (!dateStr) return 'N/A';
+          return new Date(dateStr).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+        },
+        renderChart() {
+          const ctx = document.getElementById('salesChart');
+          if (!ctx) return;
+
+          if (this.chart) this.chart.destroy();
+
+          const dailyData = {};
+          const last30Days = [...Array(30)].map((_, i) => {
+             const d = new Date();
+             d.setDate(d.getDate() - i);
+             return d.toISOString().split('T')[0];
+          }).reverse();
+
+          last30Days.forEach(date => dailyData[date] = 0);
+          this.transactions.forEach(tx => {
+             const date = tx.date.split('T')[0];
+             if (dailyData.hasOwnProperty(date)) dailyData[date] += parseFloat(tx.amount) || 0;
+          });
+
+          this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: last30Days.map(d => d.split('-').slice(1).join('/')),
+              datasets: [{
+                label: 'Revenue (PHP)',
+                data: last30Days.map(date => dailyData[date]),
+                borderColor: '#10b981',
+                borderWidth: 4,
+                pointRadius: 0,
+                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: {
+                  y: { grid: { display: false }, beginAtZero: true },
+                  x: { grid: { display: false } }
+              }
+            }
+          });
+        }
+      },
+      mounted() {
+        document.getElementById('app-loading').style.display = 'none';
+        if (sessionStorage.getItem('admin_pass')) {
+          this.fetchData();
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
