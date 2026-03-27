@@ -1,0 +1,49 @@
+<section v-if="currentPage === 'sales'">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
+      <div class="text-2xl font-bold text-slate-900">₱{{ dashboardData.sales.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0).toFixed(2) }}</div>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Today's Sales</div>
+      <div class="text-2xl font-bold text-slate-900">₱{{ dashboardData.sales.filter(s => new Date(s.timestamp).toDateString() === new Date().toDateString()).reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0).toFixed(2) }}</div>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div class="text-sm font-medium text-slate-500 mb-1">Total Transactions</div>
+      <div class="text-2xl font-bold text-slate-900">{{ dashboardData.sales.length }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+      <h3 class="font-bold">Detailed Transaction Report</h3>
+      <button class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-900">Export CSV</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-bold">
+          <tr>
+            <th class="px-6 py-4">Reference ID</th>
+            <th class="px-6 py-4">Mobile Number</th>
+            <th class="px-6 py-4">Plan</th>
+            <th class="px-6 py-4">Amount</th>
+            <th class="px-6 py-4">Date & Time</th>
+            <th class="px-6 py-4">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="sale in dashboardData.sales" :key="sale.referenceId">
+            <td class="px-6 py-4 text-sm font-mono">{{ sale.referenceId }}</td>
+            <td class="px-6 py-4 text-sm">{{ sale.mobileNumber }}</td>
+            <td class="px-6 py-4 text-sm">{{ sale.planId }}</td>
+            <td class="px-6 py-4 text-sm font-bold">₱{{ sale.amount }}</td>
+            <td class="px-6 py-4 text-sm text-slate-500">{{ new Date(sale.timestamp).toLocaleString() }}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Success</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

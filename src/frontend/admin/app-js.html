@@ -1,0 +1,289 @@
+<script>
+const { createApp, ref, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const currentPage = ref('dashboard');
+    const loading = ref(false);
+    const isAuthenticated = ref(false);
+    const loginPassword = ref('');
+    const loginError = ref('');
+    const lastRefresh = ref(new Date().toLocaleTimeString());
+    const dashboardData = ref({ sales: [], users: [], plans: [], announcements: [], settings: [] });
+
+    const login = async () => {
+      loading.value = true;
+      loginError.value = '';
+      try {
+        // Try to fetch data with the provided password
+        await refreshData(loginPassword.value);
+        sessionStorage.setItem('admin_password', loginPassword.value);
+        isAuthenticated.value = true;
+      } catch (err) {
+        loginError.value = 'Invalid password. Please try again.';
+        console.error('Login failed:', err);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const refreshData = async (pass = null) => {
+      loading.value = true;
+      try {
+        const password = pass || sessionStorage.getItem('admin_password');
+        if (!password) {
+          isAuthenticated.value = false;
+          return;
+        }
+        const response = await callBackend('getDashboardData', [], password);
+        dashboardData.value = response;
+        isAuthenticated.value = true;
+        lastRefresh.value = new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        if (err.message && err.message.includes('Unauthorized')) {
+          isAuthenticated.value = false;
+          sessionStorage.removeItem('admin_password');
+        } else {
+          alert('Error fetching data. Check console for details.');
+        }
+        throw err;
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const promptAddUser = () => {
+      const username = prompt('Enter Mobile Number (Username):');
+      if (!username) return;
+      const passcode = prompt('Enter 6-digit Passcode:');
+      if (!passcode) return;
+      saveUser({ username, passcode, connectionStatus: 'Offline', syncStatus: 'Ready', balance: 0 });
+    };
+
+    const promptEditBalance = (user) => {
+      const newBalance = prompt(`Enter new balance for ${user.username}:`, user.balance || 0);
+      if (newBalance === null) return;
+      saveUser({ ...user, balance: Number(newBalance) });
+    };
+
+    const promptAddPlan = () => {
+      const name = prompt('Plan Name:');
+      if (!name) return;
+      const price = prompt('Price (PHP):');
+      if (!price) return;
+      const durationHours = prompt('Duration (Hours):');
+      if (!durationHours) return;
+      const speedLimit = prompt('Speed Limit (e.g., 1M/1M or 512k/2M):', '1M/1M');
+      savePlan({ id: 'p' + Date.now(), name, price: Number(price), durationHours: Number(durationHours), speedLimit, status: 'Active' });
+    };
+
+    const promptEditPlan = (plan) => {
+      const name = prompt('Plan Name:', plan.name);
+      if (!name) return;
+      const price = prompt('Price (PHP):', plan.price);
+      if (!price) return;
+      const durationHours = prompt('Duration (Hours):', plan.durationHours);
+      if (!durationHours) return;
+      const speedLimit = prompt('Speed Limit:', plan.speedLimit || '1M/1M');
+
+      savePlan({
+        ...plan,
+        name,
+        price: Number(price),
+        durationHours: Number(durationHours),
+        speedLimit
+      });
+    };
+
+    const togglePlanStatus = (plan) => {
+      const newStatus = plan.status === 'Active' ? 'Inactive' : 'Active';
+      savePlan({ ...plan, status: newStatus });
+    };
+
+    const promptAddAnnouncement = () => {
+      const title = prompt('Title:');
+      if (!title) return;
+      const message = prompt('Message:');
+      if (!message) return;
+      saveAnnouncement({ id: 'a' + Date.now(), title, message, status: 'Active' });
+    };
+
+    const saveUser = async (user) => {
+      loading.value = true;
+      try {
+        await callBackend('saveUser', [user]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const saveAnnouncement = async (ann) => {
+      loading.value = true;
+      try {
+        await callBackend('saveAnnouncement', [ann]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteAnnouncement = async (ann) => {
+      if (!confirm('Are you sure you want to delete this announcement?')) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteRecord', [{ table: 'Announcements', row: ann._row }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const kickUser = async (user) => {
+      if (!confirm(`Are you sure you want to kick/disable ${user.username}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('saveUser', [{ ...user, syncStatus: 'Disabled' }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteUser = async (user) => {
+      if (!confirm(`Are you sure you want to permanently delete user ${user.username}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteRecord', [{ table: 'Users', row: user._row }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deletePlan = async (plan) => {
+      if (!confirm(`Are you sure you want to delete plan ${plan.name}?`)) return;
+      loading.value = true;
+      try {
+        await callBackend('deleteRecord', [{ table: 'Plans', row: plan._row }]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const updateKeys = async () => {
+      const paymongo = prompt('New Paymongo Secret Key (leave blank to keep current):');
+      const semaphore = prompt('New Semaphore API Key (leave blank to keep current):');
+      const token = prompt('New Mikrotik Token (leave blank to keep current):');
+
+      if (!paymongo && !semaphore && !token) return;
+
+      loading.value = true;
+      try {
+        await callBackend('updateKeys', [{ paymongo, semaphore, token }]);
+        alert('Settings updated successfully!');
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const changePassword = async () => {
+      const password = prompt('Enter new Admin Password:');
+      if (!password) return;
+      loading.value = true;
+      try {
+        await callBackend('changePassword', [{ password }]);
+        alert('Password changed successfully! You will need to use the new password next time.');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const savePlan = async (plan) => {
+      loading.value = true;
+      try {
+        await callBackend('savePlan', [plan]);
+        await refreshData();
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const logout = () => {
+      if (confirm('Are you sure you want to logout?')) {
+        sessionStorage.removeItem('admin_password');
+        isAuthenticated.value = false;
+        window.top.location.href = window.location.href.split('?')[0];
+      }
+    };
+
+    const callBackend = (method, args = [], pass = null) => {
+      const password = pass || sessionStorage.getItem('admin_password');
+      return new Promise((resolve, reject) => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res && res.error) reject(new Error(res.error));
+              else resolve(res);
+            })
+            .withFailureHandler(reject)
+            .handleRpcManual(method, args, password);
+        } else {
+          console.log('Mock RPC:', method, args);
+          setTimeout(() => resolve({ sales: [], users: [], plans: [], announcements: [], settings: [] }), 500);
+        }
+      });
+    };
+
+    onMounted(() => {
+      // Check for password in URL as a one-time convenience for setup
+      const urlParams = new URLSearchParams(window.location.search);
+      const pw = urlParams.get('pw');
+      if (pw) {
+        sessionStorage.setItem('admin_password', pw);
+        // Clean URL without reload
+        const newUrl = window.location.href.split('?')[0] + '?page=admin';
+        window.history.replaceState({}, '', newUrl);
+      }
+      refreshData();
+    });
+
+    return {
+      currentPage,
+      loading,
+      isAuthenticated,
+      loginPassword,
+      loginError,
+      lastRefresh,
+      dashboardData,
+      login,
+      refreshData,
+      saveUser,
+      promptEditBalance,
+      savePlan,
+      promptAddUser,
+      promptAddPlan,
+      promptEditPlan,
+      togglePlanStatus,
+      promptAddAnnouncement,
+      saveAnnouncement,
+      deleteAnnouncement,
+      kickUser,
+      deleteUser,
+      deletePlan,
+      updateKeys,
+      changePassword,
+      logout
+    };
+  }
+}).mount('#app');
+
+// Helper for Code.js to handle RPC when called via google.script.run
+function handleRpcManual(method, args) {
+  // This would be called on the server side
+  // But here it's just a placeholder for the logic
+}
+</script>
