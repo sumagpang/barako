@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi sa Bukid - Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="glass-panel w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden p-6 relative">
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
+
+        <!-- Header -->
+        <div class="text-center mb-6 mt-2">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 text-green-600 mb-3 animate-pulse">
+                <i class="fas fa-wifi text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Connected</h2>
+            <p class="text-green-600 font-medium">$(username)</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Time Left</div>
+                <div class="text-gray-800 font-bold text-lg">$(session-time-left)</div>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Data Used</div>
+                <div class="text-gray-800 font-bold text-lg">$(bytes-out-nice)</div>
+            </div>
+        </div>
+
+        <div class="space-y-2 mb-6 text-sm text-gray-600">
+            <div class="flex justify-between border-b border-gray-100 pb-2">
+                <span><i class="fas fa-network-wired mr-2 text-gray-400"></i>IP Address</span>
+                <span class="font-mono">$(ip)</span>
+            </div>
+            <div class="flex justify-between border-b border-gray-100 pb-2">
+                <span><i class="fas fa-fingerprint mr-2 text-gray-400"></i>MAC</span>
+                <span class="font-mono">$(mac)</span>
+            </div>
+            <div class="flex justify-between">
+                <span><i class="fas fa-upload mr-2 text-gray-400"></i>Upload</span>
+                <span>$(bytes-in-nice)</span>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <form action="$(link-logout)" name="logout" onSubmit="return openLogout()">
+            <div class="grid grid-cols-1 gap-3">
+                <button type="button" class="w-full bg-green-50 text-green-700 font-bold py-3 rounded-xl hover:bg-green-100 transition-colors border border-green-200" onclick="window.location.href='$(link-login-only)'">
+                    <i class="fas fa-plus-circle mr-1"></i> Extend Time
+                </button>
+                <button type="submit" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
+                    Logout
+                </button>
+            </div>
+        </form>
+    </div>
+
+<script>
+    // Refresh status every 60 seconds
+    setInterval(function(){
+        window.location.reload();
+    }, 60000);
+</script>
+
+</body>
+</html>

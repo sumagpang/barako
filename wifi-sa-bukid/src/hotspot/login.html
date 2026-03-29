@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi sa Mayapyap - Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6; /* Gray-100 */
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .pro-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+        .marquee-container {
+            background: #1e40af; /* Blue-800 */
+        }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 20s linear infinite; }
+        .modal-overlay {
+            background: rgba(17, 24, 39, 0.7); /* Gray-900/70 */
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="text-gray-900 min-h-screen flex flex-col justify-center items-center">
+
+    <!-- Marquee -->
+    <div class="marquee-container text-white py-3 overflow-hidden shadow-sm fixed top-0 w-full z-50">
+        <div id="announcement-text" class="animate-marquee font-medium tracking-wide text-sm">
+            Welcome to WiFi sa Mayapyap! Fast, Reliable, Professional Internet.
+        </div>
+    </div>
+
+    <div class="w-full max-w-md p-4 mt-12">
+        <div class="pro-card rounded-2xl shadow-xl overflow-hidden p-8 transform transition-all duration-300">
+
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mb-4 ring-1 ring-blue-100">
+                    <i class="fas fa-wifi text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">WiFi sa Mayapyap</h1>
+                <p class="text-gray-500 text-sm mt-2">Professional Internet Access</p>
+            </div>
+
+            <!-- Login Form -->
+            <form name="login" action="$(link-login-only)" method="post" id="login-form" class="space-y-5">
+                <input type="hidden" name="dst" value="$(link-orig)" />
+                <input type="hidden" name="popup" value="true" />
+
+                <div class="space-y-4">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400"><i class="fas fa-phone-alt"></i></span>
+                        <input type="text" name="username" id="login-username" placeholder="Mobile Number" required
+                            class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 font-medium" />
+                    </div>
+
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400"><i class="fas fa-key"></i></span>
+                        <input type="password" name="password" id="login-password" placeholder="Access Code" required
+                            class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 font-medium" />
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transform active:scale-95 transition-all duration-200 uppercase text-sm tracking-wide">
+                    Connect Device
+                </button>
+                <div class="text-red-500 text-center text-sm font-semibold mt-2 min-h-[20px]">$(if error)$(error)$(endif)</div>
+            </form>
+
+            <div class="relative flex py-6 items-center">
+                <div class="flex-grow border-t border-gray-200"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold tracking-wider">Purchase Access</span>
+                <div class="flex-grow border-t border-gray-200"></div>
+            </div>
+
+            <!-- View Promos Button -->
+            <button onclick="openPromoModal()" class="w-full border border-blue-600 text-blue-600 font-bold py-3.5 rounded-lg hover:bg-blue-50 transition-all duration-200 flex items-center justify-center shadow-sm uppercase text-xs tracking-wide">
+                <i class="fas fa-tags mr-2"></i> View Available Plans
+            </button>
+
+            <div class="mt-8 text-center">
+                <a href="#" id="admin-portal-link" class="text-xs text-gray-400 hover:text-blue-600 transition-colors">Administrator Portal</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promo List Modal -->
+    <div id="promo-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl relative border border-gray-100">
+            <button onclick="closePromoModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-3">Available Plans</h3>
+
+            <div id="loading-plans" class="text-center text-gray-500 py-8 animate-pulse text-sm">
+                <i class="fas fa-spinner fa-spin mr-2"></i> Loading Plans...
+            </div>
+
+            <div id="plans-container" class="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300"></div>
+        </div>
+    </div>
+
+    <!-- Purchase Modal -->
+    <div id="purchase-modal" class="fixed inset-0 modal-overlay z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl relative animate-fade-in-up border border-gray-100">
+            <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-900" id="selected-plan-name">Plan Name</h3>
+                <p class="text-blue-600 font-bold text-xl mt-1" id="selected-plan-price">₱0</p>
+            </div>
+
+            <div class="relative mb-5">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Mobile Number</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-mobile-alt"></i></span>
+                    <input type="text" id="buy-mobile" placeholder="09xxxxxxxxx"
+                        class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 font-medium" />
+                </div>
+            </div>
+            <!-- Hidden MAC Field -->
+            <input type="hidden" id="user-mac" value="$(mac)">
+
+            <div class="flex items-center justify-center mb-6 space-x-2 opacity-70">
+                 <i class="fab fa-cc-visa text-gray-400 text-xl"></i>
+                 <i class="fab fa-cc-mastercard text-gray-400 text-xl"></i>
+                 <i class="fas fa-wallet text-gray-400 text-xl"></i>
+                 <span class="text-xs text-gray-400 font-medium ml-1">Secure Payment</span>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closePurchaseModal()" class="flex-1 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                    Cancel
+                </button>
+                <button onclick="initiatePayment()" id="pay-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-md text-sm">
+                    Confirm Purchase
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4 backdrop-filter backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl transform scale-100 transition-transform">
+            <div class="mb-4 text-green-500 text-5xl">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Processing Payment</h3>
+            <p class="text-gray-600 mb-6">Please complete the transaction in the new tab. We are waiting for confirmation...</p>
+            <button onclick="cancelPayment()" class="text-gray-400 hover:text-gray-600 font-semibold text-sm underline">Cancel Transaction</button>
+        </div>
+    </div>
+
+<script>
+    // REPLACE THIS WITH YOUR DEPLOYED WEB APP URL
+    const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+    let selectedPlan = null;
+    let paymentCheckInterval = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (API_URL.indexOf("YOUR_SCRIPT_ID") !== -1) {
+            document.getElementById('loading-plans').innerHTML = `
+                <div class="text-red-600 font-bold bg-red-100 p-3 rounded-lg border border-red-300">
+                    <i class="fas fa-cog fa-spin mr-2"></i> SETUP REQUIRED<br>
+                    <span class="text-xs font-normal text-red-800">Please edit 'login.html' and replace 'API_URL' with your Google Web App URL.</span>
+                </div>`;
+            return;
+        }
+
+        fetchPlans();
+        fetchAnnouncements();
+        document.getElementById('admin-portal-link').href = API_URL + "?page=admin";
+
+        // Check for payment redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'from_payment') {
+            handlePaymentReturn(urlParams);
+        }
+
+        // Check for Retry Loop (Sync Latency Handling)
+        checkRetryLoop();
+    });
+
+    function checkRetryLoop() {
+        const errorMsg = document.querySelector('.text-red-500').innerText;
+        const stored = localStorage.getItem('bukid_auto_login');
+
+        if (errorMsg && (errorMsg.includes("invalid") || errorMsg.includes("found")) && stored) {
+            const data = JSON.parse(stored);
+            const now = new Date().getTime();
+
+            // If data is recent (< 2 mins)
+            if (now - data.timestamp < 120000) {
+                // Show Overlay
+                const overlay = document.createElement('div');
+                overlay.className = "fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 text-center";
+                overlay.innerHTML = `
+                    <div class="mb-6 text-blue-500 text-6xl animate-spin"><i class="fas fa-sync"></i></div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Synchronizing Account</h2>
+                    <p class="text-gray-600 mb-8">Your payment is confirmed. Waiting for the router to update...</p>
+                    <p class="text-sm text-gray-400">Retrying automatically in 5 seconds.</p>
+                `;
+                document.body.appendChild(overlay);
+
+                // Retry Login
+                setTimeout(() => {
+                    document.getElementById('login-username').value = data.mobile;
+                    document.getElementById('login-password').value = data.passcode;
+                    document.getElementById('login-form').submit();
+                }, 5000);
+            } else {
+                localStorage.removeItem('bukid_auto_login');
+            }
+        }
+    }
+
+    function handlePaymentReturn(params) {
+        const mobile = params.get('mobile');
+        const planId = params.get('planId');
+
+        if (!mobile || !planId) return;
+
+        // Show Full Screen Loading Overlay
+        const overlay = document.createElement('div');
+        overlay.className = "fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 text-center";
+        overlay.innerHTML = `
+            <div class="mb-6 text-green-500 text-6xl animate-bounce"><i class="fas fa-check-circle"></i></div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Verifying Payment</h2>
+            <p class="text-gray-600 mb-8">Please wait while we connect you...</p>
+            <div class="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        // We need sourceId to check payment, but Paymongo redirect doesn't always provide it clearly in query params unless we saved it.
+        // However, we can re-create the check loop or just wait for the SMS/Server sync.
+        // Since we don't have the Source ID from the URL (unless we stored it),
+        // we might need to rely on the user manually entering or just waiting.
+        // WAIT: The previous flow relied on the *original* tab having the Source ID.
+        // If the user is here, they completed payment. We can try to login with just mobile?
+        // No, we need the passcode.
+        // The backend `checkPayment` needs `sourceId` to verify Paymongo status.
+        // Workaround: We can't easily get Source ID here without persistence.
+        // BUT, if the payment is successful, the backend *already* created the user in the 'checkPayment' call from the OTHER tab?
+        // OR webhooks? We don't have webhooks set up in this simple GAS version.
+        // The other tab (polling) might have already triggered the creation.
+        // Let's assume the user knows the passcode or it was sent via SMS.
+        // BETTER: If we want "Automatic" login, we need the passcode.
+        // Limitation: Without the Source ID in the return URL, we can't call checkPayment to get the passcode.
+        // Let's modify the prompt logic: The user asked for "Automatic".
+        // If we can't get the passcode, we can't login automatically.
+        // Strategy: Modify Code.js to include sourceId/refId in redirect if possible?
+        // Paymongo doesn't let us inject dynamic IDs into the success URL easily unless we pre-register?
+        // Actually, we passed `redirectUrl` to `createCheckoutSession`. We CAN include the ID there?
+        // No, we generate the session to GET the ID. We can't put the ID in the URL *before* we get the ID.
+        // Valid Point.
+        // Alternative: We can lookup the latest transaction for this mobile number?
+        // Let's add a `getLastPasscode` action for this specific flow? Secure?
+        // Risk: Anyone can put ?mobile=... and get the passcode.
+        // Mitigate: Only allow if recent (last 5 mins) and status is active.
+
+        // Let's try to poll for the user status instead of payment status.
+        // We know the Mobile Number. We can check if there is an active user with this mobile.
+
+        verifyAndLogin(mobile, overlay);
+    }
+
+    function verifyAndLogin(mobile, overlay) {
+        let attempts = 0;
+        const maxAttempts = 10; // 30 seconds
+
+        const interval = setInterval(() => {
+            attempts++;
+            // Poll for active user status since we don't have the payment session ID in the return URL
+            // (The original payment tab handles the creation, or we wait for sync)
+            // Actually, I can edit Code.js in the next step or revise the plan?
+            // "You are currently working on plan step: Update src/hotspot/login.html"
+
+            fetch(API_URL + "?action=checkUserStatus&mobile=" + mobile, { method: "POST" })
+            .then(res => res.json())
+            .then(res => {
+                if(res.status === 'success' && res.passcode) {
+                    clearInterval(interval);
+                    // Login
+                    document.getElementById('login-username').value = mobile;
+                    document.getElementById('login-password').value = res.passcode;
+
+                    // Save for Retry Loop
+                    localStorage.setItem('bukid_auto_login', JSON.stringify({
+                        mobile: mobile,
+                        passcode: res.passcode,
+                        timestamp: new Date().getTime()
+                    }));
+
+                    // Set Redirect to Status
+                    const form = document.getElementById('login-form');
+                    const dstInput = form.querySelector('input[name="dst"]');
+                    if(dstInput) dstInput.value = "http://wifi.bukid/status";
+
+                    overlay.innerHTML = `
+                         <div class="mb-6 text-green-500 text-6xl animate-bounce"><i class="fas fa-wifi"></i></div>
+                         <h2 class="text-2xl font-bold text-gray-800 mb-2">Connected!</h2>
+                         <p class="text-gray-600">Redirecting you...</p>
+                    `;
+
+                    setTimeout(() => form.submit(), 1000);
+                }
+            })
+            .catch(e => console.log(e));
+
+            if(attempts > maxAttempts) {
+                 clearInterval(interval);
+                 overlay.innerHTML = `
+                    <div class="mb-4 text-orange-500 text-5xl"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Verification Timeout</h3>
+                    <p class="text-gray-600 mb-4">We couldn't auto-connect you yet. Please check your SMS for the passcode.</p>
+                    <button onclick="document.body.removeChild(this.parentElement.parentElement)" class="bg-gray-800 text-white px-6 py-2 rounded-lg">Close</button>
+                 `;
+            }
+        }, 3000);
+    }
+
+    function fetchPlans() {
+        fetch(API_URL + "?action=getPlans", { method: "GET" })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success') {
+                const container = document.getElementById('plans-container');
+                container.innerHTML = '';
+                document.getElementById('loading-plans').style.display = 'none';
+
+                res.data.forEach(plan => {
+                    const div = document.createElement('div');
+                    div.className = 'group p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all duration-200 flex justify-between items-center';
+                    div.innerHTML = `
+                        <div>
+                            <div class="font-bold text-gray-800 group-hover:text-green-700">${plan.name}</div>
+                            <div class="text-xs text-gray-500"><i class="fas fa-clock mr-1"></i>${plan.durationMinutes/60} Hours &bull; <i class="fas fa-tachometer-alt mr-1"></i>${plan.speedLimit}</div>
+                        </div>
+                        <div class="text-green-600 font-black text-lg">₱${plan.price}</div>
+                    `;
+                    div.onclick = () => selectPlan(div, plan);
+                    container.appendChild(div);
+                });
+            } else {
+                showPlanError("Failed to load plans.");
+            }
+        })
+        .catch(err => {
+            console.error("Error fetching plans", err);
+            showPlanError("Network Error. <br><span class='text-xs'>1. Check Internet.<br>2. Check Walled Garden rules.<br>3. Verify API_URL.</span>");
+        });
+    }
+
+    function showPlanError(msg) {
+        const el = document.getElementById('loading-plans');
+        el.innerHTML = `<div class="text-red-500 text-sm bg-red-50 p-2 rounded border border-red-100"><i class="fas fa-exclamation-circle"></i> ${msg}</div>`;
+    }
+
+    function fetchAnnouncements() {
+        fetch(API_URL + "?action=getAnnouncements", { method: "GET" })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success' && res.data.length > 0) {
+                const messages = res.data
+                    .filter(a => a.active === true || a.active === "true")
+                    .map(a => a.message);
+
+                if (messages.length > 0) {
+                    document.getElementById('announcement-text').innerText = messages.join(" | ");
+                }
+            }
+        });
+    }
+
+    // Modal Functions
+    function openPromoModal() {
+        document.getElementById('promo-modal').classList.remove('hidden');
+    }
+
+    function closePromoModal() {
+        document.getElementById('promo-modal').classList.add('hidden');
+    }
+
+    function closePurchaseModal() {
+        document.getElementById('purchase-modal').classList.add('hidden');
+    }
+
+    function selectPlan(el, plan) {
+        selectedPlan = plan;
+        document.getElementById('selected-plan-name').innerText = plan.name;
+        document.getElementById('selected-plan-price').innerText = "₱" + plan.price;
+
+        // Switch Modals
+        closePromoModal();
+        document.getElementById('purchase-modal').classList.remove('hidden');
+    }
+
+    function initiatePayment() {
+        const mobile = document.getElementById('buy-mobile').value;
+        const mac = document.getElementById('user-mac').value;
+
+        if(!mobile || !selectedPlan) { alert("Please enter mobile and select plan"); return; }
+
+        // Open window immediately to avoid popup blocker
+        const paymentWindow = window.open('about:blank', '_blank');
+        if (paymentWindow) {
+            paymentWindow.document.write('<html><head><title>Payment</title><style>body{font-family:sans-serif;text-align:center;padding:50px;} .loader{border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; margin: 20px auto;} @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}</style></head><body><div class="loader"></div><h3>Generating Payment Link...</h3><p>Please wait, you will be redirected...</p></body></html>');
+        }
+
+        const btn = document.getElementById('pay-btn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Link...';
+
+        fetch(API_URL + "?action=createPayment", {
+            method: "POST",
+            body: JSON.stringify({
+                amount: selectedPlan.price,
+                mobile: mobile,
+                planId: selectedPlan.id,
+                mac: mac
+            })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === 'success') {
+                const checkoutUrl = res.data.data.attributes.checkout_url;
+                const sourceId = res.data.data.id;
+
+                if (paymentWindow) {
+                    paymentWindow.location.href = checkoutUrl;
+                }
+                showPaymentModal(sourceId, mobile, selectedPlan.id, checkoutUrl);
+            } else {
+                alert("Error creating payment: " + res.message);
+                btn.disabled = false;
+                btn.innerText = originalText;
+                if(paymentWindow) paymentWindow.close();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error connecting to server");
+            btn.disabled = false;
+            btn.innerText = originalText;
+            if(paymentWindow) paymentWindow.close();
+        });
+    }
+
+    function showPaymentModal(sourceId, mobile, planId, checkoutUrl) {
+        document.getElementById('payment-modal').classList.remove('hidden');
+
+        // Add fallback link in case popup blocked
+        const modalContent = document.getElementById('payment-modal').querySelector('div');
+        const originalContent = modalContent.innerHTML; // Keep layout structure
+
+        // Inject the fallback link into the existing text
+        const fallbackHtml = `
+            <div class="mb-4 text-green-500 text-5xl">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Processing Payment</h3>
+            <p class="text-gray-600 mb-2">Please complete the transaction in the new tab.</p>
+            <p class="text-sm text-gray-500 mb-6">
+                If the payment page didn't open,
+                <a href="${checkoutUrl}" target="_blank" class="text-green-600 font-bold underline">Click Here</a>
+            </p>
+            <button onclick="cancelPayment()" class="text-gray-400 hover:text-gray-600 font-semibold text-sm underline">Cancel Transaction</button>
+        `;
+        modalContent.innerHTML = fallbackHtml;
+
+        paymentCheckInterval = setInterval(() => {
+            checkPaymentStatus(sourceId, mobile, planId);
+        }, 3000);
+    }
+
+    function checkPaymentStatus(sourceId, mobile, planId) {
+        fetch(API_URL + "?action=checkPayment", {
+            method: "POST",
+            body: JSON.stringify({ sourceId: sourceId, mobile: mobile, planId: planId })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.paid) {
+                clearInterval(paymentCheckInterval);
+                const modal = document.getElementById('payment-modal').querySelector('div');
+                modal.innerHTML = `
+                    <div class="mb-4 text-green-500 text-5xl animate-bounce"><i class="fas fa-check-circle"></i></div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Success!</h3>
+                    <p class="text-gray-600 mb-4">Passcode: <span class="font-mono font-bold bg-gray-100 p-1 rounded text-lg select-all">${res.passcode}</span></p>
+                    <p class="text-sm text-green-600 font-semibold"><i class="fas fa-wifi"></i> Logging you in...</p>
+                `;
+
+                document.getElementById('login-username').value = mobile;
+                document.getElementById('login-password').value = res.passcode;
+                setTimeout(() => document.getElementById('login-form').submit(), 1500);
+            }
+        });
+    }
+
+    function cancelPayment() {
+        clearInterval(paymentCheckInterval);
+        document.getElementById('payment-modal').classList.add('hidden');
+        const btn = document.getElementById('pay-btn');
+        btn.disabled = false;
+        btn.innerText = "Proceed to Payment";
+    }
+</script>
+</body>
+</html>
